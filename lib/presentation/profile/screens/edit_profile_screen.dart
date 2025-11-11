@@ -298,7 +298,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     title: const Text('Показывать в поиске'),
                     subtitle: const Text('Другие пользователи смогут найти вас'),
                     value: true,
-                    activeColor: const Color(0xFF5E60CE),
+                    activeThumbColor: const Color(0xFF5E60CE),
                     onChanged: (bool value) {
                       // TODO: Изменить настройки
                     },
@@ -308,7 +308,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     title: const Text('Показывать посещенные события'),
                     subtitle: const Text('В вашем профиле'),
                     value: true,
-                    activeColor: const Color(0xFF5E60CE),
+                    activeThumbColor: const Color(0xFF5E60CE),
                     onChanged: (bool value) {
                       // TODO: Изменить настройки
                     },
@@ -318,7 +318,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     title: const Text('Получать уведомления о матчах'),
                     subtitle: const Text('Когда появляется новое совпадение'),
                     value: true,
-                    activeColor: const Color(0xFF5E60CE),
+                    activeThumbColor: const Color(0xFF5E60CE),
                     onChanged: (bool value) {
                       // TODO: Изменить настройки
                     },

@@ -236,7 +236,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             
             // Категория
             DropdownButtonFormField<String>(
-              value: _selectedCategory,
+              initialValue: _selectedCategory,
               decoration: InputDecoration(
                 labelText: 'Категория',
                 prefixIcon: const Icon(Icons.category),
@@ -332,7 +332,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 title: const Text('Онлайн событие'),
                 subtitle: Text(_isOnline ? 'Будет проходить онлайн' : 'Будет проходить оффлайн'),
                 value: _isOnline,
-                activeColor: const Color(0xFF5E60CE),
+                activeThumbColor: const Color(0xFF5E60CE),
                 onChanged: (bool value) {
                   setState(() {
                     _isOnline = value;
