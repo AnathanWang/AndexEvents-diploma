@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../home/home_shell.dart';
+import 'setup_profile_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -42,20 +42,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       setState(() => _isLoading = true);
       
-      // Симуляция запроса к API
+      // Симуляция запроса к API (создание аккаунта)
       await Future.delayed(const Duration(seconds: 1));
       
       if (mounted) {
         setState(() => _isLoading = false);
         
-        // Переход на главный экран
+        // После регистрации переходим на детальную настройку профиля
         Navigator.of(context).pushReplacement(
           MaterialPageRoute<void>(
-            builder: (BuildContext context) => const HomeShell(),
+            builder: (BuildContext context) => const SetupProfileScreen(),
           ),
         );
       }
     }
+  }
+
+  void _skipDetailedSetup() {
+    // Пропускаем регистрацию и переходим сразу на детальную настройку профиля
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => const SetupProfileScreen(),
+      ),
+    );
   }
 
   @override
@@ -288,7 +297,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                
+                // Кнопка "Пропустить регистрацию"
+                TextButton(
+                  onPressed: _skipDetailedSetup,
+                  child: const Text(
+                    'Пропустить регистрацию',
+                    style: TextStyle(
+                      color: Color(0xFF9E9E9E),
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 
                 // Кнопка регистрации
                 ElevatedButton(
