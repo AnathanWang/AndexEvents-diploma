@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "672417054710",
+    "project_id": "andexevents",
+    "storage_bucket": "andexevents.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:672417054710:android:b8d5ec206f9e8bd3ded1d7",
+        "android_client_info": {
+          "package_name": "com.anathanwang.andexevents"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "672417054710-vojiftmnt8crtoh0ued7evi2pkmuja9j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBb0dFBcPNdRoC9Q-h2yaxHgZvWbyIVqmg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "672417054710-vojiftmnt8crtoh0ued7evi2pkmuja9j.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "672417054710-2gm36ur4k2nj5a7ed2re974mmq4qmt34.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.anathanwang.andexevents"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
