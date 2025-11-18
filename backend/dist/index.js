@@ -13,6 +13,7 @@ const PORT = process.env.PORT || 3000;
 // Initialize Firebase Admin SDK
 try {
     initializeFirebase();
+    logger.info('Firebase Admin SDK initialized successfully');
 }
 catch (error) {
     logger.error('Failed to initialize Firebase:', error);

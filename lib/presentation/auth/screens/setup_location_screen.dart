@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../../data/services/user_service.dart';
 import '../../home/home_shell.dart';
 
 /// Экран 3: Настройка геолокации
@@ -12,6 +13,7 @@ class SetupLocationScreen extends StatefulWidget {
 }
 
 class _SetupLocationScreenState extends State<SetupLocationScreen> {
+  final _userService = UserService();
   bool _isLoading = false;
   LocationPermission? _permissionStatus;
   Position? _currentPosition;
@@ -78,28 +80,95 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
   }
 
   Future<void> _completeOnboarding() async {
-    // TODO: Вызвать API для завершения онбординга
-    await Future<void>.delayed(const Duration(milliseconds: 500));
+    setState(() => _isLoading = true);
+    
+    try {
+      // Пытаемся получить текущую позицию если ещё не получили
+      if (_currentPosition == null) {
+        try {
+          print('DEBUG: Получаем текущую позицию...');
+          final Position position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high,
+            timeLimit: const Duration(seconds: 10),
+          );
+          _currentPosition = position;
+          print('DEBUG: Позиция получена: ${position.latitude}, ${position.longitude}');
+        } catch (e) {
+          print('DEBUG: Не удалось получить позицию: $e');
+          // Продолжаем без геолокации
+        }
+      }
+      
+      // Отправляем координаты если получили
+      if (_currentPosition != null) {
+        print('DEBUG: Отправляем координаты на backend...');
+        await _userService.updateLocation(
+          latitude: _currentPosition!.latitude,
+          longitude: _currentPosition!.longitude,
+        );
+        print('DEBUG: Координаты отправлены успешно');
+      } else {
+        print('DEBUG: Координаты не получены, пропускаем отправку');
+      }
 
-    if (mounted) {
-      // Переход на главный экран
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute<void>(
-          builder: (BuildContext context) => const HomeShell(),
-        ),
-        (Route<dynamic> route) => false, // Удаляем все предыдущие экраны
+      // Устанавливаем флаг завершения онбординга
+      print('DEBUG: Устанавливаем isOnboardingCompleted = true');
+      await _userService.updateProfile(
+        isOnboardingCompleted: true,
       );
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        // Переход на главный экран
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute<void>(
+            builder: (BuildContext context) => const HomeShell(),
+          ),
+          (Route<dynamic> route) => false, // Удаляем все предыдущие экраны
+        );
+      }
+    } catch (e) {
+      print('DEBUG: Ошибка в _completeOnboarding: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка завершения настройки: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
-  void _skipLocation() {
-    // Пропустить настройку локации
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(
-        builder: (BuildContext context) => const HomeShell(),
-      ),
-      (Route<dynamic> route) => false,
-    );
+  Future<void> _skipLocation() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      // Завершаем онбординг без геолокации
+      await _userService.updateProfile(
+        isOnboardingCompleted: true,
+      );
+
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute<void>(
+            builder: (BuildContext context) => const HomeShell(),
+          ),
+          (Route<dynamic> route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override

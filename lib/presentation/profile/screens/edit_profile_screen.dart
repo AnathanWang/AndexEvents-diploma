@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../auth/bloc/auth_bloc.dart';
+import '../../auth/bloc/auth_event.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -379,12 +382,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         TextButton(
                           onPressed: () {
                             Navigator.of(context).pop();
-                            // TODO: Выход из аккаунта
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Вы вышли из аккаунта'),
-                              ),
-                            );
+                            // Вызываем событие выхода из аккаунта
+                            context.read<AuthBloc>().add(const AuthLogoutRequested());
                           },
                           child: const Text(
                             'Выйти',

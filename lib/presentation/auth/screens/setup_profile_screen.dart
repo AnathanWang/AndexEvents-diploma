@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../../../data/services/user_service.dart';
 import 'setup_interests_screen.dart';
 
 /// Экран 1: Настройка базового профиля
@@ -15,6 +16,7 @@ class SetupProfileScreen extends StatefulWidget {
 class _SetupProfileScreenState extends State<SetupProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _ageController = TextEditingController();
+  final _userService = UserService();
   String? _selectedGender;
   File? _profileImage;
   bool _isLoading = false;
@@ -47,16 +49,39 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
 
-      // TODO: Отправить данные на backend
-      await Future<void>.delayed(const Duration(seconds: 1));
+      try {
+        String? photoUrl;
 
-      if (mounted) {
-        setState(() => _isLoading = false);
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (BuildContext context) => const SetupInterestsScreen(),
-          ),
+        // Загружаем фото если выбрано
+        if (_profileImage != null) {
+          photoUrl = await _userService.uploadProfilePhoto(_profileImage!);
+        }
+
+        // Отправляем данные профиля на backend
+        await _userService.updateProfile(
+          photoUrl: photoUrl,
+          age: int.tryParse(_ageController.text),
+          gender: _selectedGender,
         );
+
+        if (mounted) {
+          setState(() => _isLoading = false);
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (BuildContext context) => const SetupInterestsScreen(),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ошибка: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -316,6 +341,51 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Кнопка пропустить фото
+                TextButton(
+                  onPressed: _isLoading ? null : () async {
+                    if (_formKey.currentState?.validate() ?? false) {
+                      setState(() => _isLoading = true);
+                      
+                      try {
+                        // Отправляем только возраст и пол, без фото
+                        await _userService.updateProfile(
+                          age: int.tryParse(_ageController.text),
+                          gender: _selectedGender,
+                        );
+
+                        if (mounted) {
+                          setState(() => _isLoading = false);
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (BuildContext context) => const SetupInterestsScreen(),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          setState(() => _isLoading = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Ошибка: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  child: Text(
+                    'Пропустить добавление фото',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
               ],
             ),

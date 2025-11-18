@@ -12,7 +12,7 @@ interface CreateEventInput {
     createdById: string;
 }
 declare class EventService {
-    createEvent(data: CreateEventInput): Promise<{
+    createEvent(data: CreateEventInput, createdById?: string): Promise<{
         id: string;
         title: string;
         description: string;
@@ -32,7 +32,7 @@ declare class EventService {
         maxAge: number | null;
         createdAt: Date;
         updatedAt: Date;
-        createdById: string;
+        createdById: string | null;
     }>;
     getAllEvents(): Promise<{
         id: string;
@@ -54,7 +54,7 @@ declare class EventService {
         maxAge: number | null;
         createdAt: Date;
         updatedAt: Date;
-        createdById: string;
+        createdById: string | null;
     }[]>;
     getEventById(eventId: string): Promise<{
         id: string;
@@ -76,7 +76,7 @@ declare class EventService {
         maxAge: number | null;
         createdAt: Date;
         updatedAt: Date;
-        createdById: string;
+        createdById: string | null;
     } | null>;
 }
 declare const _default: EventService;
