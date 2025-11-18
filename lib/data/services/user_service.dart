@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../core/config/app_config.dart';
+import '../models/user_model.dart';
 
 /// Сервис для работы с профилем пользователя
 class UserService {
@@ -59,6 +60,7 @@ class UserService {
     int? age,
     String? gender,
     List<String>? interests,
+    Map<String, String>? socialLinks,
     bool? isOnboardingCompleted,
   }) async {
     try {
@@ -75,6 +77,7 @@ class UserService {
       if (age != null) body['age'] = age;
       if (gender != null) body['gender'] = gender;
       if (interests != null) body['interests'] = interests;
+      if (socialLinks != null) body['socialLinks'] = socialLinks;
       if (isOnboardingCompleted != null) body['isOnboardingCompleted'] = isOnboardingCompleted;
 
       final url = '${AppConfig.baseUrl}/users/me';
@@ -133,7 +136,7 @@ class UserService {
   }
 
   /// Получить текущий профиль пользователя
-  Future<Map<String, dynamic>> getCurrentUser() async {
+  Future<UserModel> getCurrentUser() async {
     try {
       final String? token = await _getIdToken();
       if (token == null) throw Exception('Не удалось получить токен авторизации');
@@ -147,7 +150,7 @@ class UserService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['data'] as Map<String, dynamic>;
+        return UserModel.fromJson(data['data'] as Map<String, dynamic>);
       } else {
         throw Exception('Не удалось получить профиль');
       }

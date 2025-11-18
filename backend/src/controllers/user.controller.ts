@@ -118,7 +118,7 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    const { displayName, photoUrl, bio, age, gender, interests, isOnboardingCompleted } = req.body;
+    const { displayName, photoUrl, bio, age, gender, interests, socialLinks, isOnboardingCompleted } = req.body;
 
     const updatedUser = await userService.updateUserProfile(user.id, {
       displayName,
@@ -127,6 +127,7 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
       age,
       gender,
       interests,
+      socialLinks,
       isOnboardingCompleted,
     });
 
