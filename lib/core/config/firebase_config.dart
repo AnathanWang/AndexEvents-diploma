@@ -1,28 +1,29 @@
+import 'dart:io' show Platform;
 import 'package:firebase_core/firebase_core.dart';
 
 class FirebaseConfig {
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'YOUR_ANDROID_API_KEY',
-    appId: '1:YOUR_PROJECT_NUMBER:android:YOUR_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
-    projectId: 'andex-events',
-    storageBucket: 'andex-events.appspot.com',
+    apiKey: 'AIzaSyBb0dFBcPNdRoC9Q-h2yaxHgZvWbyIVqmg',
+    appId: '1:672417054710:android:b8d5ec206f9e8bd3ded1d7',
+    messagingSenderId: '672417054710',
+    projectId: 'andexevents',
+    storageBucket: 'andexevents.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'YOUR_IOS_API_KEY',
-    appId: '1:YOUR_PROJECT_NUMBER:ios:YOUR_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
-    projectId: 'andex-events',
-    iosBundleId: 'com.andex.events',
-    storageBucket: 'andex-events.appspot.com',
+    apiKey: 'AIzaSyA2dxERL5q8KoSA3_9_iztImlu97Wktg6I',
+    appId: '1:672417054710:ios:1918ac2d197286a4ded1d7',
+    messagingSenderId: '672417054710',
+    projectId: 'andexevents',
+    storageBucket: 'andexevents.firebasestorage.app',
+    iosBundleId: 'com.anathanwang.andexevents',
   );
 
   static FirebaseOptions get currentPlatform {
-    // ignore: dead_code
-    if (const bool.fromEnvironment('dart.library.io')) {
-      // Running on mobile or desktop
-      return android; // Change based on your needs
+    if (Platform.isIOS) {
+      return ios;
+    } else if (Platform.isAndroid) {
+      return android;
     } else {
       throw UnsupportedError(
         'DefaultFirebaseOptions are not supported for this platform.',

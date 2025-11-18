@@ -17,6 +17,7 @@ export const authMiddleware = async (
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('DEBUG: No token provided');
       res.status(401).json({
         success: false,
         message: 'Unauthorized: No token provided',
@@ -27,6 +28,7 @@ export const authMiddleware = async (
     const token = authHeader.split('Bearer ')[1];
 
     if (!token) {
+      console.log('DEBUG: Invalid token format');
       res.status(401).json({
         success: false,
         message: 'Unauthorized: Invalid token format',
@@ -34,14 +36,19 @@ export const authMiddleware = async (
       return;
     }
 
+    console.log('DEBUG: Token received, length:', token.length);
+    console.log('DEBUG: Token starts with:', token.substring(0, 20) + '...');
+
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
+      console.log('DEBUG: Token verified successfully, uid:', decodedToken.uid);
       req.user = {
         uid: decodedToken.uid,
         email: decodedToken.email ?? undefined,
       };
       next();
     } catch (error) {
+      console.log('DEBUG: Token verification failed:', error);
       res.status(401).json({
         success: false,
         message: 'Unauthorized: Invalid token',

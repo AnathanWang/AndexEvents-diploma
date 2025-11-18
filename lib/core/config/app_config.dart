@@ -3,6 +3,10 @@ class AppConfig {
   static const String baseUrl = 'http://localhost:3000/api';
   static const String apiVersion = 'v1';
   
+  // Supabase Configuration
+  static const String supabaseUrl = 'https://rykbewslbfxltmipyseg.supabase.co';
+  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5a2Jld3NsYmZ4bHRtaXB5c2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NTM5NTUsImV4cCI6MjA3OTAyOTk1NX0.ps3cL3a1fOSG-JN8UQ1z0-WGA9nRTy8LI16nPFuQeJE';
+  
   // Yandex Maps
   static const String yandexMapsApiKey = 'c1c767ce-7328-4c26-b263-8eba58f98c6a';
   

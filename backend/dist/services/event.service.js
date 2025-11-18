@@ -1,11 +1,14 @@
 import prisma from '../utils/prisma.js';
 class EventService {
-    async createEvent(data) {
+    async createEvent(data, createdById) {
         return await prisma.event.create({
             data: {
                 ...data,
                 price: data.price ?? 0,
                 isOnline: data.isOnline ?? false,
+                createdBy: createdById
+                    ? { connect: { id: createdById } }
+                    : undefined,
             },
         });
     }

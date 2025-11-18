@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_event.dart';
+import '../bloc/auth_state.dart';
 import 'register_screen.dart';
-import '../../home/home_shell.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,23 +26,15 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
+  void _handleLogin() {
     if (_formKey.currentState?.validate() ?? false) {
-      setState(() => _isLoading = true);
-      
-      // Симуляция запроса к API
-      await Future.delayed(const Duration(seconds: 1));
-      
-      if (mounted) {
-        setState(() => _isLoading = false);
-        
-        // Переход на главный экран
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(
-            builder: (BuildContext context) => const HomeShell(),
-          ),
-        );
-      }
+      // Отправляем событие входа в AuthBloc
+      context.read<AuthBloc>().add(
+        AuthLoginRequested(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        ),
+      );
     }
   }
 
@@ -53,9 +48,27 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (BuildContext context, AuthState state) {
+        if (state is AuthLoading) {
+          setState(() => _isLoading = true);
+        } else {
+          setState(() => _isLoading = false);
+        }
+
+        if (state is AuthFailure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        // Навигация обрабатывается в andex_app.dart через BlocBuilder
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Form(
@@ -228,9 +241,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 // Социальные сети
                 OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: Вход через Google
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          context.read<AuthBloc>().add(const AuthGoogleSignInRequested());
+                        },
                   icon: const Icon(Icons.g_mobiledata, size: 32),
                   label: const Text('Войти через Google'),
                   style: OutlinedButton.styleFrom(
@@ -280,32 +295,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                
-                // Кнопка "Войти как гость"
-                TextButton(
-                  onPressed: () {
-                    // Пропустить авторизацию и войти в приложение
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute<void>(
-                        builder: (BuildContext context) => const HomeShell(),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'Продолжить как гость',
-                    style: TextStyle(
-                      color: Color(0xFF9E9E9E),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
         ),
       ),
+      ), // BlocListener
     );
   }
 }

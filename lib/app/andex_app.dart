@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../data/services/auth_service.dart';
+import '../presentation/auth/bloc/auth_bloc.dart';
+import '../presentation/auth/bloc/auth_event.dart';
+import '../presentation/auth/bloc/auth_state.dart';
 import '../presentation/onboarding/onboarding_screen.dart';
+import '../presentation/home/home_shell.dart';
 
 class AndexApp extends StatelessWidget {
   const AndexApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return BlocProvider<AuthBloc>(
+      create: (BuildContext context) => AuthBloc(authService: AuthService())
+        ..add(const AuthCheckRequested()),
+      child: MaterialApp(
       title: 'Andex Events',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -23,7 +31,30 @@ class AndexApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const OnboardingScreen(),
+      home: BlocBuilder<AuthBloc, AuthState>(
+        builder: (BuildContext context, AuthState state) {
+          if (state is AuthLoading || state is AuthInitial) {
+            // Показываем загрузчик пока проверяем авторизацию
+            return const Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          } else if (state is AuthAuthenticated) {
+            // Если пользователь авторизован и завершил онбординг - показываем главный экран
+            if (state.isOnboardingCompleted) {
+              return const HomeShell();
+            }
+            // Если онбординг не завершён - показываем экран настройки профиля
+            // TODO: Перенаправлять на нужный экран Setup в зависимости от заполненности профиля
+            return const HomeShell(); // Временно показываем главный экран
+          }
+
+          // Если не авторизован - показываем онбординг
+          return const OnboardingScreen();
+        },
+      ),
+      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../data/services/user_service.dart';
 import 'setup_location_screen.dart';
 
 /// Экран 2: Выбор интересов
@@ -12,6 +13,7 @@ class SetupInterestsScreen extends StatefulWidget {
 
 class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
   final Set<String> _selectedInterests = <String>{};
+  final _userService = UserService();
   bool _isLoading = false;
 
   final List<InterestItem> _interests = <InterestItem>[
@@ -54,16 +56,30 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
 
     setState(() => _isLoading = true);
 
-    // TODO: Отправить интересы на backend
-    await Future<void>.delayed(const Duration(seconds: 1));
-
-    if (mounted) {
-      setState(() => _isLoading = false);
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (BuildContext context) => const SetupLocationScreen(),
-        ),
+    try {
+      // Отправляем интересы на backend
+      await _userService.updateProfile(
+        interests: _selectedInterests.toList(),
       );
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (BuildContext context) => const SetupLocationScreen(),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
