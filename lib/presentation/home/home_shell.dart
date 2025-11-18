@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/event_preview.dart';
 import '../models/match_preview.dart';
 import '../events/screens/create_event_screen.dart';
 import '../profile/screens/edit_profile_screen.dart';
+import '../profile/bloc/profile_bloc.dart';
+import '../../data/services/user_service.dart';
 import 'sample_data.dart';
 import 'screens/events_feed_screen.dart';
 import 'screens/map_explore_screen.dart';
@@ -22,11 +25,26 @@ class _HomeShellState extends State<HomeShell> {
   static const List<MatchPreview> _matches = SampleData.matches;
 
   int _index = 0;
+  late final ProfileBloc _profileBloc;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileBloc = ProfileBloc(userService: UserService());
+  }
+
+  @override
+  void dispose() {
+    _profileBloc.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return Scaffold(
+    return BlocProvider.value(
+      value: _profileBloc,
+      child: Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -40,7 +58,10 @@ class _HomeShellState extends State<HomeShell> {
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (BuildContext context) => const EditProfileScreen(),
+                          builder: (BuildContext context) => BlocProvider.value(
+                            value: _profileBloc,
+                            child: const EditProfileScreen(),
+                          ),
                         ),
                       );
                     },
@@ -88,6 +109,7 @@ class _HomeShellState extends State<HomeShell> {
         child: const Icon(Icons.add),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      ),
     );
   }
 

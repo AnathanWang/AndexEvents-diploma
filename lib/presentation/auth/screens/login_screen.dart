@@ -4,6 +4,7 @@ import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import 'register_screen.dart';
+import '../../home/home_shell.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,7 +28,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() {
+    print('DEBUG: _handleLogin called, _isLoading: $_isLoading');
+    
     if (_formKey.currentState?.validate() ?? false) {
+      print('DEBUG: Form validated, sending AuthLoginRequested');
+      
       // Отправляем событие входа в AuthBloc
       context.read<AuthBloc>().add(
         AuthLoginRequested(
@@ -35,6 +40,8 @@ class _LoginScreenState extends State<LoginScreen> {
           password: _passwordController.text,
         ),
       );
+    } else {
+      print('DEBUG: Form validation failed');
     }
   }
 
@@ -48,8 +55,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Сбрасываем _isLoading при каждой перестройке если не в состоянии AuthLoading
+    final currentState = context.read<AuthBloc>().state;
+    if (currentState is! AuthLoading && _isLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      });
+    }
+    
     return BlocListener<AuthBloc, AuthState>(
       listener: (BuildContext context, AuthState state) {
+        print('DEBUG: AuthState changed to: ${state.runtimeType}');
+        
         if (state is AuthLoading) {
           setState(() => _isLoading = true);
         } else {
@@ -64,7 +83,18 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
         }
-        // Навигация обрабатывается в andex_app.dart через BlocBuilder
+        
+        // При успешной аутентификации переходим на главный экран,
+        // удаляя все предыдущие маршруты
+        if (state is AuthAuthenticated) {
+          print('DEBUG: AuthAuthenticated received, navigating to HomeShell');
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute<void>(
+              builder: (BuildContext context) => const HomeShell(),
+            ),
+            (Route<dynamic> route) => false,
+          );
+        }
       },
       child: Scaffold(
         backgroundColor: Colors.white,

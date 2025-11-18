@@ -15,6 +15,7 @@ interface UpdateProfileData {
   displayName?: string;
   bio?: string;
   interests?: string[];
+  socialLinks?: Record<string, string>;
   age?: number;
   gender?: string;
   photoUrl?: string;
