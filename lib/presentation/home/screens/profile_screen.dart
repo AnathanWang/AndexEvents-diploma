@@ -8,7 +8,6 @@ import '../../profile/screens/edit_profile_screen.dart';
 import '../../models/event_preview.dart';
 import '../../models/match_preview.dart';
 import '../../widgets/admin_panel_snippet.dart';
-import '../../widgets/event_card.dart';
 import '../../widgets/match_card.dart';
 import '../../widgets/section_header.dart';
 
@@ -73,13 +72,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               caption: 'Собственные события и сохранённые планы',
             ),
             const SizedBox(height: 12),
-            if (widget.events.isEmpty)
+            if (state is ProfileLoaded && state.userEvents.isEmpty)
               const Text('Начните с создания первого события!')
-            else
-              ...widget.events.take(2).map((EventPreview event) {
+            else if (state is ProfileLoaded)
+              ...state.userEvents.take(3).map((event) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16),
-                  child: EventCard(event: event),
+                  child: _buildEventCard(event, context),
                 );
               }),
             TextButton.icon(
@@ -132,36 +131,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Row(
         children: <Widget>[
           // Аватар
-          GestureDetector(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (context) => BlocProvider.value(
-                    value: context.read<ProfileBloc>(),
-                    child: const EditProfileScreen(),
-                  ),
-                ),
-              );
-            },
-            child: user.photoUrl != null
-                ? CircleAvatar(
-                    radius: 32,
-                    backgroundImage: NetworkImage(user.photoUrl!),
-                  )
-                : CircleAvatar(
-                    radius: 32,
-                    backgroundColor: const Color(0xFF5E60CE),
-                    child: Text(
-                      user.displayName?.isNotEmpty == true 
-                          ? user.displayName![0].toUpperCase()
-                          : user.email[0].toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
-                      ),
+          Builder(
+            builder: (context) => GestureDetector(
+              onTap: () {
+                final profileBloc = context.read<ProfileBloc>();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => BlocProvider.value(
+                      value: profileBloc,
+                      child: const EditProfileScreen(),
                     ),
                   ),
+                );
+              },
+              child: user.photoUrl != null
+                  ? CircleAvatar(
+                      radius: 32,
+                      backgroundImage: NetworkImage(user.photoUrl!),
+                    )
+                  : CircleAvatar(
+                      radius: 32,
+                      backgroundColor: const Color(0xFF5E60CE),
+                      child: Text(
+                        user.displayName?.isNotEmpty == true 
+                            ? user.displayName![0].toUpperCase()
+                            : user.email[0].toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -313,5 +315,139 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Icon(icon, size: 16, color: color);
+  }
+
+  Widget _buildEventCard(dynamic event, BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (event.imageUrl != null)
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Image.network(
+                event.imageUrl!,
+                height: 180,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 180,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          const Color(0xFF5E60CE).withOpacity(0.7),
+                          const Color(0xFF9370DB).withOpacity(0.7),
+                        ],
+                      ),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.event, size: 48, color: Colors.white),
+                    ),
+                  );
+                },
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _getCategoryColor(event.category),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    event.category,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  event.title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF4A4D6A),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.access_time, size: 16, color: Color(0xFF9E9E9E)),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatDate(event.dateTime),
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF9E9E9E)),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        event.location,
+                        style: const TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Спорт':
+        return Colors.orange;
+      case 'Музыка':
+        return Colors.purple;
+      case 'Искусство':
+        return Colors.pink;
+      case 'Еда':
+        return Colors.green;
+      case 'Технологии':
+        return Colors.blue;
+      case 'IT':
+        return Colors.indigo;
+      case 'Образование':
+        return Colors.teal;
+      case 'Развлечения':
+        return Colors.amber;
+      case 'Бизнес':
+        return Colors.blueGrey;
+      default:
+        return const Color(0xFF5E60CE);
+    }
+  }
+
+  String _formatDate(DateTime dateTime) {
+    final months = [
+      'янв', 'фев', 'мар', 'апр', 'май', 'июн',
+      'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'
+    ];
+    return '${dateTime.day} ${months[dateTime.month - 1]}, ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }

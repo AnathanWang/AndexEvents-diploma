@@ -6,6 +6,7 @@ import '../presentation/auth/bloc/auth_event.dart';
 import '../presentation/auth/bloc/auth_state.dart';
 import '../presentation/onboarding/onboarding_screen.dart';
 import '../presentation/home/home_shell.dart';
+import '../presentation/auth/screens/setup_profile_screen.dart';
 
 class AndexApp extends StatelessWidget {
   const AndexApp({super.key});
@@ -46,8 +47,7 @@ class AndexApp extends StatelessWidget {
               return const HomeShell();
             }
             // Если онбординг не завершён - показываем экран настройки профиля
-            // TODO: Перенаправлять на нужный экран Setup в зависимости от заполненности профиля
-            return const HomeShell(); // Временно показываем главный экран
+            return const SetupProfileScreen();
           }
 
           // Если не авторизован - показываем онбординг

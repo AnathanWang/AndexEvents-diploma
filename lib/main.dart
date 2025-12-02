@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'app/andex_app.dart';
 import 'core/config/firebase_config.dart';
 import 'core/config/app_config.dart';
@@ -15,6 +16,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize date formatting for Russian locale
+  await initializeDateFormatting('ru', null);
   
   // Initialize Supabase
   await Supabase.initialize(

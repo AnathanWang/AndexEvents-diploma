@@ -16,25 +16,172 @@ interface CreateEventInput {
 
 class EventService {
     async createEvent(data: CreateEventInput, createdById?: string) {
-        return await prisma.event.create({
-            data: {
-                ...data,
-                price: data.price ?? 0,
-                isOnline: data.isOnline ?? false,
-                createdBy: createdById 
-                    ? { connect: { id: createdById } }
-                    : undefined,
+        // Создаем событие с координатами и PostGIS точкой
+        const result = await prisma.$queryRaw<[{id: string}]>`
+            INSERT INTO "Event" (
+                id, title, description, category, location, 
+                latitude, longitude, "locationGeo",
+                "dateTime", price, "imageUrl", "isOnline", 
+                status, "createdById", "createdAt", "updatedAt"
+            ) VALUES (
+                gen_random_uuid()::text,
+                ${data.title},
+                ${data.description},
+                ${data.category},
+                ${data.location},
+                ${data.latitude},
+                ${data.longitude},
+                ST_SetSRID(ST_MakePoint(${data.longitude}, ${data.latitude}), 4326)::geography,
+                ${data.dateTime},
+                ${data.price ?? 0},
+                ${data.imageUrl ?? null},
+                ${data.isOnline ?? false},
+                'APPROVED'::"EventStatus",
+                ${createdById ?? null},
+                NOW(),
+                NOW()
+            )
+            RETURNING id
+        `;
+        
+        // Получаем созданное событие
+        return await prisma.event.findUnique({
+            where: { id: result[0].id },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        displayName: true,
+                        photoUrl: true,
+                    },
+                },
             },
         });
     }
     async getAllEvents(){
         return await prisma.event.findMany({
+            where: {
+                status: 'APPROVED',
+            },
+            distinct: ['id'],
             orderBy: {createdAt: 'desc'},
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        displayName: true,
+                        photoUrl: true,
+                    },
+                },
+            },
         });
     }
+    
+    async getNearbyEvents(
+        userLat: number, 
+        userLon: number, 
+        maxDistance: number = 50000, // метры
+        category?: string,
+        page: number = 1,
+        limit: number = 20
+    ) {
+        const offset = (page - 1) * limit;
+        
+        // Raw SQL для PostGIS запроса
+        const events = await prisma.$queryRaw<any[]>`
+            SELECT 
+                e.*,
+                ST_Distance(
+                    e."locationGeo",
+                    ST_SetSRID(ST_MakePoint(${userLon}, ${userLat}), 4326)::geography
+                ) as distance,
+                json_build_object(
+                    'id', u.id,
+                    'displayName', u."displayName",
+                    'photoUrl', u."photoUrl"
+                ) as "createdBy"
+            FROM "Event" e
+            LEFT JOIN "User" u ON e."createdById" = u.id
+            WHERE 
+                e.status = 'APPROVED'
+                AND e."isOnline" = false
+                AND ST_DWithin(
+                    e."locationGeo",
+                    ST_SetSRID(ST_MakePoint(${userLon}, ${userLat}), 4326)::geography,
+                    ${maxDistance}
+                )
+                ${category ? prisma.$queryRaw`AND e.category = ${category}` : prisma.$queryRaw``}
+            ORDER BY distance ASC
+            LIMIT ${limit}
+            OFFSET ${offset}
+        `;
+        
+        // Подсчет общего количества
+        const totalResult = await prisma.$queryRaw<[{count: bigint}]>`
+            SELECT COUNT(*) as count
+            FROM "Event" e
+            WHERE 
+                e.status = 'APPROVED'
+                AND e."isOnline" = false
+                AND ST_DWithin(
+                    e."locationGeo",
+                    ST_SetSRID(ST_MakePoint(${userLon}, ${userLat}), 4326)::geography,
+                    ${maxDistance}
+                )
+                ${category ? prisma.$queryRaw`AND e.category = ${category}` : prisma.$queryRaw``}
+        `;
+        
+        const total = Number(totalResult[0].count);
+        
+        return {
+            events,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+    
     async getEventById(eventId: string) {
         return await prisma.event.findUnique({
              where: { id: eventId },
+             include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        displayName: true,
+                        photoUrl: true,
+                    },
+                },
+            },
+        });
+    }
+    
+    async getUserEvents(userId: string) {
+        return await prisma.event.findMany({
+            where: {
+                createdById: userId,
+                status: 'APPROVED',
+            },
+            orderBy: {
+                createdAt: 'desc',
+            },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        displayName: true,
+                        photoUrl: true,
+                    },
+                },
+                _count: {
+                    select: {
+                        participants: true,
+                    },
+                },
+            },
         });
     }
 }

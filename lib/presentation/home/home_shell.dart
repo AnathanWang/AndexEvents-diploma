@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/event_preview.dart';
 import '../models/match_preview.dart';
 import '../events/screens/create_event_screen.dart';
+import '../events/bloc/event_bloc.dart';
 import '../profile/screens/edit_profile_screen.dart';
 import '../profile/bloc/profile_bloc.dart';
 import '../../data/services/user_service.dart';
@@ -78,8 +79,14 @@ class _HomeShellState extends State<HomeShell> {
       body: IndexedStack(
         index: _index,
         children: <Widget>[
-          MapExploreScreen(events: _events),
-          EventsFeedScreen(events: _events),
+          BlocProvider(
+            create: (context) => EventBloc(),
+            child: const MapExploreScreen(),
+          ),
+          BlocProvider(
+            create: (context) => EventBloc(),
+            child: const EventsFeedScreen(),
+          ),
           MatchesScreen(matches: _matches),
           ProfileScreen(events: _events, matches: _matches),
         ],
@@ -102,7 +109,10 @@ class _HomeShellState extends State<HomeShell> {
         onPressed: () {
           Navigator.of(context).push(
             MaterialPageRoute<void>(
-              builder: (BuildContext context) => const CreateEventScreen(),
+              builder: (BuildContext context) => BlocProvider(
+                create: (context) => EventBloc(),
+                child: const CreateEventScreen(),
+              ),
             ),
           );
         },
