@@ -7,6 +7,8 @@ const router = Router();
 router.post("/", eventController.createEvent.bind(eventController));
 // Маршрут для получения всех событий
 router.get("/", eventController.getAllEvents.bind(eventController));
+// Маршрут для получения событий пользователя
+router.get("/user/:userId", eventController.getUserEvents.bind(eventController));
 // Маршрут для получения события по ID
 router.get("/:id", eventController.getEventById.bind(eventController));
 

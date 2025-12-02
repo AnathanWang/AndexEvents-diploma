@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/models/event_model.dart';
 
 /// Состояния для ProfileBloc
 abstract class ProfileState extends Equatable {
@@ -22,21 +23,23 @@ class ProfileLoading extends ProfileState {
 /// Профиль загружен
 class ProfileLoaded extends ProfileState {
   final UserModel user;
+  final List<EventModel> userEvents;
 
-  const ProfileLoaded(this.user);
+  const ProfileLoaded(this.user, {this.userEvents = const []});
 
   @override
-  List<Object?> get props => [user];
+  List<Object?> get props => [user, userEvents];
 }
 
 /// Обновление профиля
 class ProfileUpdating extends ProfileState {
   final UserModel user;
+  final List<EventModel> userEvents;
 
-  const ProfileUpdating(this.user);
+  const ProfileUpdating(this.user, {this.userEvents = const []});
 
   @override
-  List<Object?> get props => [user];
+  List<Object?> get props => [user, userEvents];
 }
 
 /// Ошибка

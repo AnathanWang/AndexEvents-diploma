@@ -1,15 +1,18 @@
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/services/user_service.dart';
+import '../../../data/services/event_service.dart';
 import 'profile_event.dart';
 import 'profile_state.dart';
 
 /// BLoC для управления профилем пользователя
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final UserService _userService;
+  final EventService _eventService;
 
-  ProfileBloc({UserService? userService})
+  ProfileBloc({UserService? userService, EventService? eventService})
       : _userService = userService ?? UserService(),
+        _eventService = eventService ?? EventService(),
         super(const ProfileInitial()) {
     on<ProfileLoadRequested>(_onProfileLoadRequested);
     on<ProfileUpdateRequested>(_onProfileUpdateRequested);
@@ -24,7 +27,8 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
     try {
       final user = await _userService.getCurrentUser();
-      emit(ProfileLoaded(user));
+      final userEvents = await _eventService.getUserEvents(user.id);
+      emit(ProfileLoaded(user, userEvents: userEvents));
     } catch (e) {
       emit(ProfileError('Не удалось загрузить профиль: $e'));
     }
@@ -37,7 +41,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     final currentState = state;
     if (currentState is! ProfileLoaded) return;
 
-    emit(ProfileUpdating(currentState.user));
+    emit(ProfileUpdating(currentState.user, userEvents: currentState.userEvents));
 
     try {
       await _userService.updateProfile(
@@ -49,7 +53,8 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
       // Перезагружаем профиль
       final updatedUser = await _userService.getCurrentUser();
-      emit(ProfileLoaded(updatedUser));
+      final userEvents = await _eventService.getUserEvents(updatedUser.id);
+      emit(ProfileLoaded(updatedUser, userEvents: userEvents));
     } catch (e) {
       emit(ProfileError(
         'Не удалось обновить профиль: $e',
@@ -65,7 +70,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     final currentState = state;
     if (currentState is! ProfileLoaded) return;
 
-    emit(ProfileUpdating(currentState.user));
+    emit(ProfileUpdating(currentState.user, userEvents: currentState.userEvents));
 
     try {
       // Загружаем фото
@@ -76,7 +81,8 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
       // Перезагружаем профиль
       final updatedUser = await _userService.getCurrentUser();
-      emit(ProfileLoaded(updatedUser));
+      final userEvents = await _eventService.getUserEvents(updatedUser.id);
+      emit(ProfileLoaded(updatedUser, userEvents: userEvents));
     } catch (e) {
       emit(ProfileError(
         'Не удалось обновить фото: $e',

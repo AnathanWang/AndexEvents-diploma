@@ -92,7 +92,7 @@ model Event {
   location    String   // Адрес
   latitude    Float
   longitude   Float
-  // Для PostGIS запросов будем использовать latitude/longitude
+  locationGeo Unsupported("geography(Point, 4326)")?  // PostGIS geography для пространственных запросов
   
   dateTime    DateTime
   endDateTime DateTime?

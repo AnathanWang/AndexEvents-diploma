@@ -34,9 +34,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     final User? user = _authService.currentUser;
     if (user != null) {
-      // TODO: Проверить isOnboardingCompleted через API
-      // Пока просто эмитим как завершённый онбординг
-      emit(AuthAuthenticated(user: user, isOnboardingCompleted: true));
+      try {
+        // Загружаем профиль из бэкенда для проверки onboarding
+        final userProfile = await _authService.getCurrentUserProfile();
+        final bool isOnboardingCompleted = userProfile['isOnboardingCompleted'] ?? false;
+        emit(AuthAuthenticated(user: user, isOnboardingCompleted: isOnboardingCompleted));
+      } catch (e) {
+        // Если не удалось загрузить профиль, считаем что onboarding не завершен
+        emit(AuthAuthenticated(user: user, isOnboardingCompleted: false));
+      }
     } else {
       emit(const AuthUnauthenticated());
     }
@@ -54,11 +60,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
       );
 
-      // TODO: Получить isOnboardingCompleted из backend
-      emit(AuthAuthenticated(
-        user: credential.user!,
-        isOnboardingCompleted: true,
-      ));
+      // Загружаем профиль для проверки onboarding
+      try {
+        final userProfile = await _authService.getCurrentUserProfile();
+        final bool isOnboardingCompleted = userProfile['isOnboardingCompleted'] ?? false;
+        emit(AuthAuthenticated(
+          user: credential.user!,
+          isOnboardingCompleted: isOnboardingCompleted,
+        ));
+      } catch (e) {
+        // Если не удалось загрузить профиль, считаем что onboarding не завершен
+        emit(AuthAuthenticated(
+          user: credential.user!,
+          isOnboardingCompleted: false,
+        ));
+      }
     } catch (e) {
       emit(AuthFailure(message: e.toString()));
       emit(const AuthUnauthenticated());

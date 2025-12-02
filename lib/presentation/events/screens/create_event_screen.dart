@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import '../bloc/event_bloc.dart';
+import '../bloc/event_event.dart';
+import '../bloc/event_state.dart';
+import 'map_location_picker.dart';
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({super.key});
@@ -20,6 +27,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   String _selectedCategory = 'Спорт';
   bool _isOnline = false;
   bool _isLoading = false;
+  
+  File? _eventPhoto;
+  String? _uploadedPhotoUrl;
+  double? _latitude;
+  double? _longitude;
 
   final List<String> _categories = <String>[
     'Спорт',
@@ -93,35 +105,131 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     }
   }
 
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1920,
+      maxHeight: 1080,
+      imageQuality: 85,
+    );
+
+    if (image != null) {
+      setState(() {
+        _eventPhoto = File(image.path);
+      });
+      
+      // Загружаем фото сразу
+      if (mounted) {
+        context.read<EventBloc>().add(EventPhotoUploadRequested(image.path));
+      }
+    }
+  }
+
+  Future<void> _openMapPicker() async {
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (context) => MapLocationPicker(
+          initialLatitude: _latitude,
+          initialLongitude: _longitude,
+          initialAddress: _locationController.text.isEmpty ? null : _locationController.text,
+        ),
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        _latitude = result['latitude'];
+        _longitude = result['longitude'];
+        _locationController.text = result['address'];
+      });
+    }
+  }
+
   Future<void> _handleCreateEvent() async {
     if (_formKey.currentState?.validate() ?? false) {
-      setState(() => _isLoading = true);
-      
-      // Симуляция создания события
-      await Future.delayed(const Duration(seconds: 2));
-      
-      if (mounted) {
-        setState(() => _isLoading = false);
-        
-        // Показать успешное сообщение
+      // Проверяем координаты для оффлайн события
+      if (!_isOnline && (_latitude == null || _longitude == null)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Событие успешно создано!'),
-            backgroundColor: Colors.green,
+            content: Text('Выберите место на карте'),
+            backgroundColor: Colors.red,
           ),
         );
-        
-        // Вернуться назад
-        Navigator.of(context).pop();
+        return;
       }
+      
+      final dateTime = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+        _selectedTime.hour,
+        _selectedTime.minute,
+      );
+      
+      final price = double.tryParse(_priceController.text) ?? 0.0;
+      
+      // Для онлайн событий используем координаты по умолчанию (Москва)
+      final lat = _isOnline ? 55.7558 : _latitude!;
+      final lng = _isOnline ? 37.6173 : _longitude!;
+      final location = _isOnline ? 'Онлайн' : _locationController.text;
+      
+      context.read<EventBloc>().add(
+        EventCreateRequested(
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
+          category: _selectedCategory,
+          location: location,
+          latitude: lat,
+          longitude: lng,
+          dateTime: dateTime,
+          price: price,
+          imageUrl: _uploadedPhotoUrl,
+          isOnline: _isOnline,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    return BlocListener<EventBloc, EventState>(
+      listener: (context, state) {
+        if (state is EventPhotoUploaded) {
+          setState(() {
+            _uploadedPhotoUrl = state.photoUrl;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Фото загружено!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 1),
+            ),
+          );
+        } else if (state is EventCreating) {
+          setState(() => _isLoading = true);
+        } else if (state is EventCreated) {
+          setState(() => _isLoading = false);
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Событие успешно создано!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else if (state is EventError) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
@@ -143,36 +251,60 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           padding: const EdgeInsets.all(24.0),
           children: <Widget>[
             // Фото события
-            Container(
-              height: 200,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  const Icon(
-                    Icons.add_photo_alternate_outlined,
-                    size: 48,
-                    color: Color(0xFF9E9E9E),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Добавить фото',
-                    style: TextStyle(
-                      color: Color(0xFF9E9E9E),
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  TextButton(
-                    onPressed: () {
-                      // TODO: Выбрать фото
-                    },
-                    child: const Text('Загрузить'),
-                  ),
-                ],
+            GestureDetector(
+              onTap: _pickImage,
+              child: Container(
+                height: 200,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(16),
+                  image: _eventPhoto != null
+                      ? DecorationImage(
+                          image: FileImage(_eventPhoto!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: _eventPhoto == null
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          const Icon(
+                            Icons.add_photo_alternate_outlined,
+                            size: 48,
+                            color: Color(0xFF9E9E9E),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Добавить фото',
+                            style: TextStyle(
+                              color: Color(0xFF9E9E9E),
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Нажмите для загрузки',
+                            style: TextStyle(
+                              color: Color(0xFF5E60CE),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Align(
+                        alignment: Alignment.topRight,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: CircleAvatar(
+                            backgroundColor: Colors.black54,
+                            child: IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                              onPressed: _pickImage,
+                            ),
+                          ),
+                        ),
+                      ),
               ),
             ),
             const SizedBox(height: 24),
@@ -346,15 +478,14 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             if (!_isOnline)
               TextFormField(
                 controller: _locationController,
+                readOnly: true,
                 decoration: InputDecoration(
                   labelText: 'Место проведения',
-                  hintText: 'Адрес или название места',
+                  hintText: 'Выберите место на карте',
                   prefixIcon: const Icon(Icons.location_on),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.map),
-                    onPressed: () {
-                      // TODO: Выбрать на карте
-                    },
+                    onPressed: _openMapPicker,
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -368,6 +499,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     borderSide: const BorderSide(color: Color(0xFF5E60CE), width: 2),
                   ),
                 ),
+                onTap: _openMapPicker,
                 validator: (String? value) {
                   if (!_isOnline && (value == null || value.isEmpty)) {
                     return 'Укажите место проведения';
@@ -432,6 +564,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             const SizedBox(height: 16),
           ],
         ),
+      ),
       ),
     );
   }

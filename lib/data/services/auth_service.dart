@@ -126,6 +126,34 @@ class AuthService {
     }
   }
 
+  /// Получить текущий профиль пользователя из бэкенда
+  Future<Map<String, dynamic>> getCurrentUserProfile() async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) {
+        throw Exception('Пользователь не авторизован');
+      }
+
+      final token = await user.getIdToken();
+      final response = await http.get(
+        Uri.parse('${AppConfig.baseUrl}/users/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['data'] as Map<String, dynamic>;
+      } else {
+        throw Exception('Не удалось загрузить профиль пользователя');
+      }
+    } catch (e) {
+      throw Exception('Ошибка загрузки профиля: $e');
+    }
+  }
+
   /// Создание пользователя в нашей базе данных через backend API
   Future<void> _createUserInBackend({
     required String firebaseUid,
