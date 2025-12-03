@@ -31,6 +31,13 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
     _getUserLocation();
   }
 
+  @override
+  void dispose() {
+    // Очищаем ресурсы при удалении виджета
+    _mapController = null;
+    super.dispose();
+  }
+
   Future<void> _getUserLocation() async {
     try {
       final permission = await Geolocator.checkPermission();
@@ -39,9 +46,13 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
       }
 
       final position = await Geolocator.getCurrentPosition();
-      setState(() {
-        _userLocation = Point(latitude: position.latitude, longitude: position.longitude);
-      });
+      
+      // Проверяем mounted перед setState
+      if (mounted) {
+        setState(() {
+          _userLocation = Point(latitude: position.latitude, longitude: position.longitude);
+        });
+      }
 
       // Центрируем карту на пользователе если контроллер готов
       if (_mapController != null && mounted) {
@@ -62,10 +73,14 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
   Future<void> _initMarkerIcon() async {
     final icon = await _createMarkerIcon();
     final userIcon = await _createUserMarkerIcon();
-    setState(() {
-      _markerIcon = icon;
-      _userMarkerIcon = userIcon;
-    });
+    
+    // Проверяем mounted перед setState
+    if (mounted) {
+      setState(() {
+        _markerIcon = icon;
+        _userMarkerIcon = userIcon;
+      });
+    }
   }
 
   Future<Uint8List> _createMarkerIcon() async {

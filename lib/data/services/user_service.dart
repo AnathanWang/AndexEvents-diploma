@@ -19,22 +19,35 @@ class UserService {
   /// Загрузить фото в Supabase Storage
   Future<String> uploadProfilePhoto(File photoFile) async {
     try {
+      print('🔵 [Supabase] Начинаем загрузку фото...');
       final firebase_auth.User? user = _firebaseAuth.currentUser;
-      if (user == null) throw Exception('Пользователь не авторизован');
+      if (user == null) {
+        print('🔴 [Supabase] Пользователь не авторизован');
+        throw Exception('Пользователь не авторизован');
+      }
+
+      print('🔵 [Supabase] Пользователь: ${user.uid}');
 
       // Проверяем существование файла
       if (!await photoFile.exists()) {
+        print('🔴 [Supabase] Файл не существует: ${photoFile.path}');
         throw Exception('Файл не существует: ${photoFile.path}');
       }
 
+      print('🔵 [Supabase] Файл существует: ${photoFile.path}');
+
       // Читаем файл
       final bytes = await photoFile.readAsBytes();
+      print('🔵 [Supabase] Размер файла: ${bytes.length} bytes');
+      
       final fileExt = photoFile.path.split('.').last;
       
       // Путь к файлу в Supabase Storage: avatars/{userId}/photo_1.{ext}
       final String filePath = '${user.uid}/photo_1.$fileExt';
+      print('🔵 [Supabase] Путь для загрузки: $filePath');
 
       // Загружаем файл в Supabase Storage bucket 'avatars'
+      print('🔵 [Supabase] Начинаем uploadBinary...');
       await _supabase.storage.from('avatars').uploadBinary(
         filePath,
         bytes,
@@ -42,12 +55,23 @@ class UserService {
           contentType: 'image/$fileExt',
           upsert: true, // Перезаписываем если файл уже существует
         ),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          print('🔴 [Supabase] Timeout при uploadBinary');
+          throw Exception('Timeout при загрузке файла');
+        },
       );
+
+      print('🔵 [Supabase] Файл успешно загружен');
 
       // Получаем публичный URL
       final String publicUrl = _supabase.storage.from('avatars').getPublicUrl(filePath);
+      print('🔵 [Supabase] Public URL: $publicUrl');
+      
       return publicUrl;
     } catch (e) {
+      print('🔴 [Supabase] Ошибка загрузки фото: $e');
       throw Exception('Ошибка загрузки фото: $e');
     }
   }
