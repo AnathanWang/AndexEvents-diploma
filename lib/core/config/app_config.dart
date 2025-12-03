@@ -1,6 +1,8 @@
 class AppConfig {
   // API Configuration
-  static const String baseUrl = 'http://localhost:3000/api';
+  // Для iOS симулятора: используем IP адрес машины вместо localhost
+  // Для физического устройства/Android: может потребоваться другой адрес
+  static const String baseUrl = 'http://192.168.1.147:3000/api';
   static const String apiVersion = 'v1';
   
   // Supabase Configuration

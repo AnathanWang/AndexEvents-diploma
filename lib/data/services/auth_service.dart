@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
@@ -7,7 +8,24 @@ import '../../core/config/app_config.dart';
 /// Сервис для работы с Firebase Authentication
 class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  late final GoogleSignIn _googleSignIn;
+
+  AuthService() {
+    print('🔵 [AuthService] Инициализирован');
+    
+    // Инициализируем GoogleSignIn с явным clientId для iOS
+    // На iOS необходимо явно указать clientId, чтобы GoogleSignIn знал, какой OAuth client использовать
+    // На Android это берётся из google-services.json автоматически
+    // clientId находится в GoogleService-Info.plist (CLIENT_ID)
+    _googleSignIn = GoogleSignIn(
+      clientId: '672417054710-2gm36ur4k2nj5a7ed2re974mmq4qmt34.apps.googleusercontent.com',
+      scopes: [
+        'email',
+        'profile',
+      ],
+    );
+    print('🔵 [AuthService] GoogleSignIn инициализирован с clientId и scopes: email, profile');
+  }
 
   /// Получить текущего пользователя Firebase
   User? get currentUser => _firebaseAuth.currentUser;
@@ -66,27 +84,63 @@ class AuthService {
   /// Вход через Google
   Future<UserCredential> signInWithGoogle() async {
     try {
+      print('🔵 [Google Sign-In] Начинаем процесс входа...');
+      
+      // Сначала проверяем, уже ли пользователь авторизован
+      final GoogleSignInAccount? alreadySignedIn = await _googleSignIn.signInSilently();
+      print('🔵 [Google Sign-In] Уже авторизован? ${alreadySignedIn?.email}');
+      
       // Запускаем процесс входа через Google
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      print('🔵 [Google Sign-In] Вызываем signIn()...');
+      print('🔵 [Google Sign-In] GoogleSignIn currentUser: ${_googleSignIn.currentUser?.email}');
+      
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn().timeout(
+        const Duration(seconds: 60),
+        onTimeout: () {
+          print('🔴 [Google Sign-In] Timeout при вызове signIn()');
+          throw Exception('Google Sign-In timeout after 60 seconds');
+        },
+      ).catchError((error) {
+        print('🔴 [Google Sign-In] Error при signIn: $error');
+        throw Exception('Google Sign-In error: $error');
+      });
+      
+      print('🔵 [Google Sign-In] Получен googleUser: ${googleUser?.email}');
 
       if (googleUser == null) {
+        print('🔴 [Google Sign-In] Пользователь отменил вход или signIn() вернул null');
         throw Exception('Google Sign-In отменён пользователем');
       }
 
       // Получаем данные аутентификации
+      print('🔵 [Google Sign-In] Получаем токены...');
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      print('🔵 [Google Sign-In] Токены получены: accessToken=${googleAuth.accessToken != null}, idToken=${googleAuth.idToken != null}');
+
+      // Проверяем, что у нас есть токены
+      if (googleAuth.idToken == null) {
+        print('🔴 [Google Sign-In] idToken == null!');
+        throw Exception('Не удалось получить idToken от Google');
+      }
 
       // Создаём credential для Firebase
       final OAuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
+      print('🔵 [Google Sign-In] Credential создан');
 
       // Входим в Firebase
+      print('🔵 [Google Sign-In] Входим в Firebase...');
       final UserCredential userCredential = await _firebaseAuth.signInWithCredential(credential);
+      print('🔵 [Google Sign-In] Вход в Firebase успешен: ${userCredential.user?.email}');
 
       // Проверяем, первый ли это вход (новый пользователь)
-      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+      final bool isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
+      print('🔵 [Google Sign-In] Новый пользователь? $isNewUser');
+      
+      if (isNewUser) {
+        print('🔵 [Google Sign-In] Создаём пользователя в backend...');
         // Создаём пользователя в нашей базе данных
         await _createUserInBackend(
           firebaseUid: userCredential.user!.uid,
@@ -94,12 +148,16 @@ class AuthService {
           displayName: userCredential.user!.displayName ?? 'User',
           photoUrl: userCredential.user!.photoURL,
         );
+        print('🔵 [Google Sign-In] Пользователь создан в backend');
       }
 
+      print('🔵 [Google Sign-In] Успех!');
       return userCredential;
     } on FirebaseAuthException catch (e) {
+      print('🔴 [Google Sign-In] FirebaseAuthException: ${e.code} - ${e.message}');
       throw _handleFirebaseAuthException(e);
     } catch (e) {
+      print('🔴 [Google Sign-In] Exception: $e\n${StackTrace.current}');
       throw Exception('Ошибка входа через Google: $e');
     }
   }
@@ -162,6 +220,9 @@ class AuthService {
     String? photoUrl,
   }) async {
     try {
+      print('🔵 [Backend] Отправляем POST запрос на ${AppConfig.baseUrl}/users');
+      print('🔵 [Backend] Данные: firebaseUid=$firebaseUid, email=$email, displayName=$displayName');
+      
       final response = await http.post(
         Uri.parse('${AppConfig.baseUrl}/users'),
         headers: {'Content-Type': 'application/json'},
@@ -171,15 +232,25 @@ class AuthService {
           'displayName': displayName,
           'photoUrl': photoUrl,
         }),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('🔴 [Backend] Timeout при создании пользователя');
+          throw Exception('Timeout при подключении к backend');
+        },
       );
+
+      print('🔵 [Backend] Response status: ${response.statusCode}');
+      print('🔵 [Backend] Response body: ${response.body}');
 
       if (response.statusCode != 201 && response.statusCode != 409) {
         // 409 = пользователь уже существует (это нормально при повторном входе)
-        throw Exception('Не удалось создать пользователя в базе данных');
+        throw Exception('Не удалось создать пользователя в базе данных (${response.statusCode})');
       }
+      print('🔵 [Backend] Пользователь успешно создан');
     } catch (e) {
       // Логируем ошибку, но не бросаем - пользователь всё равно создан в Firebase
-      print('Ошибка создания пользователя в backend: $e');
+      print('🔴 [Backend] Ошибка создания пользователя в backend: $e');
     }
   }
 

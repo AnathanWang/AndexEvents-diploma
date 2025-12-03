@@ -51,5 +51,16 @@
 	</array>
 	<key>YandexMapKitApiKey</key>
 	<string>c1c767ce-7328-4c26-b263-8eba58f98c6a</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.672417054710-2gm36ur4k2nj5a7ed2re974mmq4qmt34</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
