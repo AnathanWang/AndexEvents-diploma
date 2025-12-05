@@ -1,14 +1,23 @@
 import type { Request, Response } from "express";
 import eventService from "../services/event.service.js";
+import type { AuthRequest } from "../middleware/auth.middleware.js";
 
 class EventController {
-    async createEvent(req: Request, res: Response) {
+    async createEvent(req: AuthRequest, res: Response) {
         try {
             const eventData = req.body;
+            const userId = req.user?.userId; // Получаем userId (UUID) из middleware
+
+            if (!userId) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Unauthorized: User ID not found in database",
+                });
+            }
 
             eventData.dateTime = new Date(eventData.dateTime);
 
-            const event = await eventService.createEvent(eventData);
+            const event = await eventService.createEvent(eventData, userId);
             res.status(201).json({
                 success: true,
                 data: event,

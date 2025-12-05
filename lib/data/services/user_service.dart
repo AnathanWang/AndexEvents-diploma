@@ -16,10 +16,26 @@ class UserService {
     return await _firebaseAuth.currentUser?.getIdToken();
   }
 
+  /// Обновить Supabase session (refresh token)
+  Future<void> _refreshSupabaseSession() async {
+    try {
+      print('🔵 [Supabase] Пытаемся обновить сессию...');
+      await _supabase.auth.refreshSession();
+      print('🔵 [Supabase] Сессия успешно обновлена');
+    } catch (e) {
+      print('🔴 [Supabase] Ошибка при обновлении сессии: $e');
+      // Не бросаем исключение - попробуем загрузить без refresh
+    }
+  }
+
   /// Загрузить фото в Supabase Storage
   Future<String> uploadProfilePhoto(File photoFile) async {
     try {
       print('🔵 [Supabase] Начинаем загрузку фото...');
+      
+      // Обновляем Supabase session перед загрузкой
+      await _refreshSupabaseSession();
+      
       final firebase_auth.User? user = _firebaseAuth.currentUser;
       if (user == null) {
         print('🔴 [Supabase] Пользователь не авторизован');
@@ -65,8 +81,9 @@ class UserService {
 
       print('🔵 [Supabase] Файл успешно загружен');
 
-      // Получаем публичный URL
-      final String publicUrl = _supabase.storage.from('avatars').getPublicUrl(filePath);
+      // Составляем публичный URL вручную (getPublicUrl иногда возвращает пустую строку)
+      // Формат: https://{supabaseUrl}/storage/v1/object/public/{bucket}/{filePath}
+      final String publicUrl = '${AppConfig.supabaseUrl}/storage/v1/object/public/avatars/$filePath';
       print('🔵 [Supabase] Public URL: $publicUrl');
       
       return publicUrl;

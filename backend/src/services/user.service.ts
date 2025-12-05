@@ -62,6 +62,22 @@ export const getUserByFirebaseUid = async (firebaseUid: string): Promise<User | 
     }
 }
 
+export const getUserById = async (userId: string): Promise<User | null> => {
+    logger.info(`Fetching user with ID: ${userId}`);
+    try {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (user) {
+            logger.info(`User found with ID: ${userId}`);
+        } else {
+            logger.warn(`No user found with ID: ${userId}`);
+        }
+        return user;
+    } catch (error) {
+        logger.error(`Error fetching user with ID: ${userId}`, error);
+        throw error;
+    }
+}
+
 export const updateUserProfile = async (userId: string,data: UpdateProfileData): Promise<User> => {
     logger.info(`Updating profile for user ID: ${userId}`);
     try {

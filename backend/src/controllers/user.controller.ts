@@ -59,17 +59,17 @@ export async function createUser(req: Request, res: Response): Promise<void> {
  */
 export async function getCurrentUser(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const firebaseUid = req.user?.uid;
+    const userId = req.user?.userId; // Используем UUID из БД
 
-    if (!firebaseUid) {
+    if (!userId) {
       res.status(401).json({
         success: false,
-        message: 'Unauthorized',
+        message: 'Unauthorized: User ID not found',
       });
       return;
     }
 
-    const user = await userService.getUserByFirebaseUid(firebaseUid);
+    const user = await userService.getUserById(userId);
 
     if (!user) {
       res.status(404).json({
@@ -98,29 +98,19 @@ export async function getCurrentUser(req: AuthRequest, res: Response): Promise<v
  */
 export async function updateProfile(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const firebaseUid = req.user?.uid;
+    const userId = req.user?.userId; // Используем UUID из БД
 
-    if (!firebaseUid) {
+    if (!userId) {
       res.status(401).json({
         success: false,
-        message: 'Unauthorized',
-      });
-      return;
-    }
-
-    const user = await userService.getUserByFirebaseUid(firebaseUid);
-
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        message: 'User not found',
+        message: 'Unauthorized: User ID not found',
       });
       return;
     }
 
     const { displayName, photoUrl, bio, age, gender, interests, socialLinks, isOnboardingCompleted } = req.body;
 
-    const updatedUser = await userService.updateUserProfile(user.id, {
+    const updatedUser = await userService.updateUserProfile(userId, {
       displayName,
       photoUrl,
       bio,
@@ -131,7 +121,7 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
       isOnboardingCompleted,
     });
 
-    logger.info(`User profile updated: ${user.id}`);
+    logger.info(`User profile updated: ${userId}`);
     res.status(200).json({
       success: true,
       data: updatedUser,
@@ -151,22 +141,12 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
  */
 export async function updateLocation(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const firebaseUid = req.user?.uid;
+    const userId = req.user?.userId; // Используем UUID из БД
 
-    if (!firebaseUid) {
+    if (!userId) {
       res.status(401).json({
         success: false,
-        message: 'Unauthorized',
-      });
-      return;
-    }
-
-    const user = await userService.getUserByFirebaseUid(firebaseUid);
-
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        message: 'User not found',
+        message: 'Unauthorized: User ID not found',
       });
       return;
     }
@@ -189,9 +169,9 @@ export async function updateLocation(req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    await userService.updateUserLocation(user.id, latitude, longitude);
+    await userService.updateUserLocation(userId, latitude, longitude);
 
-    logger.info(`User location updated: ${user.id}`);
+    logger.info(`User location updated: ${userId}`);
     res.status(200).json({
       success: true,
       message: 'Location updated successfully',
