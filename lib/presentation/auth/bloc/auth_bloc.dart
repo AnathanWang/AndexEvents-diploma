@@ -113,16 +113,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     print('🔵 [AuthBloc] Google Sign-In requested');
     emit(const AuthLoading());
     try {
-      print('🔵 [AuthBloc] Вызываем authService.signInWithGoogle()');
-      final UserCredential credential = await _authService.signInWithGoogle();
-
-      // Если новый пользователь - отправляем на онбординг
-      final bool isNewUser = credential.additionalUserInfo?.isNewUser ?? false;
-      print('🔵 [AuthBloc] Google Sign-In успешен, новый пользователь: $isNewUser');
+      print('🔵 [AuthBloc] Вызываем authService.signInWithGoogleAndGetStatus()');
+      final result = await _authService.signInWithGoogleAndGetStatus();
+      
+      final UserCredential credential = result['userCredential'] as UserCredential;
+      final bool isOnboardingCompleted = result['isOnboardingCompleted'] as bool;
+      
+      print('🔵 [AuthBloc] Google Sign-In успешен, isOnboardingCompleted: $isOnboardingCompleted');
       
       emit(AuthAuthenticated(
         user: credential.user!,
-        isOnboardingCompleted: !isNewUser,
+        isOnboardingCompleted: isOnboardingCompleted,
       ));
     } catch (e) {
       print('🔴 [AuthBloc] Google Sign-In ошибка: $e');

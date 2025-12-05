@@ -81,8 +81,8 @@ class AuthService {
     }
   }
 
-  /// Вход через Google
-  Future<UserCredential> signInWithGoogle() async {
+  /// Вход через Google и получение статуса онбординга
+  Future<Map<String, dynamic>> signInWithGoogleAndGetStatus() async {
     try {
       print('🔵 [Google Sign-In] Начинаем процесс входа...');
       
@@ -149,10 +149,29 @@ class AuthService {
           photoUrl: userCredential.user!.photoURL,
         );
         print('🔵 [Google Sign-In] Пользователь создан в backend');
+        
+        // Добавляем небольшую задержку чтобы БД синхронизировалась
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+
+      // Получаем статус онбординга из backend
+      print('🔵 [Google Sign-In] Получаем статус онбординга от backend...');
+      bool isOnboardingCompleted = false;
+      try {
+        final profileData = await getCurrentUserProfile();
+        isOnboardingCompleted = profileData['isOnboardingCompleted'] as bool? ?? false;
+        print('🔵 [Google Sign-In] isOnboardingCompleted из backend: $isOnboardingCompleted');
+      } catch (e) {
+        print('🟡 [Google Sign-In] Не удалось получить статус онбординга: $e');
+        // Если не получилось получить из backend — используем isNewUser
+        isOnboardingCompleted = !isNewUser;
       }
 
       print('🔵 [Google Sign-In] Успех!');
-      return userCredential;
+      return {
+        'userCredential': userCredential,
+        'isOnboardingCompleted': isOnboardingCompleted,
+      };
     } on FirebaseAuthException catch (e) {
       print('🔴 [Google Sign-In] FirebaseAuthException: ${e.code} - ${e.message}');
       throw _handleFirebaseAuthException(e);

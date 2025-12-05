@@ -1,9 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
 import admin from 'firebase-admin';
+import prisma from '../utils/prisma.js';
 
 export interface AuthRequest extends Request {
   user?: {
     uid: string;
+    userId?: string | undefined; // UUID из БД
     email?: string | undefined;
   };
 }
@@ -42,8 +44,15 @@ export const authMiddleware = async (
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
       console.log('DEBUG: Token verified successfully, uid:', decodedToken.uid);
+      
+      // Найдём пользователя в БД по firebaseUid
+      const user = await prisma.user.findUnique({
+        where: { firebaseUid: decodedToken.uid }
+      });
+      
       req.user = {
         uid: decodedToken.uid,
+        userId: user?.id, // Сохраняем UUID пользователя из БД
         email: decodedToken.email ?? undefined,
       };
       next();

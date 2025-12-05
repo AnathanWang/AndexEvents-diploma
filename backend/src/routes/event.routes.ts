@@ -1,10 +1,11 @@
 import { Router } from "express";
 import eventController from "../controllers/event.controller.js";
+import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
-// Маршрут для создания нового события
-router.post("/", eventController.createEvent.bind(eventController));
+// Маршрут для создания нового события (требует авторизации)
+router.post("/", authMiddleware, eventController.createEvent.bind(eventController));
 // Маршрут для получения всех событий
 router.get("/", eventController.getAllEvents.bind(eventController));
 // Маршрут для получения событий пользователя
