@@ -123,6 +123,8 @@ class EventBloc extends Bloc<EventEvent, EventState> {
     try {
       await _eventService.participateInEvent(event.eventId, event.status);
       emit(const EventParticipationUpdated());
+      // Перезагрузим данные события после участия
+      add(EventDetailLoadRequested(event.eventId));
     } catch (e) {
       emit(EventError('Не удалось участвовать в событии: $e'));
     }
@@ -137,6 +139,8 @@ class EventBloc extends Bloc<EventEvent, EventState> {
     try {
       await _eventService.cancelParticipation(event.eventId);
       emit(const EventParticipationUpdated());
+      // Перезагрузим данные события после отмены
+      add(EventDetailLoadRequested(event.eventId));
     } catch (e) {
       emit(EventError('Не удалось отменить участие: $e'));
     }
