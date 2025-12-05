@@ -184,6 +184,59 @@ class EventService {
             },
         });
     }
+    async participateInEvent(eventId: string, userId: string, status: 'GOING' | 'INTERESTED') {
+        const event = await prisma.event.findUnique({ where: { id: eventId } });
+        if (!event) {
+            throw new Error('Event not found');
+        }
+        if(event.status !== 'APPROVED') {
+            throw new Error('Cannot participate in unapproved event');
+        }
+
+        const participation = await prisma.participant.upsert({
+            where: {
+                userId_eventId: {
+                    eventId,
+                    userId,
+                },
+            },
+            update: {
+                status: status as any,
+                updatedAt: new Date(),
+            },
+            create: {
+                userId: userId,
+                eventId: eventId,
+                status: status as any,
+            },
+        });
+
+        return participation;
+    }
+
+    async cancelParticipation(eventId: string, userId: string) {
+        console.log(`[EventService] cancelParticipation called for eventId=${eventId}, userId=${userId}`);
+        try {
+            const participation = await prisma.participant.delete({
+                where: {
+                    userId_eventId: {
+                        eventId,
+                        userId,
+                    },
+                },
+            });
+            console.log(`[EventService] Participation deleted successfully:`, participation);
+            return participation;
+        } catch (error: any) {
+            console.error(`[EventService] Error in cancelParticipation:`, error);
+            // Если запись не найдена (P2025), возвращаем пустой результат, как будто удалили
+            if (error.code === 'P2025') {
+                console.log(`[EventService] Participation not found (P2025), returning count: 0`);
+                return { count: 0 };
+            }
+            throw error;
+        }
+    }
 }
 
 export default new EventService();

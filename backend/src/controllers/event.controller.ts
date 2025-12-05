@@ -134,6 +134,107 @@ class EventController {
             });
         }
     }
+
+    async participateInEvent(req: AuthRequest, res: Response) {
+        try {
+            const { id: eventId } = req.params;
+            const { status } = req.body;
+            const userId = req.user?.userId; // Получаем userId (UUID) из middleware
+
+            if (!userId) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Unauthorized: User ID not found in database",
+                });
+            }
+
+            if (!eventId || !status || (status !== 'GOING' && status !== 'INTERESTED')) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid request data",
+                });
+            }
+            
+            const participation = await eventService.participateInEvent(eventId, userId, status);
+            res.status(200).json({
+                success: true,
+                message: "Participation status updated",
+                data: participation,
+            });
+        } catch (error) {
+            console.error("Error participating in event:", error);
+            res.status(500).json({
+                success: false,
+                message: "Failed to update participation status",
+            });
+        }
+    }
+
+    async cancelParticipation(req: AuthRequest, res: Response) {
+        console.log('---------------------------------------------------');
+        console.log('DEBUG: cancelParticipation CONTROLLER HIT');
+        console.log('DEBUG: req.params:', req.params);
+        console.log('DEBUG: req.user:', req.user);
+        
+        try {
+            const { id: eventId } = req.params;
+            const userId = req.user?.userId; // Получаем userId (UUID) из middleware
+
+            console.log('DEBUG: eventId extracted:', eventId);
+            console.log('DEBUG: userId extracted:', userId);
+
+            if (!userId) {
+                console.log('DEBUG: Missing userId');
+                return res.status(401).json({
+                    success: false,
+                    message: "Unauthorized: User ID not found in database",
+                });
+            }
+
+            if (!eventId) {
+                console.log('DEBUG: Missing eventId');
+                return res.status(400).json({
+                    success: false,
+                    message: "Event ID is required",
+                });
+            }
+
+            // Validate UUID format
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(eventId)) {
+                 console.log('DEBUG: Invalid eventId format');
+                 return res.status(400).json({
+                    success: false,
+                    message: "Invalid Event ID format",
+                });
+            }
+
+            console.log('DEBUG: Calling service cancelParticipation...');
+            const result = await eventService.cancelParticipation(eventId, userId);
+            console.log('DEBUG: Service returned:', result);
+            
+            res.status(200).json({
+                success: true,
+                message: "Participation cancelled successfully",
+                data: result,
+            });
+        } catch (error: any) {
+            console.error("CRITICAL ERROR in cancelParticipation controller:", error);
+            if (error.code) console.error("Prisma Error Code:", error.code);
+            if (error.meta) console.error("Prisma Error Meta:", error.meta);
+            
+            res.status(500).json({
+                success: false,
+                message: "Failed to cancel participation",
+                error: error.message,
+                code: error.code,
+                meta: error.meta,
+                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            });
+        } finally {
+            console.log('---------------------------------------------------');
+        }
+    }
 }
 
 export default new EventController();
