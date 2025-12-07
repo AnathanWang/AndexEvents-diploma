@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import admin from 'firebase-admin';
 import prisma from '../utils/prisma.js';
+import { debug } from '../utils/debug.js';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -19,7 +20,9 @@ export const authMiddleware = async (
     const authHeader = req.headers.authorization;
 
     if (!authHeader?.startsWith('Bearer ')) {
-      console.log('DEBUG: No token provided');
+      if (process.env.NODE_ENV === 'development') {
+        debug.log('AuthMiddleware', 'No token provided');
+      }
       res.status(401).json({
         success: false,
         message: 'Unauthorized: No token provided',
@@ -30,7 +33,9 @@ export const authMiddleware = async (
     const token = authHeader.split('Bearer ')[1];
 
     if (!token) {
-      console.log('DEBUG: Invalid token format');
+      if (process.env.NODE_ENV === 'development') {
+        debug.log('AuthMiddleware', 'Invalid token format');
+      }
       res.status(401).json({
         success: false,
         message: 'Unauthorized: Invalid token format',
@@ -38,12 +43,16 @@ export const authMiddleware = async (
       return;
     }
 
-    console.log('DEBUG: Token received, length:', token.length);
-    console.log('DEBUG: Token starts with:', token.substring(0, 20) + '...');
+    if (process.env.NODE_ENV === 'development') {
+      debug.log('AuthMiddleware', 'Token received, length:', token.length);
+      debug.log('AuthMiddleware', 'Token starts with:', token.substring(0, 20) + '...');
+    }
 
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
-      console.log('DEBUG: Token verified successfully, uid:', decodedToken.uid);
+      if (process.env.NODE_ENV === 'development') {
+        debug.log('AuthMiddleware', 'Token verified successfully, uid:', decodedToken.uid);
+      }
       
       // Найдём пользователя в БД по firebaseUid
       const user = await prisma.user.findUnique({
@@ -57,11 +66,15 @@ export const authMiddleware = async (
       };
       next();
     } catch (error) {
-      console.log('DEBUG: Token verification failed:', error);
+      if (process.env.NODE_ENV === 'development') {
+        debug.log('AuthMiddleware', 'Token verification failed:', error);
+      }
       
       // Dev режим: если токен в формате Firebase Admin custom token, используем fallback
       if (process.env.NODE_ENV === 'development') {
-        console.log('DEBUG: Trying dev fallback authentication');
+        if (process.env.NODE_ENV === 'development') {
+          debug.log('AuthMiddleware', 'Trying dev fallback authentication');
+        }
         
         // Fallback: используем известный UID для разработки
         const devUser = await prisma.user.findUnique({
@@ -74,7 +87,9 @@ export const authMiddleware = async (
             userId: devUser.id,
             email: devUser.email,
           };
-          console.log('DEBUG: Dev fallback successful, userId:', devUser.id);
+          if (process.env.NODE_ENV === 'development') {
+            debug.log('AuthMiddleware', 'Dev fallback successful, userId:', devUser.id);
+          }
           next();
           return;
         }
@@ -86,7 +101,9 @@ export const authMiddleware = async (
       });
     }
   } catch (error) {
-    console.error('DEBUG: Auth middleware error:', error);
+    if (process.env.NODE_ENV === 'development') {
+      debug.error('AuthMiddleware', 'Unexpected error:', error);
+    }
     res.status(500).json({
       success: false,
       message: 'Internal server error',

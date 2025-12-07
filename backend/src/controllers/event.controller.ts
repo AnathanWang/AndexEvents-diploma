@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import eventService from "../services/event.service.js";
 import type { AuthRequest } from "../middleware/auth.middleware.js";
+import { debug } from "../utils/debug.js";
 
 class EventController {
     async createEvent(req: AuthRequest, res: Response) {
@@ -171,20 +172,19 @@ class EventController {
     }
 
     async cancelParticipation(req: AuthRequest, res: Response) {
-        console.log('---------------------------------------------------');
-        console.log('DEBUG: cancelParticipation CONTROLLER HIT');
-        console.log('DEBUG: req.params:', req.params);
-        console.log('DEBUG: req.user:', req.user);
+        if (process.env.NODE_ENV === 'development') {
+          debug.log('EventController', 'cancelParticipation called');
+        }
         
         try {
             const { id: eventId } = req.params;
             const userId = req.user?.userId; // Получаем userId (UUID) из middleware
 
-            console.log('DEBUG: eventId extracted:', eventId);
-            console.log('DEBUG: userId extracted:', userId);
+            if (process.env.NODE_ENV === 'development') {
+              debug.log('EventController', { eventId, userId });
+            }
 
             if (!userId) {
-                console.log('DEBUG: Missing userId');
                 return res.status(401).json({
                     success: false,
                     message: "Unauthorized: User ID not found in database",
@@ -192,7 +192,6 @@ class EventController {
             }
 
             if (!eventId) {
-                console.log('DEBUG: Missing eventId');
                 return res.status(400).json({
                     success: false,
                     message: "Event ID is required",
@@ -202,16 +201,13 @@ class EventController {
             // Validate UUID format
             const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
             if (!uuidRegex.test(eventId)) {
-                 console.log('DEBUG: Invalid eventId format');
                  return res.status(400).json({
                     success: false,
                     message: "Invalid Event ID format",
                 });
             }
 
-            console.log('DEBUG: Calling service cancelParticipation...');
             const result = await eventService.cancelParticipation(eventId, userId);
-            console.log('DEBUG: Service returned:', result);
             
             res.status(200).json({
                 success: true,
@@ -219,20 +215,15 @@ class EventController {
                 data: result,
             });
         } catch (error: any) {
-            console.error("CRITICAL ERROR in cancelParticipation controller:", error);
-            if (error.code) console.error("Prisma Error Code:", error.code);
-            if (error.meta) console.error("Prisma Error Meta:", error.meta);
+            if (process.env.NODE_ENV === 'development') {
+              debug.error('EventController', 'Error in cancelParticipation:', error);
+            }
             
             res.status(500).json({
                 success: false,
                 message: "Failed to cancel participation",
-                error: error.message,
-                code: error.code,
-                meta: error.meta,
-                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
             });
-        } finally {
-            console.log('---------------------------------------------------');
         }
     }
 }
