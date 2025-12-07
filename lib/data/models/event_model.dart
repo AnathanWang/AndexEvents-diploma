@@ -58,6 +58,11 @@ class EventModel {
     // Извлекаем данные организатора из объекта createdBy
     final createdBy = json['createdBy'] as Map<String, dynamic>?;
     
+    // Извлекаем количество участников из _count.participants или participantsCount
+    final countData = json['_count'] as Map<String, dynamic>?;
+    final participantsCount = countData?['participants'] as int? ?? 
+                              json['participantsCount'] as int? ?? 0;
+    
     return EventModel(
       id: json['id'] as String,
       title: json['title'] as String,
@@ -81,7 +86,7 @@ class EventModel {
       createdById: json['createdById'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
-      participantsCount: json['participantsCount'] as int? ?? 0,
+      participantsCount: participantsCount,
       isParticipating: json['isParticipating'] as bool? ?? false,
       creatorName: createdBy?['displayName'] as String?,
       creatorPhotoUrl: createdBy?['photoUrl'] as String?,
