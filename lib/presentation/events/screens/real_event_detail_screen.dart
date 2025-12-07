@@ -73,6 +73,11 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<EventBloc, EventState>(
+      buildWhen: (previous, current) {
+        // Не перестраиваем основной экран при загрузке участников
+        return current is! EventParticipantsLoading && 
+               current is! EventParticipantsLoaded;
+      },
       builder: (context, state) {
         if (state is EventDetailLoading) {
           return const Scaffold(
@@ -373,15 +378,34 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                               );
                               _showParticipantsDialog(context, event);
                             },
-                            child: Text(
-                              event.participantsCount == 0
-                                  ? 'Нет участников'
-                                  : '${event.participantsCount} участник${event.participantsCount % 10 == 1 && event.participantsCount != 11 ? '' : 'ов'}',
-                              style: const TextStyle(
-                                color: Color(0xFF4A90E2),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                decoration: TextDecoration.underline,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5F6FA),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    event.participantsCount == 0
+                                        ? 'Нет участников'
+                                        : '${event.participantsCount} участник${event.participantsCount % 10 == 1 && event.participantsCount != 11 ? '' : 'ов'}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF4A4D6A),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (event.participantsCount > 0) ...[
+                                    const SizedBox(width: 4),
+                                    const Icon(
+                                      Icons.chevron_right_rounded,
+                                      size: 16,
+                                      color: Color(0xFF9E9E9E),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                           ),
@@ -678,58 +702,64 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   }
 
   void _showParticipantsDialog(BuildContext context, EventModel event) {
-    showDialog(
+    final eventBloc = context.read<EventBloc>();
+    showModalBottomSheet(
       context: context,
-      builder: (context) => BlocBuilder<EventBloc, EventState>(
-        builder: (context, state) {
-          if (state is EventParticipantsLoading) {
-            return Dialog(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
-                      Text('Загрузка участников...'),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => BlocProvider.value(
+        value: eventBloc,
+        child: DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          builder: (_, controller) => Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: BlocBuilder<EventBloc, EventState>(
+              builder: (context, state) {
+                if (state is EventParticipantsLoading) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
 
-          if (state is EventParticipantsLoaded) {
-            return EventParticipantsDialog(
-              participants: state.participants,
-              eventTitle: event.title,
-            );
-          }
+                if (state is EventParticipantsLoaded) {
+                  return EventParticipantsDialog(
+                    participants: state.participants,
+                    eventTitle: event.title,
+                    scrollController: controller,
+                  );
+                }
 
-          if (state is EventError) {
-            return Dialog(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                    const SizedBox(height: 16),
-                    Text(state.message),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Закрыть'),
+                if (state is EventError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                          const SizedBox(height: 16),
+                          Text(state.message),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Закрыть'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
-            );
-          }
+                  );
+                }
 
-          return const SizedBox.shrink();
-        },
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
       ),
     );
   }
