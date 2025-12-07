@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../core/config/app_config.dart';
 import '../models/event_model.dart';
+import '../models/participant_model.dart';
 
 /// Сервис для работы с событиями
 class EventService {
@@ -254,6 +255,26 @@ class EventService {
       return eventsJson.map((json) => EventModel.fromJson(json)).toList();
     } catch (e) {
       throw Exception('Ошибка загрузки событий пользователя: $e');
+    }
+  }
+
+  /// Получить список участников события
+  Future<List<ParticipantModel>> getEventParticipants(String eventId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConfig.baseUrl}/events/$eventId/participants'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка загрузки участников события');
+      }
+
+      final responseData = json.decode(response.body);
+      final List<dynamic> participantsJson = responseData['data'];
+      
+      return participantsJson.map((json) => ParticipantModel.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Ошибка загрузки участников: $e');
     }
   }
 }

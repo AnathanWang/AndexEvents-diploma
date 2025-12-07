@@ -124,3 +124,13 @@ class EventCancelParticipationRequested extends EventEvent {
   @override
   List<Object?> get props => [eventId];
 }
+
+/// Загрузить участников события
+class EventParticipantsLoadRequested extends EventEvent {
+  final String eventId;
+
+  const EventParticipantsLoadRequested(this.eventId);
+
+  @override
+  List<Object?> get props => [eventId];
+}

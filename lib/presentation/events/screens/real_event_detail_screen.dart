@@ -7,6 +7,7 @@ import '../bloc/event_bloc.dart';
 import '../bloc/event_event.dart';
 import '../bloc/event_state.dart';
 import '../../../data/models/event_model.dart';
+import '../widgets/event_participants_dialog.dart';
 
 class RealEventDetailScreen extends StatefulWidget {
   final String eventId;
@@ -27,7 +28,10 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<EventBloc>().add(EventDetailLoadRequested(widget.eventId));
+    // Delay the event loading to ensure BlocProvider is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<EventBloc>().add(EventDetailLoadRequested(widget.eventId));
+    });
   }
 
   void _toggleFavorite() {
@@ -362,11 +366,23 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            '+${event.participantsCount} участников',
-                            style: const TextStyle(
-                              color: Color(0xFF9E9E9E),
-                              fontSize: 14,
+                          GestureDetector(
+                            onTap: () {
+                              context.read<EventBloc>().add(
+                                EventParticipantsLoadRequested(event.id),
+                              );
+                              _showParticipantsDialog(context, event);
+                            },
+                            child: Text(
+                              event.participantsCount == 0
+                                  ? 'Нет участников'
+                                  : '${event.participantsCount} участник${event.participantsCount % 10 == 1 && event.participantsCount != 11 ? '' : 'ов'}',
+                              style: const TextStyle(
+                                color: Color(0xFF4A90E2),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.underline,
+                              ),
                             ),
                           ),
                         ],
@@ -659,5 +675,62 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
 
   String _formatTime(DateTime date) {
     return DateFormat('HH:mm', 'ru').format(date);
+  }
+
+  void _showParticipantsDialog(BuildContext context, EventModel event) {
+    showDialog(
+      context: context,
+      builder: (context) => BlocBuilder<EventBloc, EventState>(
+        builder: (context, state) {
+          if (state is EventParticipantsLoading) {
+            return Dialog(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('Загрузка участников...'),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+
+          if (state is EventParticipantsLoaded) {
+            return EventParticipantsDialog(
+              participants: state.participants,
+              eventTitle: event.title,
+            );
+          }
+
+          if (state is EventError) {
+            return Dialog(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text(state.message),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Закрыть'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return const SizedBox.shrink();
+        },
+      ),
+    );
   }
 }
