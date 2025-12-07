@@ -226,6 +226,42 @@ class EventController {
             });
         }
     }
+
+    async getEventParticipants(req: Request, res: Response) {
+        try {
+            const { id: eventId } = req.params;
+
+            if (!eventId) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Event ID is required",
+                });
+            }
+
+            // Verify event exists
+            const event = await eventService.getEventById(eventId);
+            if (!event) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Event not found",
+                });
+            }
+
+            const participants = await eventService.getEventParticipants(eventId);
+            res.status(200).json({
+                success: true,
+                data: participants,
+            });
+        } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+              debug.error('EventController', 'Error fetching event participants:', error);
+            }
+            res.status(500).json({
+                success: false,
+                message: "Failed to fetch event participants",
+            });
+        }
+    }
 }
 
 export default new EventController();
