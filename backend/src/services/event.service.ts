@@ -153,8 +153,8 @@ class EventService {
         };
     }
     
-    async getEventById(eventId: string) {
-        return await prisma.event.findUnique({
+    async getEventById(eventId: string, userId?: string) {
+        const event = await prisma.event.findUnique({
              where: { id: eventId },
              include: {
                 createdBy: {
@@ -164,6 +164,21 @@ class EventService {
                         photoUrl: true,
                     },
                 },
+                participants: {
+                    take: 3,
+                    orderBy: {
+                        joinedAt: 'desc',
+                    },
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                displayName: true,
+                                photoUrl: true,
+                            },
+                        },
+                    },
+                },
                 _count: {
                     select: {
                         participants: true,
@@ -171,6 +186,26 @@ class EventService {
                 },
             },
         });
+
+        if (!event) return null;
+
+        let isParticipating = false;
+        if (userId) {
+            const participation = await prisma.participant.findUnique({
+                where: {
+                    userId_eventId: {
+                        userId,
+                        eventId,
+                    },
+                },
+            });
+            isParticipating = !!participation;
+        }
+
+        return {
+            ...event,
+            isParticipating,
+        };
     }
     
     async getUserEvents(userId: string) {

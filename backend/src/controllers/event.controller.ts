@@ -83,6 +83,7 @@ class EventController {
     async getEventById(req: Request, res: Response) {
         try {
             const { id } = req.params;
+            const userId = (req as AuthRequest).user?.userId;
             
             if (!id) {
                 return res.status(400).json({
@@ -91,7 +92,7 @@ class EventController {
                 });
             }
             
-            const event = await eventService.getEventById(id);
+            const event = await eventService.getEventById(id, userId);
             if (!event) {
                 return res.status(404).json({
                     success: false,

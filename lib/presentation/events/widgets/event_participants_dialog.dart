@@ -112,10 +112,10 @@ class _ParticipantTile extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(color: Colors.grey[200]!, width: 1),
-            image: participant.user.photoUrl.isNotEmpty
+            image: participant.user.photoUrl != null
                 ? DecorationImage(
                     image: CachedNetworkImageProvider(
-                      participant.user.photoUrl,
+                      participant.user.photoUrl!,
                       headers: {
                         'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
                       },
@@ -125,7 +125,7 @@ class _ParticipantTile extends StatelessWidget {
                 : null,
             color: Colors.grey[100],
           ),
-          child: participant.user.photoUrl.isEmpty
+          child: participant.user.photoUrl == null
               ? Icon(Icons.person, color: Colors.grey[400], size: 30)
               : null,
         ),

@@ -35,22 +35,22 @@ class ParticipantModel {
 class UserInfo {
   final String id;
   final String displayName;
-  final String photoUrl;
-  final String email;
+  final String? photoUrl;
+  final String? email;
 
   const UserInfo({
     required this.id,
     required this.displayName,
-    required this.photoUrl,
-    required this.email,
+    this.photoUrl,
+    this.email,
   });
 
   factory UserInfo.fromJson(Map<String, dynamic> json) {
     return UserInfo(
       id: json['id'] as String,
       displayName: json['displayName'] as String? ?? 'Unknown',
-      photoUrl: json['photoUrl'] as String? ?? '',
-      email: json['email'] as String? ?? '',
+      photoUrl: json['photoUrl'] as String?,
+      email: json['email'] as String?,
     );
   }
 }
