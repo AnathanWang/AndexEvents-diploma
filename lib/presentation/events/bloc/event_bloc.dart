@@ -17,6 +17,7 @@ class EventBloc extends Bloc<EventEvent, EventState> {
     on<EventPhotoUploadRequested>(_onEventPhotoUploadRequested);
     on<EventParticipateRequested>(_onEventParticipateRequested);
     on<EventCancelParticipationRequested>(_onEventCancelParticipationRequested);
+    on<EventParticipantsLoadRequested>(_onEventParticipantsLoadRequested);
   }
 
   Future<void> _onEventsLoadRequested(
@@ -143,6 +144,20 @@ class EventBloc extends Bloc<EventEvent, EventState> {
       add(EventDetailLoadRequested(event.eventId));
     } catch (e) {
       emit(EventError('Не удалось отменить участие: $e'));
+    }
+  }
+
+  Future<void> _onEventParticipantsLoadRequested(
+    EventParticipantsLoadRequested event,
+    Emitter<EventState> emit,
+  ) async {
+    emit(const EventParticipantsLoading());
+
+    try {
+      final participants = await _eventService.getEventParticipants(event.eventId);
+      emit(EventParticipantsLoaded(participants));
+    } catch (e) {
+      emit(EventError('Не удалось загрузить участников: $e'));
     }
   }
 }

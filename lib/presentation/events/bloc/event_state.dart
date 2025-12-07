@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../../data/models/event_model.dart';
+import '../../../data/models/participant_model.dart';
 
 /// Состояния для EventBloc
 abstract class EventState extends Equatable {
@@ -114,6 +115,21 @@ class EventParticipationUpdating extends EventState {
 /// Участие обновлено
 class EventParticipationUpdated extends EventState {
   const EventParticipationUpdated();
+}
+
+/// Загрузка участников события
+class EventParticipantsLoading extends EventState {
+  const EventParticipantsLoading();
+}
+
+/// Участники события загружены
+class EventParticipantsLoaded extends EventState {
+  final List<ParticipantModel> participants;
+
+  const EventParticipantsLoaded(this.participants);
+
+  @override
+  List<Object?> get props => [participants];
 }
 
 /// Ошибка
