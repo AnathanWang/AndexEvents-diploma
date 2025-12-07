@@ -74,6 +74,11 @@ class EventService {
                         photoUrl: true,
                     },
                 },
+                _count: {
+                    select: {
+                        participants: true,
+                    },
+                },
             },
         });
     }
@@ -100,9 +105,11 @@ class EventService {
                     'id', u.id,
                     'displayName', u."displayName",
                     'photoUrl', u."photoUrl"
-                ) as "createdBy"
+                ) as "createdBy",
+                COUNT(p.id) as "participantCount"
             FROM "Event" e
             LEFT JOIN "User" u ON e."createdById" = u.id
+            LEFT JOIN "Participant" p ON e.id = p."eventId"
             WHERE 
                 e.status = 'APPROVED'
                 AND e."isOnline" = false
@@ -112,6 +119,7 @@ class EventService {
                     ${maxDistance}
                 )
                 ${category ? prisma.$queryRaw`AND e.category = ${category}` : prisma.$queryRaw``}
+            GROUP BY e.id, u.id
             ORDER BY distance ASC
             LIMIT ${limit}
             OFFSET ${offset}
@@ -119,7 +127,7 @@ class EventService {
         
         // Подсчет общего количества
         const totalResult = await prisma.$queryRaw<[{count: bigint}]>`
-            SELECT COUNT(*) as count
+            SELECT COUNT(DISTINCT e.id) as count
             FROM "Event" e
             WHERE 
                 e.status = 'APPROVED'
@@ -154,6 +162,11 @@ class EventService {
                         id: true,
                         displayName: true,
                         photoUrl: true,
+                    },
+                },
+                _count: {
+                    select: {
+                        participants: true,
                     },
                 },
             },
@@ -242,6 +255,25 @@ class EventService {
             }
             throw error;
         }
+    }
+    
+    async getEventParticipants(eventId: string) {
+        return await prisma.participant.findMany({
+            where: { eventId },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        displayName: true,
+                        photoUrl: true,
+                        email: true,
+                    },
+                },
+            },
+            orderBy: {
+                joinedAt: 'desc',
+            },
+        });
     }
 }
 
