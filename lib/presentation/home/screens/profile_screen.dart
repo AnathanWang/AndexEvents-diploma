@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/config/app_config.dart';
 import '../../../data/models/user_model.dart';
 import '../../profile/bloc/profile_bloc.dart';
 import '../../profile/bloc/profile_event.dart';
@@ -144,10 +146,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 );
               },
-              child: user.photoUrl != null
+              child: (user.photoUrl != null && user.photoUrl!.isNotEmpty)
                   ? CircleAvatar(
                       radius: 32,
-                      backgroundImage: NetworkImage(user.photoUrl!),
+                      backgroundImage: CachedNetworkImageProvider(
+                        user.photoUrl!,
+                        headers: {
+                          'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+                        },
+                      ),
                     )
                   : CircleAvatar(
                       radius: 32,

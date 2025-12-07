@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
+import '../../../core/config/app_config.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../bloc/profile_bloc.dart';
@@ -299,10 +301,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             radius: 60,
                             backgroundImage: FileImage(_newProfileImage!),
                           )
-                        : user?.photoUrl != null
+                        : (user?.photoUrl != null && user!.photoUrl!.isNotEmpty)
                             ? CircleAvatar(
                                 radius: 60,
-                                backgroundImage: NetworkImage(user!.photoUrl!),
+                                backgroundImage: CachedNetworkImageProvider(
+                                  user!.photoUrl!,
+                                  headers: {
+                                    'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+                                  },
+                                ),
                               )
                             : CircleAvatar(
                                 radius: 60,

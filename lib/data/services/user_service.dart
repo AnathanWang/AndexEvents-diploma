@@ -81,9 +81,8 @@ class UserService {
 
       print('🔵 [Supabase] Файл успешно загружен');
 
-      // Составляем публичный URL вручную (getPublicUrl иногда возвращает пустую строку)
-      // Формат: https://{supabaseUrl}/storage/v1/object/public/{bucket}/{filePath}
-      final String publicUrl = '${AppConfig.supabaseUrl}/storage/v1/object/public/avatars/$filePath';
+      // Получаем публичный URL через SDK
+      final String publicUrl = _supabase.storage.from('avatars').getPublicUrl(filePath);
       print('🔵 [Supabase] Public URL: $publicUrl');
       
       return publicUrl;
