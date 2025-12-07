@@ -24,5 +24,10 @@ router.delete(
   authMiddleware,
   eventController.cancelParticipation.bind(eventController)
 );
+// Маршрут для получения списка участников события
+router.get(
+  "/:id/participants",
+  eventController.getEventParticipants.bind(eventController)
+);
 
 export default router;
