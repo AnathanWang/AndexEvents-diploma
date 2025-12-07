@@ -1,6 +1,6 @@
 import { Router } from "express";
 import eventController from "../controllers/event.controller.js";
-import { authMiddleware } from "../middleware/auth.middleware.js";
+import { authMiddleware, optionalAuthMiddleware } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
@@ -11,7 +11,7 @@ router.get("/", eventController.getAllEvents.bind(eventController));
 // Маршрут для получения событий пользователя
 router.get("/user/:userId", eventController.getUserEvents.bind(eventController));
 // Маршрут для получения события по ID
-router.get("/:id", eventController.getEventById.bind(eventController));
+router.get("/:id", optionalAuthMiddleware, eventController.getEventById.bind(eventController));
 // Маршрут для участия в событии (требует авторизации)
 router.post(
   "/:id/participate",

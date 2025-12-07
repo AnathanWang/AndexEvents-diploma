@@ -8,6 +8,7 @@ import '../bloc/event_event.dart';
 import '../bloc/event_state.dart';
 import '../../../data/models/event_model.dart';
 import '../widgets/event_participants_dialog.dart';
+import '../../../core/config/app_config.dart';
 
 class RealEventDetailScreen extends StatefulWidget {
   final String eventId;
@@ -72,7 +73,15 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<EventBloc, EventState>(
+    return BlocConsumer<EventBloc, EventState>(
+      listenWhen: (previous, current) => current is EventDetailLoaded,
+      listener: (context, state) {
+        if (state is EventDetailLoaded) {
+          setState(() {
+            _isGoing = state.event.isParticipating;
+          });
+        }
+      },
       buildWhen: (previous, current) {
         // Не перестраиваем основной экран при загрузке участников
         return current is! EventParticipantsLoading && 
@@ -343,33 +352,50 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                       const SizedBox(height: 12),
                       Row(
                         children: [
-                          SizedBox(
-                            width: 120,
-                            height: 40,
-                            child: Stack(
-                              children: List.generate(
-                                3,
-                                (index) => Positioned(
-                                  left: index * 25.0,
-                                  child: CircleAvatar(
-                                    radius: 20,
-                                    backgroundColor: Colors.white,
-                                    child: CircleAvatar(
-                                      radius: 18,
-                                      backgroundColor: _getAvatarColor(index),
-                                      child: Text(
-                                        String.fromCharCode(65 + index),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                          // Avatars
+                          if (event.previewParticipants.isNotEmpty)
+                            SizedBox(
+                              width: 25.0 * (event.previewParticipants.length - 1) + 40,
+                              height: 40,
+                              child: Stack(
+                                children: List.generate(
+                                  event.previewParticipants.length,
+                                  (index) => Positioned(
+                                    left: index * 25.0,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 2),
+                                      ),
+                                      child: CircleAvatar(
+                                        radius: 18,
+                                        backgroundColor: Colors.grey[200],
+                                        backgroundImage: event.previewParticipants[index].user.photoUrl != null
+                                            ? CachedNetworkImageProvider(
+                                                event.previewParticipants[index].user.photoUrl!,
+                                                headers: {
+                                                  'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+                                                },
+                                              )
+                                            : null,
+                                        child: event.previewParticipants[index].user.photoUrl == null
+                                            ? Text(
+                                                event.previewParticipants[index].user.displayName.isNotEmpty 
+                                                    ? event.previewParticipants[index].user.displayName[0].toUpperCase()
+                                                    : '?',
+                                                style: const TextStyle(
+                                                  color: Color(0xFF4A4D6A),
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              )
+                                            : null,
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
+                          
                           const SizedBox(width: 8),
                           GestureDetector(
                             onTap: () {
@@ -406,6 +432,31 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                                     ),
                                   ],
                                 ],
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          // Matches Button
+                          Container(
+                            decoration: BoxDecoration(
+                              color: categoryColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {},
+                                borderRadius: BorderRadius.circular(20),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: Text(
+                                    'Метчи',
+                                    style: TextStyle(
+                                      color: categoryColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -635,16 +686,6 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
         ),
       ),
     );
-  }
-
-  Color _getAvatarColor(int index) {
-    final colors = [
-      const Color(0xFF5E60CE),
-      const Color(0xFF7B68EE),
-      const Color(0xFF9370DB),
-      const Color(0xFFBA55D3),
-    ];
-    return colors[index % colors.length];
   }
 
   String _getCategoryName(String category) {

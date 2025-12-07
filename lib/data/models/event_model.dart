@@ -1,3 +1,5 @@
+import 'participant_model.dart';
+
 /// Модель события
 class EventModel {
   final String id;
@@ -26,6 +28,7 @@ class EventModel {
   final bool isParticipating;
   final String? creatorName;
   final String? creatorPhotoUrl;
+  final List<ParticipantModel> previewParticipants;
 
   const EventModel({
     required this.id,
@@ -52,6 +55,7 @@ class EventModel {
     this.isParticipating = false,
     this.creatorName,
     this.creatorPhotoUrl,
+    this.previewParticipants = const [],
   });
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
@@ -63,6 +67,10 @@ class EventModel {
     final participantsCount = countData?['participants'] as int? ?? 
                               json['participantsCount'] as int? ?? 0;
     
+    final previewParticipants = (json['participants'] as List<dynamic>?)
+        ?.map((e) => ParticipantModel.fromJson(e as Map<String, dynamic>))
+        .toList() ?? [];
+
     return EventModel(
       id: json['id'] as String,
       title: json['title'] as String,
@@ -90,6 +98,7 @@ class EventModel {
       isParticipating: json['isParticipating'] as bool? ?? false,
       creatorName: createdBy?['displayName'] as String?,
       creatorPhotoUrl: createdBy?['photoUrl'] as String?,
+      previewParticipants: previewParticipants,
     );
   }
 
@@ -143,6 +152,7 @@ class EventModel {
     bool? isParticipating,
     String? creatorName,
     String? creatorPhotoUrl,
+    List<ParticipantModel>? previewParticipants,
   }) {
     return EventModel(
       id: id ?? this.id,
@@ -169,6 +179,7 @@ class EventModel {
       isParticipating: isParticipating ?? this.isParticipating,
       creatorName: creatorName ?? this.creatorName,
       creatorPhotoUrl: creatorPhotoUrl ?? this.creatorPhotoUrl,
+      previewParticipants: previewParticipants ?? this.previewParticipants,
     );
   }
 }

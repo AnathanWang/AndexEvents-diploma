@@ -110,3 +110,46 @@ export const authMiddleware = async (
     });
   }
 };
+
+export const optionalAuthMiddleware = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      next();
+      return;
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+
+    if (!token) {
+      next();
+      return;
+    }
+
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      
+      // Найдём пользователя в БД по firebaseUid
+      const user = await prisma.user.findUnique({
+        where: { firebaseUid: decodedToken.uid }
+      });
+      
+      req.user = {
+        uid: decodedToken.uid,
+        userId: user?.id, // Сохраняем UUID пользователя из БД
+        email: decodedToken.email ?? undefined,
+      };
+      next();
+    } catch (error) {
+      // Если токен невалиден, просто продолжаем без пользователя
+      next();
+    }
+  } catch (error) {
+    next();
+  }
+};
