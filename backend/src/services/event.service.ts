@@ -1,4 +1,5 @@
 import prisma from '../utils/prisma.js';
+import { debug } from '../utils/debug.js';
 
 interface CreateEventInput {
     title: string;
@@ -215,7 +216,9 @@ class EventService {
     }
 
     async cancelParticipation(eventId: string, userId: string) {
-        console.log(`[EventService] cancelParticipation called for eventId=${eventId}, userId=${userId}`);
+        if (process.env.NODE_ENV === 'development') {
+          debug.log('EventService', `cancelParticipation called for eventId=${eventId}, userId=${userId}`);
+        }
         try {
             const participation = await prisma.participant.delete({
                 where: {
@@ -225,13 +228,16 @@ class EventService {
                     },
                 },
             });
-            console.log(`[EventService] Participation deleted successfully:`, participation);
+            if (process.env.NODE_ENV === 'development') {
+              debug.log('EventService', 'Participation deleted successfully');
+            }
             return participation;
         } catch (error: any) {
-            console.error(`[EventService] Error in cancelParticipation:`, error);
+            if (process.env.NODE_ENV === 'development') {
+              debug.error('EventService', 'Error in cancelParticipation:', error);
+            }
             // Если запись не найдена (P2025), возвращаем пустой результат, как будто удалили
             if (error.code === 'P2025') {
-                console.log(`[EventService] Participation not found (P2025), returning count: 0`);
                 return { count: 0 };
             }
             throw error;
