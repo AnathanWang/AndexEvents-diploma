@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -25,6 +26,7 @@ class MapLocationPicker extends StatefulWidget {
 class _MapLocationPickerState extends State<MapLocationPicker> {
   late YandexMapController _mapController;
   final TextEditingController _searchController = TextEditingController();
+  final GeocodingService _geocodingService = GeocodingService();
   
   Point? _selectedPoint;
   String? _selectedAddress;
@@ -32,10 +34,12 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
   List<GeocodingResult> _searchResults = [];
   bool _isLoadingAddress = false;
   Uint8List? _markerIcon;
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(_onSearchChanged);
     if (widget.initialLatitude != null && widget.initialLongitude != null) {
       _selectedPoint = Point(
         latitude: widget.initialLatitude!,
@@ -94,8 +98,44 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text;
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    
+    _debounce = Timer(const Duration(milliseconds: 500), () async {
+      if (query.length < 3) {
+        setState(() {
+          _searchResults = [];
+          _isSearching = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _isSearching = true;
+      });
+
+      try {
+        final results = await _geocodingService.searchAddresses(query);
+        if (mounted) {
+          setState(() {
+            _searchResults = results;
+            _isSearching = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isSearching = false;
+          });
+        }
+      }
+    });
   }
 
   Future<void> _onMapCreated(YandexMapController controller) async {
@@ -117,10 +157,31 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
   Future<void> _onMapTap(Point point) async {
     setState(() {
       _selectedPoint = point;
-      // Показываем координаты, пользователь может ввести адрес вручную в поле поиска
-      _selectedAddress = '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
-      _isLoadingAddress = false;
+      _isLoadingAddress = true;
+      _selectedAddress = null;
     });
+
+    try {
+      final address = await _geocodingService.getAddressFromCoordinates(
+        point.latitude,
+        point.longitude,
+      );
+
+      if (mounted) {
+        setState(() {
+          _selectedAddress = address ?? '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
+          _isLoadingAddress = false;
+        });
+      }
+    } catch (e) {
+      print('Error getting address: $e');
+      if (mounted) {
+        setState(() {
+          _selectedAddress = '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
+          _isLoadingAddress = false;
+        });
+      }
+    }
   }
 
   Future<Uint8List> _createMarkerIcon() async {

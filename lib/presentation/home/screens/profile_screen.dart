@@ -64,53 +64,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return const Center(child: Text('Профиль не загружен'));
         }
 
-        return ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          children: <Widget>[
-            _buildProfileCard(context, user, theme),
-            const SizedBox(height: 24),
-            const SectionHeader(
-              title: 'Мои мероприятия',
-              caption: 'Собственные события и сохранённые планы',
-            ),
-            const SizedBox(height: 12),
-            if (state is ProfileLoaded && state.userEvents.isEmpty)
-              const Text('Начните с создания первого события!')
-            else if (state is ProfileLoaded)
-              ...state.userEvents.take(3).map((event) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _buildEventCard(event, context),
-                );
-              }),
-            TextButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.add_circle_outline),
-              label: const Text('Добавить новое событие'),
-            ),
-            const SizedBox(height: 24),
-            const SectionHeader(
-              title: 'Связи и совпадения',
-              caption: 'Последние матчи и приглашения',
-            ),
-            const SizedBox(height: 12),
-            if (widget.matches.isEmpty)
-              const Text('Как только произойдут совпадения, они появятся здесь.')
-            else
-              ...widget.matches.take(2).map((MatchPreview match) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: MatchCard(match: match),
-                );
-              }),
-            const SizedBox(height: 24),
-            const SectionHeader(
-              title: 'Инструменты модератора',
-              caption: 'Доступно для ролей admin и moderator',
-            ),
-            const SizedBox(height: 12),
-            const AdminPanelSnippet(),
-          ],
+        return RefreshIndicator(
+          onRefresh: () async {
+            context.read<ProfileBloc>().add(const ProfileLoadRequested());
+          },
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            children: <Widget>[
+              _buildProfileCard(context, user, theme),
+              const SizedBox(height: 24),
+              const SectionHeader(
+                title: 'Мои мероприятия',
+                caption: 'Собственные события и сохранённые планы',
+              ),
+              const SizedBox(height: 12),
+              if (state is ProfileLoaded && state.userEvents.isEmpty)
+                const Text('Начните с создания первого события!')
+              else if (state is ProfileLoaded)
+                ...state.userEvents.take(3).map((event) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _buildEventCard(event, context),
+                  );
+                }),
+              TextButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.add_circle_outline),
+                label: const Text('Добавить новое событие'),
+              ),
+              const SizedBox(height: 24),
+              const SectionHeader(
+                title: 'Связи и совпадения',
+                caption: 'Последние матчи и приглашения',
+              ),
+              const SizedBox(height: 12),
+              if (widget.matches.isEmpty)
+                const Text('Как только произойдут совпадения, они появятся здесь.')
+              else
+                ...widget.matches.take(2).map((MatchPreview match) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: MatchCard(match: match),
+                  );
+                }),
+              const SizedBox(height: 24),
+              const SectionHeader(
+                title: 'Инструменты модератора',
+                caption: 'Доступно для ролей admin и moderator',
+              ),
+              const SizedBox(height: 12),
+              const AdminPanelSnippet(),
+            ],
+          ),
         );
       },
     );
@@ -335,12 +340,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (event.imageUrl != null)
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Image.network(
-                event.imageUrl!,
+              child: CachedNetworkImage(
+                imageUrl: event.imageUrl!,
+                httpHeaders: {
+                  'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+                },
                 height: 180,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
+                placeholder: (context, url) => Container(
+                  height: 180,
+                  color: Colors.grey.shade200,
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+                errorWidget: (context, url, error) {
+                  print('Error loading profile event image: $url, error: $error');
                   return Container(
                     height: 180,
                     decoration: BoxDecoration(

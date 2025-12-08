@@ -24,29 +24,45 @@ class EventService {
       if (user == null) throw Exception('Пользователь не авторизован');
 
       if (!await photoFile.exists()) {
-        throw Exception('Файл не существует: ${photoFile.path}');
+        throw Exception('Файл не существует');
       }
 
       final bytes = await photoFile.readAsBytes();
       final fileExt = photoFile.path.split('.').last;
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       
-      // Путь к файлу: events/{userId}/event_{timestamp}.{ext}
-      final String filePath = '${user.uid}/event_$timestamp.$fileExt';
+      // Формируем имя файла: USERID_event_TIMESTAMP.ext
+      final String fileName = '${user.uid}_event_$timestamp.$fileExt';
+      
+      // Нормализуем Content-Type (Supabase чувствителен к этому)
+      String contentType = 'image/$fileExt';
+      if (fileExt.toLowerCase() == 'jpg') contentType = 'image/jpeg';
 
-      await _supabase.storage.from('events').uploadBinary(
-        filePath,
-        bytes,
-        fileOptions: FileOptions(
-          contentType: 'image/$fileExt',
-          upsert: true,
-        ),
-      );
+      // Используем прямой HTTP запрос к Storage API для надежности
+      // Это позволяет обойти проблемы с сессиями при использовании Firebase Auth
+      final url = Uri.parse('${AppConfig.supabaseUrl}/storage/v1/object/events/$fileName');
+      
+      final response = await http.post(
+        url,
+        headers: {
+          'apikey': AppConfig.supabaseAnonKey,
+          'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+          'Content-Type': contentType,
+          'x-upsert': 'false',
+        },
+        body: bytes,
+      ).timeout(const Duration(seconds: 60));
 
-      final String publicUrl = _supabase.storage.from('events').getPublicUrl(filePath);
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка загрузки (HTTP ${response.statusCode}): ${response.body}');
+      }
+
+      // Получаем публичный URL загруженного файла
+      final String publicUrl = _supabase.storage.from('events').getPublicUrl(fileName);
       return publicUrl;
     } catch (e) {
-      throw Exception('Ошибка загрузки фото: $e');
+      print('Error uploading event photo: $e');
+      throw Exception('Не удалось загрузить фото: $e');
     }
   }
 

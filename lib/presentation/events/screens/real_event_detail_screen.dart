@@ -204,6 +204,9 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                   if (event.imageUrl != null)
                     CachedNetworkImage(
                       imageUrl: event.imageUrl!,
+                      httpHeaders: {
+                        'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+                      },
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Container(
                         color: Colors.grey.shade300,
@@ -524,6 +527,9 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                               if (event.creatorPhotoUrl != null)
                                 CachedNetworkImage(
                                   imageUrl: event.creatorPhotoUrl!,
+                                  httpHeaders: {
+                                    'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+                                  },
                                   imageBuilder: (context, imageProvider) => CircleAvatar(
                                     radius: 30,
                                     backgroundImage: imageProvider,

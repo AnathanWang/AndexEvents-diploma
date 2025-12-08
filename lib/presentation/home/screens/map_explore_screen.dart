@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import '../../../core/config/app_config.dart';
 import '../../events/bloc/event_bloc.dart';
 import '../../events/bloc/event_event.dart';
 import '../../events/bloc/event_state.dart';
@@ -155,6 +156,9 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 child: CachedNetworkImage(
                   imageUrl: event.imageUrl!,
+                  httpHeaders: {
+                    'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+                  },
                   height: 180,
                   width: double.infinity,
                   fit: BoxFit.cover,
