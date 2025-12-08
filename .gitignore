@@ -49,9 +49,8 @@ app.*.map.json
 **/*Firebase Service Account*.json
 **/*Firebase Config*.plist
 **/*Google Services*.json
-# Но оставляем правильные файлы конфигурации
-!android/app/google-services.json
-!ios/Runner/GoogleService-Info.plist
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
 
 # Backend environment variables
 backend/.env
