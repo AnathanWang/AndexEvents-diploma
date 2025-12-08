@@ -141,3 +141,28 @@ class EventError extends EventState {
   @override
   List<Object?> get props => [message];
 }
+
+/// Обновление события
+class EventUpdating extends EventState {
+  const EventUpdating();
+}
+
+/// Событие обновлено
+class EventUpdated extends EventState {
+  final EventModel event;
+
+  const EventUpdated(this.event);
+
+  @override
+  List<Object?> get props => [event];
+}
+
+/// Удаление события
+class EventDeleting extends EventState {
+  const EventDeleting();
+}
+
+/// Событие удалено
+class EventDeleted extends EventState {
+  const EventDeleted();
+}

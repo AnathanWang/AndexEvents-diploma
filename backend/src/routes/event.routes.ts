@@ -12,6 +12,10 @@ router.get("/", eventController.getAllEvents.bind(eventController));
 router.get("/user/:userId", eventController.getUserEvents.bind(eventController));
 // Маршрут для получения события по ID
 router.get("/:id", optionalAuthMiddleware, eventController.getEventById.bind(eventController));
+// Маршрут для обновления события (требует авторизации)
+router.put("/:id", authMiddleware, eventController.updateEvent.bind(eventController));
+// Маршрут для удаления события (требует авторизации)
+router.delete("/:id", authMiddleware, eventController.deleteEvent.bind(eventController));
 // Маршрут для участия в событии (требует авторизации)
 router.post(
   "/:id/participate",

@@ -266,7 +266,7 @@ class EventService {
       }
 
       final responseData = json.decode(response.body);
-      final List<dynamic> eventsJson = responseData['data']['events'];
+      final List<dynamic> eventsJson = responseData['data'];
       
       return eventsJson.map((json) => EventModel.fromJson(json)).toList();
     } catch (e) {
@@ -291,6 +291,88 @@ class EventService {
       return participantsJson.map((json) => ParticipantModel.fromJson(json)).toList();
     } catch (e) {
       throw Exception('Ошибка загрузки участников: $e');
+    }
+  }
+
+  /// Обновить событие
+  Future<EventModel> updateEvent({
+    required String eventId,
+    String? title,
+    String? description,
+    String? category,
+    String? location,
+    double? latitude,
+    double? longitude,
+    DateTime? dateTime,
+    DateTime? endDateTime,
+    double? price,
+    String? imageUrl,
+    bool? isOnline,
+    int? maxParticipants,
+    int? minAge,
+    int? maxAge,
+  }) async {
+    try {
+      final String? token = await _getIdToken();
+      if (token == null) throw Exception('Не удалось получить токен авторизации');
+
+      final Map<String, dynamic> body = {};
+      if (title != null) body['title'] = title;
+      if (description != null) body['description'] = description;
+      if (category != null) body['category'] = category;
+      if (location != null) body['location'] = location;
+      if (latitude != null) body['latitude'] = latitude;
+      if (longitude != null) body['longitude'] = longitude;
+      if (dateTime != null) body['dateTime'] = dateTime.toIso8601String();
+      if (endDateTime != null) body['endDateTime'] = endDateTime.toIso8601String();
+      if (price != null) body['price'] = price;
+      if (imageUrl != null) body['imageUrl'] = imageUrl;
+      if (isOnline != null) body['isOnline'] = isOnline;
+      if (maxParticipants != null) body['maxParticipants'] = maxParticipants;
+      if (minAge != null) body['minAge'] = minAge;
+      if (maxAge != null) body['maxAge'] = maxAge;
+
+      final response = await http.put(
+        Uri.parse('${AppConfig.baseUrl}/events/$eventId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(body),
+      );
+
+      if (response.statusCode != 200) {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Ошибка обновления события');
+      }
+
+      final responseData = json.decode(response.body);
+      return EventModel.fromJson(responseData['data']);
+    } catch (e) {
+      throw Exception('Ошибка обновления события: $e');
+    }
+  }
+
+  /// Удалить событие
+  Future<void> deleteEvent(String eventId) async {
+    try {
+      final String? token = await _getIdToken();
+      if (token == null) throw Exception('Не удалось получить токен авторизации');
+
+      final response = await http.delete(
+        Uri.parse('${AppConfig.baseUrl}/events/$eventId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode != 200) {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Ошибка удаления события');
+      }
+    } catch (e) {
+      throw Exception('Ошибка удаления события: $e');
     }
   }
 }

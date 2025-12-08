@@ -80,6 +80,31 @@ class EventController {
         }
     }
 
+    async getUserEvents(req: Request, res: Response) {
+        try {
+            const { userId } = req.params;
+
+            if (!userId) {
+                return res.status(400).json({
+                    success: false,
+                    message: "User ID is required",
+                });
+            }
+
+            const events = await eventService.getUserEvents(userId);
+            res.status(200).json({
+                success: true,
+                data: events,
+            });
+        } catch (error) {
+            console.error("Error fetching user events:", error);
+            res.status(500).json({
+                success: false,
+                message: "Failed to fetch user events",
+            });
+        }
+    }
+
     async getEventById(req: Request, res: Response) {
         try {
             const { id } = req.params;
@@ -99,40 +124,115 @@ class EventController {
                     message: "Event not found",
                 });
             }
+            
             res.status(200).json({
                 success: true,
                 data: event,
             });
         } catch (error) {
-            console.error("Error fetching event by ID:", error);
+            console.error("Error fetching event:", error);
             res.status(500).json({
                 success: false,
                 message: "Failed to fetch event",
             });
         }
     }
-    
-    async getUserEvents(req: Request, res: Response) {
+
+    async updateEvent(req: AuthRequest, res: Response) {
         try {
-            const userId = req.params.userId || (req as any).user?.uid;
-            
-            if (!userId) {
+            const { id } = req.params;
+            const userId = req.user?.userId;
+            const eventData = req.body;
+
+            if (!id) {
                 return res.status(400).json({
                     success: false,
-                    message: "User ID is required",
+                    message: "Event ID is required",
                 });
             }
-            
-            const events = await eventService.getUserEvents(userId);
+
+            if (!userId) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Unauthorized",
+                });
+            }
+
+            if (eventData.dateTime) {
+                eventData.dateTime = new Date(eventData.dateTime);
+            }
+
+            const updatedEvent = await eventService.updateEvent(id, eventData, userId);
+
+            if (!updatedEvent) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Event not found",
+                });
+            }
+
             res.status(200).json({
                 success: true,
-                data: { events },
+                data: updatedEvent,
             });
-        } catch (error) {
-            console.error("Error fetching user events:", error);
+        } catch (error: any) {
+            console.error("Error updating event:", error);
+            if (error.message.includes("Forbidden")) {
+                return res.status(403).json({
+                    success: false,
+                    message: error.message,
+                });
+            }
             res.status(500).json({
                 success: false,
-                message: "Failed to fetch user events",
+                message: "Failed to update event",
+            });
+        }
+    }
+
+    async deleteEvent(req: AuthRequest, res: Response) {
+        try {
+            const { id } = req.params;
+            const userId = req.user?.userId;
+
+            if (!id) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Event ID is required",
+                });
+            }
+
+            if (!userId) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Unauthorized",
+                });
+            }
+
+            const result = await eventService.deleteEvent(id, userId);
+
+            if (result === null) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Event not found",
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                message: "Event deleted successfully",
+            });
+        } catch (error: any) {
+            console.error("Error deleting event:", error);
+            if (error.message.includes("Forbidden")) {
+                return res.status(403).json({
+                    success: false,
+                    message: error.message,
+                });
+            }
+            res.status(500).json({
+                success: false,
+                message: "Failed to delete event",
             });
         }
     }
