@@ -1,0 +1,191 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum EventStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MatchAction {
+  LIKE
+  DISLIKE
+  SUPER_LIKE
+}
+
+enum ParticipantStatus {
+  INTERESTED
+  GOING
+}
+
+model User {
+  id            String   @id @default(uuid())
+  firebaseUid   String   @unique
+  email         String   @unique
+  displayName   String?
+  photoUrl      String?
+  bio           String?
+  interests     String[] // Массив интересов
+  socialLinks   Json? // Социальные сети { "instagram": "url", "telegram": "url", etc }
+  age           Int?
+  gender        String?
+  role          UserRole @default(USER)
+  
+  // Геолокация
+  lastLatitude  Float?
+  lastLongitude Float?
+  lastLocationUpdate DateTime?
+  
+  // Настройки
+  isProfileVisible Boolean @default(true)
+  isLocationVisible Boolean @default(true)
+  minAge        Int?
+  maxAge        Int?
+  maxDistance   Int @default(50000) // В метрах
+  
+  // FCM для уведомлений
+  fcmToken      String?
+  
+  // Онбординг
+  isOnboardingCompleted Boolean @default(false)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Отношения
+  createdEvents     Event[] @relation("EventCreator")
+  participations    Participant[]
+  matchesAsUserA    Match[] @relation("MatchUserA")
+  matchesAsUserB    Match[] @relation("MatchUserB")
+  sentNotifications Notification[] @relation("NotificationSender")
+  receivedNotifications Notification[] @relation("NotificationReceiver")
+  
+  @@index([firebaseUid])
+  @@index([email])
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String   @db.Text
+  category    String
+  
+  // Геолокация (PostGIS)
+  location    String   // Адрес
+  latitude    Float
+  longitude   Float
+  locationGeo Unsupported("geography(Point, 4326)")?  // PostGIS geography для пространственных запросов
+  
+  dateTime    DateTime
+  endDateTime DateTime?
+  price       Float    @default(0)
+  imageUrl    String?
+  isOnline    Boolean  @default(false)
+  
+  // Модерация
+  status      EventStatus @default(PENDING)
+  rejectionReason String?
+  
+  // Ограничения
+  maxParticipants Int?
+  minAge      Int?
+  maxAge      Int?
+  
+  createdById String?
+  createdBy   User? @relation("EventCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Отношения
+  participants Participant[]
+  
+  @@index([createdById])
+  @@index([status])
+  @@index([dateTime])
+  @@index([category])
+}
+
+model Participant {
+  id        String   @id @default(uuid())
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  status    ParticipantStatus @default(INTERESTED)
+  
+  joinedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([userId, eventId])
+  @@index([userId])
+  @@index([eventId])
+}
+
+model Match {
+  id        String   @id @default(uuid())
+  
+  userAId   String
+  userA     User     @relation("MatchUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  
+  userBId   String
+  userB     User     @relation("MatchUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  
+  userAAction MatchAction?
+  userBAction MatchAction?
+  
+  isMutual  Boolean  @default(false)
+  matchedAt DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+  @@index([isMutual])
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  
+  type        String   // MATCH, EVENT_REMINDER, EVENT_APPROVED, etc.
+  title       String
+  body        String   @db.Text
+  data        Json?    // Дополнительные данные
+  
+  senderId    String?
+  sender      User?    @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
+  
+  receiverId  String
+  receiver    User     @relation("NotificationReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  
+  isRead      Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([receiverId])
+  @@index([isRead])
+  @@index([type])
+}

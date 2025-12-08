@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../home/home_shell.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_event.dart';
+import '../bloc/auth_state.dart';
+import 'setup_profile_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -28,7 +32,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  Future<void> _handleRegister() async {
+  void _handleRegister() {
     if (_formKey.currentState?.validate() ?? false) {
       if (!_acceptTerms) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -40,37 +44,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
-      setState(() => _isLoading = true);
-      
-      // Симуляция запроса к API
-      await Future.delayed(const Duration(seconds: 1));
-      
-      if (mounted) {
-        setState(() => _isLoading = false);
-        
-        // Переход на главный экран
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(
-            builder: (BuildContext context) => const HomeShell(),
-          ),
-        );
-      }
+      // Отправляем событие регистрации в AuthBloc
+      context.read<AuthBloc>().add(
+            AuthRegisterRequested(
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+              displayName: _nameController.text.trim(),
+            ),
+          );
     }
+  }
+
+  void _skipDetailedSetup() {
+    // Пропускаем регистрацию и переходим сразу на детальную настройку профиля
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => const SetupProfileScreen(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
-          onPressed: () => Navigator.of(context).pop(),
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (BuildContext context, AuthState state) {
+        if (state is AuthLoading) {
+          // Показываем загрузку
+          setState(() => _isLoading = true);
+        } else {
+          setState(() => _isLoading = false);
+        }
+
+        if (state is AuthAuthenticated) {
+          // Если онбординг не завершён - переходим на настройку профиля
+          if (!state.isOnboardingCompleted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute<void>(
+                builder: (BuildContext context) => const SetupProfileScreen(),
+              ),
+            );
+          }
+          // Если онбординг завершён - ничего не делаем, навигация через andex_app.dart
+        } else if (state is AuthFailure) {
+          // Показываем ошибку
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
         ),
-      ),
-      body: SafeArea(
+        body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Form(
@@ -288,7 +323,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                
+                // Кнопка "Пропустить регистрацию"
+                TextButton(
+                  onPressed: _skipDetailedSetup,
+                  child: const Text(
+                    'Пропустить регистрацию',
+                    style: TextStyle(
+                      color: Color(0xFF9E9E9E),
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 
                 // Кнопка регистрации
                 ElevatedButton(
@@ -339,9 +387,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 
                 // Социальные сети
                 OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: Регистрация через Google
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          context.read<AuthBloc>().add(const AuthGoogleSignInRequested());
+                        },
                   icon: const Icon(Icons.g_mobiledata, size: 32),
                   label: const Text('Регистрация через Google'),
                   style: OutlinedButton.styleFrom(
@@ -374,6 +424,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ),
-    );
+      ), // Scaffold
+    ); // BlocListener
   }
 }

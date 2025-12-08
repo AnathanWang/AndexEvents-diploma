@@ -43,3 +43,20 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase секретные файлы - НЕ КОММИТИТЬ!
+**/firebase-service-account.json
+**/*Firebase Service Account*.json
+**/*Firebase Config*.plist
+**/*Google Services*.json
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+lib/core/config/firebase_config.dart
+
+# Backend environment variables
+backend/.env
+backend/firebase-service-account.json
+backend/logs/
+backend/uploads/
+backend/backups/
+backend/dist/
