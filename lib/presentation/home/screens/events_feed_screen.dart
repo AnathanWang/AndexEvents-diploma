@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/config/app_config.dart';
 
 import '../../events/bloc/event_bloc.dart';
 import '../../events/bloc/event_event.dart';
@@ -144,6 +145,9 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                 ),
                 child: CachedNetworkImage(
                   imageUrl: event.imageUrl!,
+                  httpHeaders: {
+                    'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+                  },
                   height: 180,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -154,7 +158,9 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                       child: CircularProgressIndicator(),
                     ),
                   ),
-                  errorWidget: (context, url, error) => Container(
+                  errorWidget: (context, url, error) {
+                    print('Error loading feed event image: $url, error: $error');
+                    return Container(
                     height: 180,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -167,7 +173,8 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                     child: const Center(
                       child: Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
                     ),
-                  ),
+                  );
+                  },
                 ),
               ),
             
@@ -271,6 +278,9 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                         if (event.creatorPhotoUrl != null)
                           CachedNetworkImage(
                             imageUrl: event.creatorPhotoUrl!,
+                            httpHeaders: {
+                              'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+                            },
                             imageBuilder: (context, imageProvider) => CircleAvatar(
                               radius: 16,
                               backgroundImage: imageProvider,

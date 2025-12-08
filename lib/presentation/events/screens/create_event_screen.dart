@@ -26,6 +26,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   TimeOfDay _selectedTime = TimeOfDay.now();
   String _selectedCategory = 'Спорт';
   bool _isOnline = false;
+  bool _isPhotoUploading = false;
   bool _isLoading = false;
   
   File? _eventPhoto;
@@ -109,9 +110,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 1920,
-      maxHeight: 1080,
-      imageQuality: 85,
+      maxWidth: 1280,
+      maxHeight: 720,
+      imageQuality: 70,
     );
 
     if (image != null) {
@@ -195,8 +196,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   Widget build(BuildContext context) {
     return BlocListener<EventBloc, EventState>(
       listener: (context, state) {
-        if (state is EventPhotoUploaded) {
+        if (state is EventPhotoUploading) {
+          setState(() => _isPhotoUploading = true);
+        } else if (state is EventPhotoUploaded) {
           setState(() {
+            _isPhotoUploading = false;
             _uploadedPhotoUrl = state.photoUrl;
           });
           ScaffoldMessenger.of(context).showSnackBar(
@@ -218,7 +222,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             ),
           );
         } else if (state is EventError) {
-          setState(() => _isLoading = false);
+          setState(() {
+            _isLoading = false;
+            _isPhotoUploading = false;
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
@@ -292,18 +299,32 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                           ),
                         ],
                       )
-                    : Align(
-                        alignment: Alignment.topRight,
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: CircleAvatar(
-                            backgroundColor: Colors.black54,
-                            child: IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.white, size: 20),
-                              onPressed: _pickImage,
+                    : Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (_isPhotoUploading)
+                            Container(
+                              color: Colors.black45,
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          Align(
+                            alignment: Alignment.topRight,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: CircleAvatar(
+                                backgroundColor: Colors.black54,
+                                child: IconButton(
+                                  icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                                  onPressed: _pickImage,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
               ),
             ),
