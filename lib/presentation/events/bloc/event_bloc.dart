@@ -18,6 +18,8 @@ class EventBloc extends Bloc<EventEvent, EventState> {
     on<EventParticipateRequested>(_onEventParticipateRequested);
     on<EventCancelParticipationRequested>(_onEventCancelParticipationRequested);
     on<EventParticipantsLoadRequested>(_onEventParticipantsLoadRequested);
+    on<EventUpdateRequested>(_onEventUpdateRequested);
+    on<EventDeleteRequested>(_onEventDeleteRequested);
   }
 
   Future<void> _onEventsLoadRequested(
@@ -158,6 +160,51 @@ class EventBloc extends Bloc<EventEvent, EventState> {
       emit(EventParticipantsLoaded(participants));
     } catch (e) {
       emit(EventError('Не удалось загрузить участников: $e'));
+    }
+  }
+
+  Future<void> _onEventUpdateRequested(
+    EventUpdateRequested event,
+    Emitter<EventState> emit,
+  ) async {
+    emit(const EventUpdating());
+
+    try {
+      final eventModel = await _eventService.updateEvent(
+        eventId: event.eventId,
+        title: event.title,
+        description: event.description,
+        category: event.category,
+        location: event.location,
+        latitude: event.latitude,
+        longitude: event.longitude,
+        dateTime: event.dateTime,
+        endDateTime: event.endDateTime,
+        price: event.price,
+        imageUrl: event.imageUrl,
+        isOnline: event.isOnline,
+        maxParticipants: event.maxParticipants,
+        minAge: event.minAge,
+        maxAge: event.maxAge,
+      );
+
+      emit(EventUpdated(eventModel));
+    } catch (e) {
+      emit(EventError('Не удалось обновить событие: $e'));
+    }
+  }
+
+  Future<void> _onEventDeleteRequested(
+    EventDeleteRequested event,
+    Emitter<EventState> emit,
+  ) async {
+    emit(const EventDeleting());
+
+    try {
+      await _eventService.deleteEvent(event.eventId);
+      emit(const EventDeleted());
+    } catch (e) {
+      emit(EventError('Не удалось удалить событие: $e'));
     }
   }
 }

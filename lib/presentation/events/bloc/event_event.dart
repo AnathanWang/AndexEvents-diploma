@@ -134,3 +134,69 @@ class EventParticipantsLoadRequested extends EventEvent {
   @override
   List<Object?> get props => [eventId];
 }
+
+/// Обновить событие
+class EventUpdateRequested extends EventEvent {
+  final String eventId;
+  final String? title;
+  final String? description;
+  final String? category;
+  final String? location;
+  final double? latitude;
+  final double? longitude;
+  final DateTime? dateTime;
+  final DateTime? endDateTime;
+  final double? price;
+  final String? imageUrl;
+  final bool? isOnline;
+  final int? maxParticipants;
+  final int? minAge;
+  final int? maxAge;
+
+  const EventUpdateRequested({
+    required this.eventId,
+    this.title,
+    this.description,
+    this.category,
+    this.location,
+    this.latitude,
+    this.longitude,
+    this.dateTime,
+    this.endDateTime,
+    this.price,
+    this.imageUrl,
+    this.isOnline,
+    this.maxParticipants,
+    this.minAge,
+    this.maxAge,
+  });
+
+  @override
+  List<Object?> get props => [
+        eventId,
+        title,
+        description,
+        category,
+        location,
+        latitude,
+        longitude,
+        dateTime,
+        endDateTime,
+        price,
+        imageUrl,
+        isOnline,
+        maxParticipants,
+        minAge,
+        maxAge,
+      ];
+}
+
+/// Удалить событие
+class EventDeleteRequested extends EventEvent {
+  final String eventId;
+
+  const EventDeleteRequested(this.eventId);
+
+  @override
+  List<Object?> get props => [eventId];
+}

@@ -7,6 +7,8 @@ import '../../profile/bloc/profile_bloc.dart';
 import '../../profile/bloc/profile_event.dart';
 import '../../profile/bloc/profile_state.dart';
 import '../../profile/screens/edit_profile_screen.dart';
+import '../../events/screens/edit_event_screen.dart';
+import '../../events/bloc/event_bloc.dart';
 import '../../models/event_preview.dart';
 import '../../models/match_preview.dart';
 import '../../widgets/admin_panel_snippet.dart';
@@ -330,111 +332,129 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildEventCard(dynamic event, BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (event.imageUrl != null)
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: CachedNetworkImage(
-                imageUrl: event.imageUrl!,
-                httpHeaders: {
-                  'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
-                },
-                height: 180,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  height: 180,
-                  color: Colors.grey.shade200,
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) {
-                  print('Error loading profile event image: $url, error: $error');
-                  return Container(
-                    height: 180,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          const Color(0xFF5E60CE).withOpacity(0.7),
-                          const Color(0xFF9370DB).withOpacity(0.7),
-                        ],
-                      ),
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.event, size: 48, color: Colors.white),
-                    ),
-                  );
-                },
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getCategoryColor(event.category),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    event.category,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  event.title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF4A4D6A),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.access_time, size: 16, color: Color(0xFF9E9E9E)),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatDate(event.dateTime),
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF9E9E9E)),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        event.location,
-                        style: const TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BlocProvider(
+              create: (context) => EventBloc(),
+              child: EditEventScreen(event: event),
             ),
           ),
-        ],
+        );
+
+        if (result == true && context.mounted) {
+          // Обновляем профиль, если событие было изменено или удалено
+          context.read<ProfileBloc>().add(const ProfileLoadRequested());
+        }
+      },
+      child: Card(
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 2,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (event.imageUrl != null)
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                child: CachedNetworkImage(
+                  imageUrl: event.imageUrl!,
+                  httpHeaders: {
+                    'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+                  },
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    height: 180,
+                    color: Colors.grey.shade200,
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) {
+                    print('Error loading profile event image: $url, error: $error');
+                    return Container(
+                      height: 180,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color(0xFF5E60CE).withOpacity(0.7),
+                            const Color(0xFF9370DB).withOpacity(0.7),
+                          ],
+                        ),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.event, size: 48, color: Colors.white),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getCategoryColor(event.category),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      event.category,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    event.title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF4A4D6A),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time, size: 16, color: Color(0xFF9E9E9E)),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatDate(event.dateTime),
+                        style: const TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF9E9E9E)),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          event.location,
+                          style: const TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

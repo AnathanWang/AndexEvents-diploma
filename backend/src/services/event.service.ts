@@ -153,30 +153,15 @@ class EventService {
         };
     }
     
-    async getEventById(eventId: string, userId?: string) {
+    async getEventById(id: string, userId?: string) {
         const event = await prisma.event.findUnique({
-             where: { id: eventId },
-             include: {
+            where: { id },
+            include: {
                 createdBy: {
                     select: {
                         id: true,
                         displayName: true,
                         photoUrl: true,
-                    },
-                },
-                participants: {
-                    take: 3,
-                    orderBy: {
-                        joinedAt: 'desc',
-                    },
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                displayName: true,
-                                photoUrl: true,
-                            },
-                        },
                     },
                 },
                 _count: {
@@ -189,25 +174,117 @@ class EventService {
 
         if (!event) return null;
 
-        let isParticipating = false;
+        let isParticipant = false;
         if (userId) {
             const participation = await prisma.participant.findUnique({
                 where: {
                     userId_eventId: {
                         userId,
-                        eventId,
+                        eventId: id,
                     },
                 },
             });
-            isParticipating = !!participation;
+            isParticipant = !!participation;
         }
 
         return {
             ...event,
-            isParticipating,
+            isParticipant,
         };
     }
-    
+
+    async updateEvent(id: string, data: Partial<CreateEventInput>, userId: string) {
+        const existingEvent = await prisma.event.findUnique({
+            where: { id },
+        });
+
+        if (!existingEvent) {
+            return null;
+        }
+
+        if (existingEvent.createdById !== userId) {
+            throw new Error("Forbidden: You can only edit your own events");
+        }
+
+        // Если обновляются координаты, используем raw query для обновления PostGIS поля
+        if (data.latitude !== undefined && data.longitude !== undefined) {
+            await prisma.$executeRaw`
+                UPDATE "Event"
+                SET 
+                    title = ${data.title ?? existingEvent.title},
+                    description = ${data.description ?? existingEvent.description},
+                    category = ${data.category ?? existingEvent.category},
+                    location = ${data.location ?? existingEvent.location},
+                    latitude = ${data.latitude},
+                    longitude = ${data.longitude},
+                    "locationGeo" = ST_SetSRID(ST_MakePoint(${data.longitude}, ${data.latitude}), 4326)::geography,
+                    "dateTime" = ${data.dateTime ?? existingEvent.dateTime},
+                    price = ${data.price ?? existingEvent.price},
+                    "imageUrl" = ${data.imageUrl ?? existingEvent.imageUrl},
+                    "isOnline" = ${data.isOnline ?? existingEvent.isOnline},
+                    "updatedAt" = NOW()
+                WHERE id = ${id}
+            `;
+        } else {
+            // Иначе используем стандартный update
+            // Удаляем undefined поля
+            const updateData: any = {
+                title: data.title,
+                description: data.description,
+                category: data.category,
+                location: data.location,
+                dateTime: data.dateTime,
+                price: data.price,
+                imageUrl: data.imageUrl,
+                isOnline: data.isOnline,
+            };
+
+            for (const key of Object.keys(updateData)) {
+                if (updateData[key] === undefined) {
+                    delete updateData[key];
+                }
+            }
+
+            await prisma.event.update({
+                where: { id },
+                data: updateData,
+            });
+        }
+
+        return await prisma.event.findUnique({
+            where: { id },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        displayName: true,
+                        photoUrl: true,
+                    },
+                },
+            },
+        });
+    }
+
+    async deleteEvent(id: string, userId: string) {
+        const existingEvent = await prisma.event.findUnique({
+            where: { id },
+        });
+
+        if (!existingEvent) {
+            return null;
+        }
+
+        if (existingEvent.createdById !== userId) {
+            throw new Error("Forbidden: You can only delete your own events");
+        }
+
+        await prisma.event.delete({
+            where: { id },
+        });
+
+        return true;
+    }
+
     async getUserEvents(userId: string) {
         return await prisma.event.findMany({
             where: {
