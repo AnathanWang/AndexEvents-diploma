@@ -51,6 +51,7 @@ app.*.map.json
 **/*Google Services*.json
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
+lib/core/config/firebase_config.dart
 
 # Backend environment variables
 backend/.env
