@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../core/config/app_config.dart';
 import '../../../data/models/user_model.dart';
+import '../../../core/config/app_config.dart';
 import '../../profile/bloc/profile_bloc.dart';
 import '../../profile/bloc/profile_event.dart';
 import '../../profile/bloc/profile_state.dart';
@@ -154,13 +154,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 );
               },
               child: (user.photoUrl != null && user.photoUrl!.isNotEmpty)
-                  ? CircleAvatar(
-                      radius: 32,
-                      backgroundImage: CachedNetworkImageProvider(
-                        user.photoUrl!,
-                        headers: {
-                          'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
-                        },
+                  ? Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF5E60CE),
+                      ),
+                      child: ClipOval(
+                        child: CachedNetworkImage(
+                          imageUrl: user.photoUrl!.trim(),
+                          fit: BoxFit.cover,
+                          httpHeaders: {
+                            'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+                          },
+                          placeholder: (context, url) => Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                          errorWidget: (context, url, error) {
+                            print('🔴 [ProfileScreen] Ошибка загрузки аватара: $error');
+                            return CircleAvatar(
+                              radius: 32,
+                              backgroundColor: const Color(0xFF5E60CE),
+                              child: Text(
+                                user.displayName?.isNotEmpty == true 
+                                    ? user.displayName![0].toUpperCase()
+                                    : user.email[0].toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     )
                   : CircleAvatar(
@@ -361,10 +392,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 child: CachedNetworkImage(
                   imageUrl: event.imageUrl!,
-                  httpHeaders: {
-                    'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
-                  },
-                  height: 180,
+                  height: 140,
                   width: double.infinity,
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(

@@ -3,13 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
-import '../../../core/config/app_config.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
 import '../../../data/models/user_model.dart';
+import '../../../core/config/app_config.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -302,13 +302,44 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             backgroundImage: FileImage(_newProfileImage!),
                           )
                         : (user?.photoUrl != null && user!.photoUrl!.isNotEmpty)
-                            ? CircleAvatar(
-                                radius: 60,
-                                backgroundImage: CachedNetworkImageProvider(
-                                  user!.photoUrl!,
-                                  headers: {
-                                    'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
-                                  },
+                            ? Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(0xFF5E60CE),
+                                ),
+                                child: ClipOval(
+                                  child: CachedNetworkImage(
+                                    imageUrl: user.photoUrl!,
+                                    fit: BoxFit.cover,
+                                    httpHeaders: {
+                                      'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+                                    },
+                                    placeholder: (context, url) => Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 3,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) {
+                                      print('🔴 [EditProfile] Не удалось загрузить аватар: $error');
+                                      return CircleAvatar(
+                                        radius: 60,
+                                        backgroundColor: const Color(0xFF5E60CE),
+                                        child: Text(
+                                          user.displayName?.isNotEmpty == true
+                                              ? user.displayName![0].toUpperCase()
+                                              : user.email[0].toUpperCase(),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 40,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ),
                               )
                             : CircleAvatar(
