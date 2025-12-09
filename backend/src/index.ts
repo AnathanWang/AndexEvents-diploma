@@ -1,14 +1,15 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import dotenv from "dotenv";
 import morgan from "morgan";
 import eventRoutes from "./routes/event.routes.js";
 import userRoutes from "./routes/user.routes.js";
+import uploadRoutes from "./routes/upload.routes.js";
 import logger from "./utils/logger.js";
 import { initializeFirebase } from "./utils/firebase.js";
 
-dotenv.config();
+// dotenv.config() is already loaded via 'import "dotenv/config"'
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -58,6 +59,7 @@ app.get("/health", (req, res) => {
 // Routes
 app.use("/api/events", eventRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/upload", uploadRoutes);
 
 app.get("/", (req, res) => {
   res.json({
@@ -68,6 +70,7 @@ app.get("/", (req, res) => {
       health: '/health',
       events: '/api/events',
       users: '/api/users',
+      uploads: '/api/uploads',
     },
   });
 });
@@ -106,5 +109,6 @@ app.listen(PORT, () => {
   logger.info(`  - Health: http://localhost:${PORT}/health`);
   logger.info(`  - Events: http://localhost:${PORT}/api/events`);
   logger.info(`  - Users: http://localhost:${PORT}/api/users`);
+  logger.info(`  - Uploads: http://localhost:${PORT}/api/uploads`);
 });
 
