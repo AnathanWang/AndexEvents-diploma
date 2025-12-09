@@ -145,9 +145,6 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                 ),
                 child: CachedNetworkImage(
                   imageUrl: event.imageUrl!,
-                  httpHeaders: {
-                    'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
-                  },
                   height: 180,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -278,9 +275,6 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                         if (event.creatorPhotoUrl != null)
                           CachedNetworkImage(
                             imageUrl: event.creatorPhotoUrl!,
-                            httpHeaders: {
-                              'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
-                            },
                             imageBuilder: (context, imageProvider) => CircleAvatar(
                               radius: 16,
                               backgroundImage: imageProvider,

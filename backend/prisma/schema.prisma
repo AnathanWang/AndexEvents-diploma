@@ -38,7 +38,7 @@ enum ParticipantStatus {
 
 model User {
   id            String   @id @default(uuid())
-  firebaseUid   String   @unique
+  supabaseUid   String   @unique
   email         String   @unique
   displayName   String?
   photoUrl      String?
@@ -78,7 +78,7 @@ model User {
   sentNotifications Notification[] @relation("NotificationSender")
   receivedNotifications Notification[] @relation("NotificationReceiver")
   
-  @@index([firebaseUid])
+  @@index([supabaseUid])
   @@index([email])
 }
 

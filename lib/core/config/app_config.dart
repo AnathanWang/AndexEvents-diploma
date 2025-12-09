@@ -1,8 +1,26 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+
 class AppConfig {
   // API Configuration
-  // Для iOS симулятора: используем IP адрес машины вместо localhost
-  // Для физического устройства/Android: может потребоваться другой адрес
-  static const String baseUrl = 'http://192.168.1.147:3000/api';
+  // Автоматическое определение адреса сервера
+  static String get baseUrl {
+    if (kReleaseMode) {
+      // TODO: Укажите адрес продакшн сервера
+      return 'https://api.andexevents.com/api';
+    }
+    
+    if (Platform.isAndroid) {
+      // Для Android эмулятора
+      return 'http://10.0.2.2:3000/api';
+    }
+    
+    // Для iOS симулятора и macOS
+    // Если вы используете физическое устройство, замените localhost на IP вашего компьютера
+    // Например: return 'http://192.168.1.147:3000/api';
+    return 'http://localhost:3000/api';
+  }
+  
   static const String apiVersion = 'v1';
   
   // Supabase Configuration

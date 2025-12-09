@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../core/config/app_config.dart';
@@ -8,24 +8,20 @@ import '../models/user_model.dart';
 
 /// Сервис для работы с профилем пользователя
 class UserService {
-  final firebase_auth.FirebaseAuth _firebaseAuth = firebase_auth.FirebaseAuth.instance;
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  /// Получить Firebase ID Token для авторизованных запросов
+  /// Получить Supabase Access Token для авторизованных запросов
   Future<String?> _getIdToken() async {
-    return await _firebaseAuth.currentUser?.getIdToken();
-  }
-
-  /// Обновить Supabase session (refresh token)
-  Future<void> _refreshSupabaseSession() async {
-    try {
-      print('🔵 [Supabase] Пытаемся обновить сессию...');
-      await _supabase.auth.refreshSession();
-      print('🔵 [Supabase] Сессия успешно обновлена');
-    } catch (e) {
-      print('🔴 [Supabase] Ошибка при обновлении сессии: $e');
-      // Не бросаем исключение - попробуем загрузить без refresh
+    // Ждём инициализации сессии с повторными попытками
+    for (int attempt = 0; attempt < 10; attempt++) {
+      final session = _supabase.auth.currentSession;
+      if (session?.accessToken != null) {
+        return session!.accessToken;
+      }
+      print('🟡 [UserService] Ожидание токена, попытка ${attempt + 1}/10...');
+      await Future.delayed(const Duration(milliseconds: 300));
     }
+    return _supabase.auth.currentSession?.accessToken;
   }
 
   /// Загрузить фото в Supabase Storage
@@ -33,62 +29,114 @@ class UserService {
     try {
       print('🔵 [Supabase] Начинаем загрузку фото...');
       
-      // Обновляем Supabase session перед загрузкой
-      await _refreshSupabaseSession();
+      // Получаем текущего пользователя и сессию
+      final user = _supabase.auth.currentUser;
+      final session = _supabase.auth.currentSession;
       
-      final firebase_auth.User? user = _firebaseAuth.currentUser;
-      if (user == null) {
-        print('🔴 [Supabase] Пользователь не авторизован');
+      if (user == null || session == null) {
+        print('🔴 [Supabase] Нет активного пользователя или сессии');
         throw Exception('Пользователь не авторизован');
       }
 
-      print('🔵 [Supabase] Пользователь: ${user.uid}');
+      print('🔵 [Supabase] User ID: ${user.id}');
+      print('🔵 [Supabase] User email: ${user.email}');
+      print('🔵 [Supabase] Token (первые 50 символов): ${session.accessToken.substring(0, 50)}...');
+      print('🔵 [Supabase] Token role: ${session.user.role}');
 
-      // Проверяем существование файла
+      // Проверяем файл
       if (!await photoFile.exists()) {
-        print('🔴 [Supabase] Файл не существует: ${photoFile.path}');
-        throw Exception('Файл не существует: ${photoFile.path}');
+        throw Exception('Файл не найден');
       }
 
-      print('🔵 [Supabase] Файл существует: ${photoFile.path}');
-
-      // Читаем файл
-      final bytes = await photoFile.readAsBytes();
-      print('🔵 [Supabase] Размер файла: ${bytes.length} bytes');
+      final fileExt = photoFile.path.split('.').last.toLowerCase();
+      final fileName = 'avatar.$fileExt';
+      final filePath = '${user.id}/$fileName';
       
-      final fileExt = photoFile.path.split('.').last;
-      
-      // Путь к файлу в Supabase Storage: avatars/{userId}/photo_1.{ext}
-      final String filePath = '${user.uid}/photo_1.$fileExt';
-      print('🔵 [Supabase] Путь для загрузки: $filePath');
+      print('🔵 [Supabase] Bucket: avatars');
+      print('🔵 [Supabase] Path: $filePath');
+      print('🔵 [Supabase] Content-Type: image/$fileExt');
+      print('🔵 [Supabase] File exists: ${await photoFile.exists()}');
+      print('🔵 [Supabase] File size: ${await photoFile.length()} bytes');
 
-      // Загружаем файл в Supabase Storage bucket 'avatars'
-      print('🔵 [Supabase] Начинаем uploadBinary...');
-      await _supabase.storage.from('avatars').uploadBinary(
-        filePath,
-        bytes,
-        fileOptions: FileOptions(
-          contentType: 'image/$fileExt',
-          upsert: true, // Перезаписываем если файл уже существует
-        ),
-      ).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          print('🔴 [Supabase] Timeout при uploadBinary');
-          throw Exception('Timeout при загрузке файла');
-        },
-      );
+      // Используем прямой HTTP запрос к Supabase Storage API (обходим SDK)
+      try {
+        print('🔵 [Supabase] Используем прямой HTTP POST к Storage API...');
+        print('🔵 [Supabase] Начало: ${DateTime.now()}');
+        
+        final bytes = await photoFile.readAsBytes();
+        final url = '${AppConfig.supabaseUrl}/storage/v1/object/avatars/$filePath';
+        
+        print('🔵 [Supabase] URL: $url');
+        print('🔵 [Supabase] Отправляем ${bytes.length} bytes...');
+        
+        final response = await http.post(
+          Uri.parse(url),
+          headers: {
+            'Authorization': 'Bearer ${session.accessToken}',
+            'Content-Type': 'image/$fileExt',
+            'x-upsert': 'true',
+          },
+          body: bytes,
+        ).timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            print('🔴 [Supabase] HTTP timeout после 30 секунд');
+            throw TimeoutException('HTTP request timeout');
+          },
+        );
 
-      print('🔵 [Supabase] Файл успешно загружен');
+        print('🟢 [Supabase] Конец: ${DateTime.now()}');
+        print('🟢 [Supabase] HTTP Status: ${response.statusCode}');
+        print('🟢 [Supabase] Response body: ${response.body}');
+        
+        if (response.statusCode != 200 && response.statusCode != 201) {
+          throw Exception('Upload failed: ${response.statusCode} - ${response.body}');
+        }
 
-      // Получаем публичный URL через SDK
-      final String publicUrl = _supabase.storage.from('avatars').getPublicUrl(filePath);
-      print('🔵 [Supabase] Public URL: $publicUrl');
-      
-      return publicUrl;
-    } catch (e) {
-      print('🔴 [Supabase] Ошибка загрузки фото: $e');
-      throw Exception('Ошибка загрузки фото: $e');
+        // Получаем публичный URL
+        final publicUrl = _supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+
+        // Валидация URL
+        if (!publicUrl.startsWith('https://')) {
+          throw Exception('Некорректный URL: $publicUrl');
+        }
+        
+        // Проверяем на двойные слэши (кроме https://)
+        final cleanUrl = publicUrl.replaceFirst('https://', '').replaceAll('//', '/');
+        final finalUrl = 'https://$cleanUrl';
+        
+        print('🟢 [Supabase] Public URL: $finalUrl');
+        print('🟢 [Supabase] URL валиден: ${Uri.tryParse(finalUrl) != null}');
+        
+        return finalUrl;
+
+      } on StorageException catch (e) {
+        print('🔴 [Supabase] StorageException:');
+        print('   Message: ${e.message}');
+        print('   Status: ${e.statusCode}');
+        print('   Error: ${e.error}');
+        
+        if (e.statusCode == '404') {
+          throw Exception('Bucket "avatars" не найден');
+        } else if (e.statusCode == '403') {
+          throw Exception('Нет прав доступа. Проверьте RLS политики для user ${user.id}');
+        } else if (e.statusCode == '401') {
+          throw Exception('Не авторизован. Проверьте токен');
+        } else {
+          throw Exception('Storage error (${e.statusCode}): ${e.message}');
+        }
+      } on TimeoutException catch (e) {
+        print('🔴 [Supabase] TimeoutException после ${e.duration?.inSeconds ?? "?"} секунд');
+        print('🔴 [Supabase] Это проблема симулятора iOS. На реальном устройстве должно работать.');
+        throw Exception('Timeout. Попробуйте: 1) Меньший файл 2) Реальное устройство 3) Другую WiFi сеть');
+      }
+    } catch (e, stackTrace) {
+      print('🔴 [Supabase] Неожиданная ошибка: $e');
+      print('🔴 [Supabase] Тип ошибки: ${e.runtimeType}');
+      print('🔴 [Supabase] Stack trace: $stackTrace');
+      rethrow;
     }
   }
 

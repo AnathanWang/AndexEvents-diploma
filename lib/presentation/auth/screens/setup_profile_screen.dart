@@ -3,6 +3,8 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../data/services/user_service.dart';
 import 'setup_interests_screen.dart';
+import '../../widgets/common/custom_dropdown.dart';
+import '../../widgets/common/custom_notification.dart';
 
 /// Экран 1: Настройка базового профиля
 /// Фото, возраст, пол
@@ -33,9 +35,9 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
+      maxWidth: 512,  // Уменьшили для симулятора
+      maxHeight: 512,
+      imageQuality: 60,  // Сильнее сжимаем
     );
 
     if (image != null) {
@@ -54,15 +56,27 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
 
         // Загружаем фото если выбрано
         if (_profileImage != null) {
-          photoUrl = await _userService.uploadProfilePhoto(_profileImage!);
+          print('🔵 [SetupProfile] Загружаем фото...');
+          try {
+            photoUrl = await _userService.uploadProfilePhoto(_profileImage!);
+            print('🟢 [SetupProfile] Фото загружено: $photoUrl');
+          } catch (photoError) {
+            print('🟡 [SetupProfile] Не удалось загрузить фото: $photoError');
+            print('🟡 [SetupProfile] Продолжаем без фото (можно добавить позже)');
+            // Не прерываем процесс, продолжаем без фото
+          }
+        } else {
+          print('🟡 [SetupProfile] Фото не выбрано');
         }
 
         // Отправляем данные профиля на backend
+        print('🔵 [SetupProfile] Отправляем профиль с photoUrl: $photoUrl');
         await _userService.updateProfile(
           photoUrl: photoUrl,
           age: int.tryParse(_ageController.text),
           gender: _selectedGender,
         );
+        print('🟢 [SetupProfile] Профиль обновлён');
 
         if (mounted) {
           setState(() => _isLoading = false);
@@ -73,14 +87,10 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
           );
         }
       } catch (e) {
+        print('🔴 [SetupProfile] Ошибка: $e');
         if (mounted) {
           setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Ошибка: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomNotification.show(context, 'Ошибка: $e', isError: true);
         }
       }
     }
@@ -277,27 +287,10 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                 const SizedBox(height: 16),
 
                 // Пол
-                DropdownButtonFormField<String>(
+                CustomDropdown<String>(
+                  label: 'Пол',
                   value: _selectedGender,
-                  decoration: InputDecoration(
-                    labelText: 'Пол',
-                    hintText: 'Выберите пол',
-                    prefixIcon: const Icon(Icons.wc_outlined),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF5E60CE),
-                        width: 2,
-                      ),
-                    ),
-                  ),
+                  prefixIcon: Icons.wc_outlined,
                   items: _genders.map((String gender) {
                     return DropdownMenuItem<String>(
                       value: gender,
@@ -369,11 +362,10 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                       } catch (e) {
                         if (mounted) {
                           setState(() => _isLoading = false);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Ошибка: $e'),
-                              backgroundColor: Colors.red,
-                            ),
+                          CustomNotification.show(
+                            context,
+                            'Ошибка при обновлении профиля: $e',
+                            isError: true,
                           );
                         }
                       }

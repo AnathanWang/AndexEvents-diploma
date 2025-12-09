@@ -1,65 +1,44 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/config/app_config.dart';
 import '../models/event_model.dart';
 import '../models/participant_model.dart';
 
 /// Сервис для работы с событиями
 class EventService {
-  final firebase_auth.FirebaseAuth _firebaseAuth = firebase_auth.FirebaseAuth.instance;
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  /// Получить Firebase ID Token для авторизованных запросов
+  /// Получить Supabase Access Token для авторизованных запросов
   Future<String?> _getIdToken() async {
-    return await _firebaseAuth.currentUser?.getIdToken();
+    return _supabase.auth.currentSession?.accessToken;
   }
 
-  /// Загрузить фото события в Supabase Storage
+  /// Загрузить фото события через Supabase Storage
   Future<String> uploadEventPhoto(File photoFile) async {
     try {
-      final firebase_auth.User? user = _firebaseAuth.currentUser;
+      final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('Пользователь не авторизован');
 
       if (!await photoFile.exists()) {
         throw Exception('Файл не существует');
       }
 
-      final bytes = await photoFile.readAsBytes();
-      final fileExt = photoFile.path.split('.').last;
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = '${user.id}/${DateTime.now().millisecondsSinceEpoch}.jpg';
       
-      // Формируем имя файла: USERID_event_TIMESTAMP.ext
-      final String fileName = '${user.uid}_event_$timestamp.$fileExt';
-      
-      // Нормализуем Content-Type (Supabase чувствителен к этому)
-      String contentType = 'image/$fileExt';
-      if (fileExt.toLowerCase() == 'jpg') contentType = 'image/jpeg';
+      // Upload to Supabase Storage
+      await _supabase.storage.from('events').upload(
+        fileName,
+        photoFile,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+      );
 
-      // Используем прямой HTTP запрос к Storage API для надежности
-      // Это позволяет обойти проблемы с сессиями при использовании Firebase Auth
-      final url = Uri.parse('${AppConfig.supabaseUrl}/storage/v1/object/events/$fileName');
-      
-      final response = await http.post(
-        url,
-        headers: {
-          'apikey': AppConfig.supabaseAnonKey,
-          'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
-          'Content-Type': contentType,
-          'x-upsert': 'false',
-        },
-        body: bytes,
-      ).timeout(const Duration(seconds: 60));
-
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка загрузки (HTTP ${response.statusCode}): ${response.body}');
-      }
-
-      // Получаем публичный URL загруженного файла
+      // Get Public URL
       final String publicUrl = _supabase.storage.from('events').getPublicUrl(fileName);
+      print('Upload successful! URL: $publicUrl');
       return publicUrl;
+
     } catch (e) {
       print('Error uploading event photo: $e');
       throw Exception('Не удалось загрузить фото: $e');

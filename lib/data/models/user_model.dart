@@ -1,7 +1,7 @@
 /// Модель пользователя
 class UserModel {
   final String id;
-  final String firebaseUid;
+  final String supabaseUid;
   final String email;
   final String? displayName;
   final String? photoUrl;
@@ -18,7 +18,7 @@ class UserModel {
 
   const UserModel({
     required this.id,
-    required this.firebaseUid,
+    required this.supabaseUid,
     required this.email,
     this.displayName,
     this.photoUrl,
@@ -37,7 +37,7 @@ class UserModel {
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'] as String,
-      firebaseUid: json['firebaseUid'] as String,
+      supabaseUid: json['supabaseUid'] as String,
       email: json['email'] as String,
       displayName: json['displayName'] as String?,
       photoUrl: json['photoUrl'] as String?,
@@ -59,7 +59,7 @@ class UserModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'firebaseUid': firebaseUid,
+      'supabaseUid': supabaseUid,
       'email': email,
       'displayName': displayName,
       'photoUrl': photoUrl,
@@ -78,7 +78,7 @@ class UserModel {
 
   UserModel copyWith({
     String? id,
-    String? firebaseUid,
+    String? supabaseUid,
     String? email,
     String? displayName,
     String? photoUrl,
@@ -95,7 +95,7 @@ class UserModel {
   }) {
     return UserModel(
       id: id ?? this.id,
-      firebaseUid: firebaseUid ?? this.firebaseUid,
+      supabaseUid: supabaseUid ?? this.supabaseUid,
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
       photoUrl: photoUrl ?? this.photoUrl,

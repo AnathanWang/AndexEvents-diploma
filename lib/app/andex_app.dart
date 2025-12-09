@@ -16,45 +16,56 @@ class AndexApp extends StatelessWidget {
     return BlocProvider<AuthBloc>(
       create: (BuildContext context) => AuthBloc(authService: AuthService())
         ..add(const AuthCheckRequested()),
-      child: MaterialApp(
-      title: 'Andex Events',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF5E60CE),
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF5F6FA),
-        textTheme: const TextTheme(
-          headlineSmall: TextStyle(fontWeight: FontWeight.w700, fontSize: 22),
-          titleMedium: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-          bodyMedium: TextStyle(fontSize: 14, color: Color(0xFF4A4D6A)),
-        ),
-        useMaterial3: true,
-      ),
-      home: BlocBuilder<AuthBloc, AuthState>(
-        builder: (BuildContext context, AuthState state) {
-          if (state is AuthLoading || state is AuthInitial) {
-            // Показываем загрузчик пока проверяем авторизацию
-            return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
+      child: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, authState) {
+          print('🟢 [AndexApp] BlocBuilder state: ${authState.runtimeType}');
+          
+          // Генерируем уникальный ключ для MaterialApp на основе состояния
+          final key = ValueKey('MaterialApp_${authState.runtimeType}_${authState is AuthAuthenticated ? authState.isOnboardingCompleted : "unknown"}');
+          
+          return MaterialApp(
+            key: key,
+            title: 'Andex Events',
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: const Color(0xFF5E60CE),
+                brightness: Brightness.light,
               ),
-            );
-          } else if (state is AuthAuthenticated) {
-            // Если пользователь авторизован и завершил онбординг - показываем главный экран
-            if (state.isOnboardingCompleted) {
-              return const HomeShell();
-            }
-            // Если онбординг не завершён - показываем экран настройки профиля
-            return const SetupProfileScreen();
-          }
-
-          // Если не авторизован - показываем онбординг
-          return const OnboardingScreen();
+              scaffoldBackgroundColor: const Color(0xFFF5F6FA),
+              textTheme: const TextTheme(
+                headlineSmall: TextStyle(fontWeight: FontWeight.w700, fontSize: 22),
+                titleMedium: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                bodyMedium: TextStyle(fontSize: 14, color: Color(0xFF4A4D6A)),
+              ),
+              useMaterial3: true,
+            ),
+            home: _buildHome(authState),
+          );
         },
       ),
-      ),
     );
+  }
+
+  Widget _buildHome(AuthState state) {
+    if (state is AuthLoading || state is AuthInitial) {
+      print('🟢 [AndexApp] Показываем загрузчик');
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    } else if (state is AuthAuthenticated) {
+      print('🟢 [AndexApp] AuthAuthenticated, isOnboardingCompleted: ${state.isOnboardingCompleted}');
+      if (state.isOnboardingCompleted) {
+        print('🟢 [AndexApp] Показываем HomeShell');
+        return const HomeShell();
+      }
+      print('🟢 [AndexApp] Показываем SetupProfileScreen');
+      return const SetupProfileScreen();
+    }
+
+    print('🟢 [AndexApp] Показываем OnboardingScreen');
+    return const OnboardingScreen();
   }
 }

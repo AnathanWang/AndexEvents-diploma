@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import admin from 'firebase-admin';
+import jwt from 'jsonwebtoken';
 import prisma from '../utils/prisma.js';
 import { debug } from '../utils/debug.js';
 
@@ -49,50 +49,37 @@ export const authMiddleware = async (
     }
 
     try {
-      const decodedToken = await admin.auth().verifyIdToken(token);
+      // Verify Supabase Token
+      const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+      if (!jwtSecret) {
+        console.error('SUPABASE_JWT_SECRET is not defined in environment variables');
+        throw new Error('Server configuration error');
+      }
+
+      const decoded = jwt.verify(token, jwtSecret) as jwt.JwtPayload;
+      
+      if (!decoded.sub) {
+        throw new Error('Token missing sub claim');
+      }
+
       if (process.env.NODE_ENV === 'development') {
-        debug.log('AuthMiddleware', 'Token verified successfully, uid:', decodedToken.uid);
+        debug.log('AuthMiddleware', 'Token verified successfully, sub:', decoded.sub);
       }
       
-      // Найдём пользователя в БД по firebaseUid
+      // Найдём пользователя в БД по supabaseUid
       const user = await prisma.user.findUnique({
-        where: { firebaseUid: decodedToken.uid }
+        where: { supabaseUid: decoded.sub }
       });
       
       req.user = {
-        uid: decodedToken.uid,
+        uid: decoded.sub!,
         userId: user?.id, // Сохраняем UUID пользователя из БД
-        email: decodedToken.email ?? undefined,
+        email: decoded.email,
       };
       next();
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         debug.log('AuthMiddleware', 'Token verification failed:', error);
-      }
-      
-      // Dev режим: если токен в формате Firebase Admin custom token, используем fallback
-      if (process.env.NODE_ENV === 'development') {
-        if (process.env.NODE_ENV === 'development') {
-          debug.log('AuthMiddleware', 'Trying dev fallback authentication');
-        }
-        
-        // Fallback: используем известный UID для разработки
-        const devUser = await prisma.user.findUnique({
-          where: { firebaseUid: 'SReqkUw3arQRzFOevMjQi4BL4To1' }
-        });
-        
-        if (devUser) {
-          req.user = {
-            uid: 'SReqkUw3arQRzFOevMjQi4BL4To1',
-            userId: devUser.id,
-            email: devUser.email,
-          };
-          if (process.env.NODE_ENV === 'development') {
-            debug.log('AuthMiddleware', 'Dev fallback successful, userId:', devUser.id);
-          }
-          next();
-          return;
-        }
       }
       
       res.status(401).json({
@@ -132,18 +119,23 @@ export const optionalAuthMiddleware = async (
     }
 
     try {
-      const decodedToken = await admin.auth().verifyIdToken(token);
-      
-      // Найдём пользователя в БД по firebaseUid
+      const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+      if (jwtSecret) {
+        const decoded = jwt.verify(token, jwtSecret) as jwt.JwtPayload;
+        
+        if (decoded.sub) {
+      // Найдём пользователя в БД по supabaseUid
       const user = await prisma.user.findUnique({
-        where: { firebaseUid: decodedToken.uid }
+        where: { supabaseUid: decoded.sub }
       });
       
       req.user = {
-        uid: decodedToken.uid,
+        uid: decoded.sub!,
         userId: user?.id, // Сохраняем UUID пользователя из БД
-        email: decodedToken.email ?? undefined,
+        email: decoded.email,
       };
+        }
+      }
       next();
     } catch (error) {
       // Если токен невалиден, просто продолжаем без пользователя

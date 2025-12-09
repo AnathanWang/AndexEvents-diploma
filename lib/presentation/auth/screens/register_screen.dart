@@ -76,15 +76,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
 
         if (state is AuthAuthenticated) {
-          // Если онбординг не завершён - переходим на настройку профиля
-          if (!state.isOnboardingCompleted) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute<void>(
-                builder: (BuildContext context) => const SetupProfileScreen(),
-              ),
-            );
-          }
-          // Если онбординг завершён - ничего не делаем, навигация через andex_app.dart
+          // Навигация через andex_app.dart - ничего не делаем здесь
+          print('🟡 [RegisterScreen] AuthAuthenticated получен');
         } else if (state is AuthFailure) {
           // Показываем ошибку
           ScaffoldMessenger.of(context).showSnackBar(
@@ -188,8 +181,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Введите email';
                     }
-                    if (!value.contains('@')) {
-                      return 'Введите корректный email';
+                    // Более строгая валидация email для Supabase
+                    final emailRegex = RegExp(
+                      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+                    );
+                    if (!emailRegex.hasMatch(value.trim())) {
+                      return 'Введите корректный email (например: user@example.com)';
+                    }
+                    // Проверка минимальной длины локальной части (до @)
+                    final localPart = value.trim().split('@')[0];
+                    if (localPart.length < 3) {
+                      return 'Email должен содержать минимум 3 символа до @';
                     }
                     return null;
                   },

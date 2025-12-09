@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../../../data/services/auth_service.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -8,7 +8,7 @@ import 'auth_state.dart';
 /// BLoC для управления авторизацией
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthService _authService;
-  StreamSubscription<User?>? _authStateSubscription;
+  StreamSubscription<supabase.AuthState>? _authStateSubscription;
 
   AuthBloc({required AuthService authService})
       : _authService = authService,
@@ -21,8 +21,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLogoutRequested>(_onAuthLogoutRequested);
     on<AuthPasswordResetRequested>(_onAuthPasswordResetRequested);
 
-    // Подписываемся на изменения состояния авторизации Firebase
-    _authStateSubscription = _authService.authStateChanges.listen((User? user) {
+    // Подписываемся на изменения состояния авторизации Supabase
+    _authStateSubscription = _authService.authStateChanges.listen((supabase.AuthState state) {
+      // Supabase AuthState содержит event и session.
+      // Нас интересует факт изменения сессии или события входа/выхода.
+      // Просто триггерим проверку.
       add(const AuthCheckRequested());
     });
   }
@@ -32,7 +35,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthCheckRequested event,
     Emitter<AuthState> emit,
   ) async {
-    final User? user = _authService.currentUser;
+    final supabase.User? user = _authService.currentUser;
     if (user != null) {
       try {
         // Загружаем профиль из бэкенда для проверки onboarding
@@ -55,29 +58,34 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
     try {
-      final UserCredential credential = await _authService.signInWithEmail(
+      final supabase.AuthResponse response = await _authService.signInWithEmail(
         email: event.email,
         password: event.password,
       );
+
+      if (response.user == null) {
+        throw Exception('Ошибка входа: пользователь не найден');
+      }
 
       // Загружаем профиль для проверки onboarding
       try {
         final userProfile = await _authService.getCurrentUserProfile();
         final bool isOnboardingCompleted = userProfile['isOnboardingCompleted'] ?? false;
         emit(AuthAuthenticated(
-          user: credential.user!,
+          user: response.user!,
           isOnboardingCompleted: isOnboardingCompleted,
         ));
       } catch (e) {
         // Если не удалось загрузить профиль, считаем что onboarding не завершен
         emit(AuthAuthenticated(
-          user: credential.user!,
+          user: response.user!,
           isOnboardingCompleted: false,
         ));
       }
     } catch (e) {
+      print('🔴 [AuthBloc] Login error: $e');
       emit(AuthFailure(message: e.toString()));
-      emit(const AuthUnauthenticated());
+      // emit(const AuthUnauthenticated());
     }
   }
 
@@ -86,22 +94,49 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthRegisterRequested event,
     Emitter<AuthState> emit,
   ) async {
+    print('🔵 [AuthBloc] Регистрация началась');
     emit(const AuthLoading());
     try {
-      final UserCredential credential = await _authService.signUpWithEmail(
+      final supabase.AuthResponse response = await _authService.signUpWithEmail(
         email: event.email,
         password: event.password,
         displayName: event.displayName,
       );
 
+      if (response.user == null) {
+        throw Exception('Ошибка регистрации: пользователь не создан');
+      }
+
+      print('🔵 [AuthBloc] Регистрация успешна');
+      print('🔵 [AuthBloc] User ID: ${response.user!.id}');
+      print('🔵 [AuthBloc] Session: ${response.session != null}');
+      if (response.session?.accessToken != null) {
+        print('🔵 [AuthBloc] Access Token: ${response.session!.accessToken.substring(0, 20)}...');
+      }
+      
+      // Проверяем, есть ли активная сессия
+      if (response.session == null) {
+        print('🟡 [AuthBloc] Сессия отсутствует - требуется подтверждение email');
+        throw Exception(
+          'Для завершения регистрации необходимо подтвердить email. '
+          'Проверьте почту и перейдите по ссылке из письма.'
+        );
+      }
+      
+      // Даём время на полную инициализацию сессии в Supabase client
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      print('🔵 [AuthBloc] Эмитим AuthAuthenticated с isOnboardingCompleted: false');
       // После регистрации пользователь должен пройти онбординг
       emit(AuthAuthenticated(
-        user: credential.user!,
+        user: response.user!,
         isOnboardingCompleted: false,
       ));
+      print('🔵 [AuthBloc] AuthAuthenticated эмитен');
     } catch (e) {
+      print('🔴 [AuthBloc] Register error: $e');
       emit(AuthFailure(message: e.toString()));
-      emit(const AuthUnauthenticated());
+      // emit(const AuthUnauthenticated());
     }
   }
 
@@ -116,19 +151,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       print('🔵 [AuthBloc] Вызываем authService.signInWithGoogleAndGetStatus()');
       final result = await _authService.signInWithGoogleAndGetStatus();
       
-      final UserCredential credential = result['userCredential'] as UserCredential;
+      final supabase.AuthResponse response = result['userCredential'] as supabase.AuthResponse;
       final bool isOnboardingCompleted = result['isOnboardingCompleted'] as bool;
       
+      if (response.user == null) {
+        throw Exception('Ошибка Google Sign-In: пользователь не найден');
+      }
+
       print('🔵 [AuthBloc] Google Sign-In успешен, isOnboardingCompleted: $isOnboardingCompleted');
       
       emit(AuthAuthenticated(
-        user: credential.user!,
+        user: response.user!,
         isOnboardingCompleted: isOnboardingCompleted,
       ));
     } catch (e) {
       print('🔴 [AuthBloc] Google Sign-In ошибка: $e');
       emit(AuthFailure(message: e.toString()));
-      emit(const AuthUnauthenticated());
+      // Не сбрасываем в Unauthenticated сразу, чтобы UI успел показать ошибку
+      // emit(const AuthUnauthenticated()); 
     }
   }
 
@@ -158,7 +198,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(const AuthUnauthenticated());
     } catch (e) {
       emit(AuthFailure(message: e.toString()));
-      emit(const AuthUnauthenticated());
+      // emit(const AuthUnauthenticated());
     }
   }
 

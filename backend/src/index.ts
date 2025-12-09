@@ -3,25 +3,19 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import path from "path";
 import eventRoutes from "./routes/event.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import uploadRoutes from "./routes/upload.routes.js";
 import logger from "./utils/logger.js";
-import { initializeFirebase } from "./utils/firebase.js";
 
 // dotenv.config() is already loaded via 'import "dotenv/config"'
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Initialize Firebase Admin SDK
-try {
-  initializeFirebase();
-  logger.info('Firebase Admin SDK initialized successfully');
-} catch (error) {
-  logger.error('Failed to initialize Firebase:', error);
-  process.exit(1);
-}
+// Serve static files from public/uploads
+app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
 
 // Middleware
 app.use(helmet());

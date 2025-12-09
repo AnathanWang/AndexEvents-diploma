@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../../widgets/common/custom_dropdown.dart';
+import '../../widgets/common/custom_notification.dart';
 import '../bloc/event_bloc.dart';
 import '../bloc/event_event.dart';
 import '../bloc/event_state.dart';
@@ -151,11 +153,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     if (_formKey.currentState?.validate() ?? false) {
       // Проверяем координаты для оффлайн события
       if (!_isOnline && (_latitude == null || _longitude == null)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Выберите место на карте'),
-            backgroundColor: Colors.red,
-          ),
+        CustomNotification.show(
+          context,
+          'Выберите место на карте',
+          isError: true,
         );
         return;
       }
@@ -203,35 +204,19 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             _isPhotoUploading = false;
             _uploadedPhotoUrl = state.photoUrl;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Фото загружено!'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 1),
-            ),
-          );
+          CustomNotification.show(context, 'Фото загружено!');
         } else if (state is EventCreating) {
           setState(() => _isLoading = true);
         } else if (state is EventCreated) {
           setState(() => _isLoading = false);
           Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Событие успешно создано!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          CustomNotification.show(context, 'Событие успешно создано!');
         } else if (state is EventError) {
           setState(() {
             _isLoading = false;
             _isPhotoUploading = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomNotification.show(context, state.message, isError: true);
         }
       },
       child: Scaffold(
@@ -388,23 +373,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             const SizedBox(height: 16),
             
             // Категория
-            DropdownButtonFormField<String>(
-              initialValue: _selectedCategory,
-              decoration: InputDecoration(
-                labelText: 'Категория',
-                prefixIcon: const Icon(Icons.category),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFF5E60CE), width: 2),
-                ),
-              ),
+            CustomDropdown<String>(
+              label: 'Категория',
+              value: _selectedCategory,
+              prefixIcon: Icons.category,
               items: _categories.map((String category) {
                 return DropdownMenuItem<String>(
                   value: category,

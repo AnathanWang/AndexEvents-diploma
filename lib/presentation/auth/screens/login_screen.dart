@@ -4,7 +4,6 @@ import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import 'register_screen.dart';
-import '../../home/home_shell.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -84,16 +83,10 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
         
-        // При успешной аутентификации переходим на главный экран,
-        // удаляя все предыдущие маршруты
+        // При успешной аутентификации навигация через andex_app.dart
         if (state is AuthAuthenticated) {
-          print('DEBUG: AuthAuthenticated received, navigating to HomeShell');
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute<void>(
-              builder: (BuildContext context) => const HomeShell(),
-            ),
-            (Route<dynamic> route) => false,
-          );
+          print('DEBUG: AuthAuthenticated received');
+          // Навигация через andex_app.dart - ничего не делаем здесь
         }
       },
       child: Scaffold(
@@ -159,7 +152,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Введите email';
                     }
-                    if (!value.contains('@')) {
+                    // Более строгая валидация email для Supabase
+                    final emailRegex = RegExp(
+                      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+                    );
+                    if (!emailRegex.hasMatch(value.trim())) {
                       return 'Введите корректный email';
                     }
                     return null;
