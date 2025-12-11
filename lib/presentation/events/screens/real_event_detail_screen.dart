@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
@@ -8,7 +9,6 @@ import '../bloc/event_event.dart';
 import '../bloc/event_state.dart';
 import '../../../data/models/event_model.dart';
 import '../widgets/event_participants_dialog.dart';
-import '../../../core/config/app_config.dart';
 
 class RealEventDetailScreen extends StatefulWidget {
   final String eventId;
@@ -39,11 +39,10 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
     setState(() {
       _isFavorite = !_isFavorite;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_isFavorite ? 'Добавлено в избранное' : 'Удалено из избранного'),
-        duration: const Duration(seconds: 1),
-      ),
+    CustomNotification.show(
+      context,
+      _isFavorite ? 'Добавлено в избранное' : 'Удалено из избранного',
+      duration: const Duration(seconds: 1),
     );
   }
 
@@ -62,12 +61,10 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
       );
     }
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_isGoing ? 'Вы идете на событие!' : 'Отменено участие'),
-        duration: const Duration(seconds: 1),
-        backgroundColor: _isGoing ? Colors.green : null,
-      ),
+    CustomNotification.show(
+      context,
+      _isGoing ? 'Вы идете на событие!' : 'Отменено участие',
+      duration: const Duration(seconds: 1),
     );
   }
 
@@ -236,7 +233,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                         ),
                       ),
                       child: const Icon(
-                        Icons.celebration,
+                        Icons.event,
                         size: 120,
                         color: Colors.white38,
                       ),
@@ -373,19 +370,16 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                                         backgroundImage: event.previewParticipants[index].user.photoUrl != null
                                             ? CachedNetworkImageProvider(
                                                 event.previewParticipants[index].user.photoUrl!,
-                                                headers: {
-                                                  'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
-                                                },
                                               )
                                             : null,
                                         child: event.previewParticipants[index].user.photoUrl == null
                                             ? Text(
-                                                event.previewParticipants[index].user.displayName.isNotEmpty 
+                                                event.previewParticipants[index].user.displayName.isNotEmpty
                                                     ? event.previewParticipants[index].user.displayName[0].toUpperCase()
                                                     : '?',
                                                 style: const TextStyle(
                                                   color: Color(0xFF4A4D6A),
-                                                  fontWeight: FontWeight.w600,
+                                                  fontWeight: FontWeight.w700,
                                                 ),
                                               )
                                             : null,

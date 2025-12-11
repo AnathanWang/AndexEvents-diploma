@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
@@ -35,12 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _handleRegister() {
     if (_formKey.currentState?.validate() ?? false) {
       if (!_acceptTerms) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Примите условия использования'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomNotification.error(context, 'Примите условия использования');
         return;
       }
 
@@ -80,12 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           print('🟡 [RegisterScreen] AuthAuthenticated получен');
         } else if (state is AuthFailure) {
           // Показываем ошибку
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomNotification.error(context, state.message);
         }
       },
       child: Scaffold(

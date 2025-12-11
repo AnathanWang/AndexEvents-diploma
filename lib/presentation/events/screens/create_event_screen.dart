@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
 import '../../widgets/common/custom_dropdown.dart';
 import '../../widgets/common/custom_notification.dart';
@@ -109,23 +110,33 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   }
 
   Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1280,
-      maxHeight: 720,
-      imageQuality: 70,
-    );
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1280,
+        maxHeight: 720,
+        imageQuality: 70,
+      );
 
-    if (image != null) {
-      setState(() {
-        _eventPhoto = File(image.path);
-      });
-      
-      // Загружаем фото сразу
-      if (mounted) {
+      if (image != null && mounted) {
+        setState(() {
+          _eventPhoto = File(image.path);
+        });
+        
+        // Загружаем фото сразу
         context.read<EventBloc>().add(EventPhotoUploadRequested(image.path));
       }
+    } catch (e) {
+      // Пользователь отменил выбор или произошла другая ошибка
+      if (mounted && e.toString().contains('multiple_request')) {
+        CustomNotification.show(
+          context,
+          'Операция отменена. Попробуйте еще раз',
+          isError: true,
+        );
+      }
+      print('Image picker error: $e');
     }
   }
 
@@ -202,7 +213,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         } else if (state is EventPhotoUploaded) {
           setState(() {
             _isPhotoUploading = false;
-            _uploadedPhotoUrl = state.photoUrl;
+            final url = state.photoUrl.trim();
+            _uploadedPhotoUrl = url.isEmpty ? null : url;
           });
           CustomNotification.show(context, 'Фото загружено!');
         } else if (state is EventCreating) {
@@ -250,67 +262,50 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF5F5F5),
                   borderRadius: BorderRadius.circular(16),
-                  image: _eventPhoto != null
-                      ? DecorationImage(
-                          image: FileImage(_eventPhoto!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
                 ),
-                child: _eventPhoto == null
-                    ? Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          const Icon(
-                            Icons.add_photo_alternate_outlined,
-                            size: 48,
-                            color: Color(0xFF9E9E9E),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Добавить фото',
-                            style: TextStyle(
-                              color: Color(0xFF9E9E9E),
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Нажмите для загрузки',
-                            style: TextStyle(
-                              color: Color(0xFF5E60CE),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      )
-                    : Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          if (_isPhotoUploading)
-                            Container(
-                              color: Colors.black45,
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
+                child: _isPhotoUploading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _eventPhoto != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.file(_eventPhoto!, fit: BoxFit.cover),
+                          )
+                        : _uploadedPhotoUrl != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: CachedNetworkImage(
+                                  imageUrl: _uploadedPhotoUrl!,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                                  errorWidget: (context, url, error) => const Icon(Icons.error),
                                 ),
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  const Icon(
+                                    Icons.add_photo_alternate_outlined,
+                                    size: 48,
+                                    color: Color(0xFF9E9E9E),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Добавить фото',
+                                    style: TextStyle(
+                                      color: Color(0xFF9E9E9E),
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Нажмите для загрузки',
+                                    style: TextStyle(
+                                      color: Color(0xFF5E60CE),
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          Align(
-                            alignment: Alignment.topRight,
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: CircleAvatar(
-                                backgroundColor: Colors.black54,
-                                child: IconButton(
-                                  icon: const Icon(Icons.edit, color: Colors.white, size: 20),
-                                  onPressed: _pickImage,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
               ),
             ),
             const SizedBox(height: 24),
@@ -377,10 +372,19 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
               label: 'Категория',
               value: _selectedCategory,
               prefixIcon: Icons.category,
+              hint: 'Выберите категорию',
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              useBottomSheet: true,
+              showBottomSheetCount: false,
               items: _categories.map((String category) {
                 return DropdownMenuItem<String>(
                   value: category,
-                  child: Text(category),
+                  child: Text(
+                    category,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
                 );
               }).toList(),
               onChanged: (String? value) {

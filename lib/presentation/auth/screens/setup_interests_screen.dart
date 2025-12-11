@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/common/custom_notification.dart';
 import '../../../data/services/user_service.dart';
 import 'setup_location_screen.dart';
 
@@ -45,12 +46,7 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
 
   Future<void> _handleNext() async {
     if (!_canContinue) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Выберите минимум 3 интереса'),
-          backgroundColor: Color(0xFFE53935),
-        ),
-      );
+      CustomNotification.error(context, 'Выберите минимум 3 интереса');
       return;
     }
 
@@ -73,12 +69,7 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomNotification.error(context, 'Ошибка: $e');
       }
     }
   }

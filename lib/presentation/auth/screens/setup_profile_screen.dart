@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../widgets/common/custom_notification.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../data/services/user_service.dart';
 import 'setup_interests_screen.dart';
 import '../../widgets/common/custom_dropdown.dart';
-import '../../widgets/common/custom_notification.dart';
 
 /// Экран 1: Настройка базового профиля
 /// Фото, возраст, пол
@@ -32,18 +32,25 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 512,  // Уменьшили для симулятора
-      maxHeight: 512,
-      imageQuality: 60,  // Сильнее сжимаем
-    );
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,  // Уменьшили для симулятора
+        maxHeight: 512,
+        imageQuality: 60,  // Сильнее сжимаем
+      );
 
-    if (image != null) {
-      setState(() {
-        _profileImage = File(image.path);
-      });
+      if (image != null && mounted) {
+        setState(() {
+          _profileImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted && e.toString().contains('multiple_request')) {
+        CustomNotification.error(context, 'Операция отменена. Попробуйте еще раз');
+      }
+      print('Image picker error: $e');
     }
   }
 

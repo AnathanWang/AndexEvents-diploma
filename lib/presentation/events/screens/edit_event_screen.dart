@@ -6,7 +6,6 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../widgets/common/custom_dropdown.dart';
 import '../../widgets/common/custom_notification.dart';
-import '../../../core/config/app_config.dart';
 import '../../../data/models/event_model.dart';
 import '../bloc/event_bloc.dart';
 import '../bloc/event_event.dart';
@@ -131,15 +130,26 @@ class _EditEventScreenState extends State<EditEventScreen> {
   }
 
   Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    
-    if (image != null) {
-      setState(() {
-        _eventPhoto = File(image.path);
-      });
-      // Сразу загружаем фото
-      context.read<EventBloc>().add(EventPhotoUploadRequested(image.path));
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      
+      if (image != null && mounted) {
+        setState(() {
+          _eventPhoto = File(image.path);
+        });
+        // Сразу загружаем фото
+        context.read<EventBloc>().add(EventPhotoUploadRequested(image.path));
+      }
+    } catch (e) {
+      if (mounted && e.toString().contains('multiple_request')) {
+        CustomNotification.show(
+          context,
+          'Операция отменена. Попробуйте еще раз',
+          isError: true,
+        );
+      }
+      print('Image picker error: $e');
     }
   }
 
@@ -228,7 +238,8 @@ class _EditEventScreenState extends State<EditEventScreen> {
         } else if (state is EventPhotoUploaded) {
           setState(() {
             _isPhotoUploading = false;
-            _uploadedPhotoUrl = state.photoUrl;
+            final url = state.photoUrl.trim();
+            _uploadedPhotoUrl = url.isEmpty ? null : url;
           });
           CustomNotification.show(context, 'Фото успешно загружено');
         } else if (state is EventUpdating || state is EventDeleting) {
@@ -286,9 +297,6 @@ class _EditEventScreenState extends State<EditEventScreen> {
                                         borderRadius: BorderRadius.circular(16),
                                         child: CachedNetworkImage(
                                           imageUrl: _uploadedPhotoUrl!,
-                                          httpHeaders: {
-                                            'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
-                                          },
                                           fit: BoxFit.cover,
                                           placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
                                           errorWidget: (context, url, error) => const Icon(Icons.error),

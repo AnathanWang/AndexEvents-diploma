@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../core/config/app_config.dart';
 
 import '../../events/bloc/event_bloc.dart';
 import '../../events/bloc/event_event.dart';

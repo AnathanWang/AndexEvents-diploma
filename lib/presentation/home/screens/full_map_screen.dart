@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../../widgets/common/custom_notification.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../data/models/event_model.dart';
@@ -123,9 +124,7 @@ class _FullMapScreenState extends State<FullMapScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка определения местоположения: $e')),
-        );
+        CustomNotification.error(context, 'Ошибка определения местоположения: $e');
       }
     }
   }

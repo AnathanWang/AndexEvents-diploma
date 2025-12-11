@@ -9,7 +9,7 @@ import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
 import '../../../data/models/user_model.dart';
-import '../../../core/config/app_config.dart';
+import '../../widgets/common/custom_notification.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -77,30 +77,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
-    );
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
 
-    if (image != null) {
-      setState(() {
-        _newProfileImage = File(image.path);
-      });
+      if (image != null && mounted) {
+        setState(() {
+          _newProfileImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted && e.toString().contains('multiple_request')) {
+        CustomNotification.show(
+          context,
+          'Операция отменена. Попробуйте еще раз',
+          isError: true,
+        );
+      }
+      print('Image picker error: $e');
     }
   }
 
   Future<void> _saveProfile() async {
     if (_formKey.currentState?.validate() ?? false) {
       if (_selectedInterests.length < 3) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Выберите минимум 3 интереса'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomNotification.error(context, 'Выберите минимум 3 интереса');
         return;
       }
 
@@ -238,15 +244,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           // Если было реальное обновление - закрываем экран и показываем сообщение
           else if (_isLoading) {
             setState(() => _isLoading = false);
+            final navigatorContext = Navigator.of(context).context;
             Navigator.of(context).pop();
-            // Показываем snackbar после закрытия
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Профиль успешно обновлен!'),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
-              ),
-            );
+            // Показываем уведомление на предыдущем экране
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              CustomNotification.success(navigatorContext, 'Профиль успешно обновлен!');
+            });
           } else {
             setState(() => _isLoading = false);
           }
@@ -254,12 +257,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           setState(() => _isLoading = true);
         } else if (state is ProfileError) {
           setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomNotification.error(context, state.message);
         }
       },
       builder: (context, state) {
@@ -313,9 +311,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   child: CachedNetworkImage(
                                     imageUrl: user.photoUrl!,
                                     fit: BoxFit.cover,
-                                    httpHeaders: {
-                                      'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
-                                    },
                                     placeholder: (context, url) => Center(
                                       child: CircularProgressIndicator(
                                         strokeWidth: 3,

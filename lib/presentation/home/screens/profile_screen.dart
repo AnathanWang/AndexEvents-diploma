@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../data/models/user_model.dart';
-import '../../../core/config/app_config.dart';
 import '../../profile/bloc/profile_bloc.dart';
 import '../../profile/bloc/profile_event.dart';
 import '../../profile/bloc/profile_state.dart';
@@ -165,9 +165,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: CachedNetworkImage(
                           imageUrl: user.photoUrl!.trim(),
                           fit: BoxFit.cover,
-                          httpHeaders: {
-                            'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
-                          },
                           placeholder: (context, url) => Center(
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
@@ -285,11 +282,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       return InkWell(
                         onTap: () {
                           // TODO: Открыть ссылку в браузере
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('${entry.key}: ${entry.value}'),
-                              duration: const Duration(seconds: 2),
-                            ),
+                          CustomNotification.show(
+                            context,
+                            '${entry.key}: ${entry.value}',
+                            isError: false,
+                            duration: const Duration(seconds: 2),
                           );
                         },
                         borderRadius: BorderRadius.circular(20),

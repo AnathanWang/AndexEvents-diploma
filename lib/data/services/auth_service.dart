@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -193,7 +194,7 @@ class AuthService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(AppConfig.receiveTimeout);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -201,6 +202,15 @@ class AuthService {
       } else {
         throw Exception('Не удалось загрузить профиль пользователя');
       }
+    } on TimeoutException {
+      throw Exception(
+        'Таймаут при запросе к API (${AppConfig.baseUrl}). '
+        'Если вы на физическом устройстве, задайте API_BASE_URL через --dart-define.',
+      );
+    } on SocketException catch (e) {
+      throw Exception(
+        'Не удалось подключиться к API (${AppConfig.baseUrl}): ${e.message}',
+      );
     } catch (e) {
       throw Exception('Ошибка загрузки профиля: $e');
     }

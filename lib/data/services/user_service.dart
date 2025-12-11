@@ -4,11 +4,28 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../core/config/app_config.dart';
+import '../../core/utils/image_utils.dart';
 import '../models/user_model.dart';
 
 /// Сервис для работы с профилем пользователя
 class UserService {
   final SupabaseClient _supabase = Supabase.instance.client;
+
+  String _inferImageContentType(String fileExt) {
+    switch (fileExt.toLowerCase()) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
+      case 'gif':
+        return 'image/gif';
+      default:
+        return 'application/octet-stream';
+    }
+  }
 
   /// Получить Supabase Access Token для авторизованных запросов
   Future<String?> _getIdToken() async {
@@ -27,115 +44,78 @@ class UserService {
   /// Загрузить фото в Supabase Storage
   Future<String> uploadProfilePhoto(File photoFile) async {
     try {
-      print('🔵 [Supabase] Начинаем загрузку фото...');
+      print('🔵 [UserService] Начинаем загрузку фото профиля...');
       
-      // Получаем текущего пользователя и сессию
       final user = _supabase.auth.currentUser;
-      final session = _supabase.auth.currentSession;
-      
-      if (user == null || session == null) {
-        print('🔴 [Supabase] Нет активного пользователя или сессии');
+      if (user == null) {
+        print('🔴 [UserService] Нет активного пользователя');
         throw Exception('Пользователь не авторизован');
       }
 
-      print('🔵 [Supabase] User ID: ${user.id}');
-      print('🔵 [Supabase] User email: ${user.email}');
-      print('🔵 [Supabase] Token (первые 50 символов): ${session.accessToken.substring(0, 50)}...');
-      print('🔵 [Supabase] Token role: ${session.user.role}');
-
-      // Проверяем файл
       if (!await photoFile.exists()) {
         throw Exception('Файл не найден');
       }
 
-      final fileExt = photoFile.path.split('.').last.toLowerCase();
+      // Сжимаем изображение перед загрузкой
+      print('🔵 [UserService] Сжимаем изображение...');
+      var compressedFile = await ImageUtils.compressImage(photoFile);
+
+      final fileSize = await compressedFile.length();
+      if (fileSize > 5 * 1024 * 1024) {
+        // 5MB limit
+        throw Exception('Файл слишком большой (макс. 5MB, ваш файл ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB)');
+      }
+
+      final fileExt = compressedFile.path.split('.').last.toLowerCase();
       final fileName = 'avatar.$fileExt';
       final filePath = '${user.id}/$fileName';
       
-      print('🔵 [Supabase] Bucket: avatars');
-      print('🔵 [Supabase] Path: $filePath');
-      print('🔵 [Supabase] Content-Type: image/$fileExt');
-      print('🔵 [Supabase] File exists: ${await photoFile.exists()}');
-      print('🔵 [Supabase] File size: ${await photoFile.length()} bytes');
+      print('🔵 [UserService] User ID: ${user.id}');
+      print('🔵 [UserService] Path: $filePath');
+      print('🔵 [UserService] File size: ${(fileSize / 1024).toStringAsFixed(2)}KB');
 
-      // Используем прямой HTTP запрос к Supabase Storage API (обходим SDK)
-      try {
-        print('🔵 [Supabase] Используем прямой HTTP POST к Storage API...');
-        print('🔵 [Supabase] Начало: ${DateTime.now()}');
-        
-        final bytes = await photoFile.readAsBytes();
-        final url = '${AppConfig.supabaseUrl}/storage/v1/object/avatars/$filePath';
-        
-        print('🔵 [Supabase] URL: $url');
-        print('🔵 [Supabase] Отправляем ${bytes.length} bytes...');
-        
-        final response = await http.post(
-          Uri.parse(url),
-          headers: {
-            'Authorization': 'Bearer ${session.accessToken}',
-            'Content-Type': 'image/$fileExt',
-            'x-upsert': 'true',
-          },
-          body: bytes,
-        ).timeout(
-          const Duration(seconds: 30),
-          onTimeout: () {
-            print('🔴 [Supabase] HTTP timeout после 30 секунд');
-            throw TimeoutException('HTTP request timeout');
-          },
-        );
+      // Загружаем через SDK
+      print('🔵 [UserService] Загружаем через SDK...');
+      
+      await _supabase.storage.from('avatars').upload(
+        filePath,
+        compressedFile,
+        fileOptions: FileOptions(
+          cacheControl: '3600',
+          contentType: _inferImageContentType(fileExt),
+          upsert: true,
+        ),
+      ).timeout(AppConfig.receiveTimeout);
 
-        print('🟢 [Supabase] Конец: ${DateTime.now()}');
-        print('🟢 [Supabase] HTTP Status: ${response.statusCode}');
-        print('🟢 [Supabase] Response body: ${response.body}');
-        
-        if (response.statusCode != 200 && response.statusCode != 201) {
-          throw Exception('Upload failed: ${response.statusCode} - ${response.body}');
-        }
+      print('🟢 [UserService] Upload successful!');
+      
+      // Получаем публичный URL
+      final String publicUrl = _supabase.storage.from('avatars').getPublicUrl(filePath);
+      
+      print('🟢 [UserService] Public URL: $publicUrl');
+      
+      return publicUrl;
 
-        // Получаем публичный URL
-        final publicUrl = _supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath);
-
-        // Валидация URL
-        if (!publicUrl.startsWith('https://')) {
-          throw Exception('Некорректный URL: $publicUrl');
-        }
-        
-        // Проверяем на двойные слэши (кроме https://)
-        final cleanUrl = publicUrl.replaceFirst('https://', '').replaceAll('//', '/');
-        final finalUrl = 'https://$cleanUrl';
-        
-        print('🟢 [Supabase] Public URL: $finalUrl');
-        print('🟢 [Supabase] URL валиден: ${Uri.tryParse(finalUrl) != null}');
-        
-        return finalUrl;
-
-      } on StorageException catch (e) {
-        print('🔴 [Supabase] StorageException:');
-        print('   Message: ${e.message}');
-        print('   Status: ${e.statusCode}');
-        print('   Error: ${e.error}');
-        
-        if (e.statusCode == '404') {
-          throw Exception('Bucket "avatars" не найден');
-        } else if (e.statusCode == '403') {
-          throw Exception('Нет прав доступа. Проверьте RLS политики для user ${user.id}');
-        } else if (e.statusCode == '401') {
-          throw Exception('Не авторизован. Проверьте токен');
-        } else {
-          throw Exception('Storage error (${e.statusCode}): ${e.message}');
-        }
-      } on TimeoutException catch (e) {
-        print('🔴 [Supabase] TimeoutException после ${e.duration?.inSeconds ?? "?"} секунд');
-        print('🔴 [Supabase] Это проблема симулятора iOS. На реальном устройстве должно работать.');
-        throw Exception('Timeout. Попробуйте: 1) Меньший файл 2) Реальное устройство 3) Другую WiFi сеть');
+    } on StorageException catch (e) {
+      print('🔴 [UserService] StorageException: ${e.message} (${e.statusCode})');
+      
+      String errorMessage = e.message;
+      if (e.statusCode == '403') {
+        errorMessage = 'Нет прав доступа. Проверьте RLS политики в Supabase Dashboard';
+      } else if (e.statusCode == '404') {
+        errorMessage = 'Bucket "avatars" не найден. Проверьте Storage в Dashboard';
+      } else if (e.statusCode == '413') {
+        errorMessage = 'Файл слишком большой';
       }
-    } catch (e, stackTrace) {
-      print('🔴 [Supabase] Неожиданная ошибка: $e');
-      print('🔴 [Supabase] Тип ошибки: ${e.runtimeType}');
-      print('🔴 [Supabase] Stack trace: $stackTrace');
+      
+      throw Exception('Storage error: $errorMessage');
+    } on TimeoutException {
+      throw Exception(
+        'Таймаут при загрузке фото в Supabase Storage. '
+        'Проверьте интернет/ВПН и повторите попытку.',
+      );
+    } catch (e) {
+      print('🔴 [UserService] Ошибка: $e');
       rethrow;
     }
   }
@@ -179,7 +159,7 @@ class UserService {
           'Authorization': 'Bearer $token',
         },
         body: json.encode(body),
-      );
+      ).timeout(AppConfig.receiveTimeout);
       
       print('DEBUG: Ответ статус: ${response.statusCode}');
       print('DEBUG: Ответ body: ${response.body}');
@@ -188,6 +168,17 @@ class UserService {
         final errorData = json.decode(response.body);
         throw Exception(errorData['message'] ?? 'Ошибка обновления профиля');
       }
+    } on TimeoutException {
+      throw Exception(
+        'Таймаут при запросе к API (${AppConfig.baseUrl}). '
+        'Если вы на физическом устройстве, укажите IP компьютера через '
+        '--dart-define=API_BASE_URL=http://<IP>:3000/api',
+      );
+    } on SocketException catch (e) {
+      throw Exception(
+        'Не удалось подключиться к API (${AppConfig.baseUrl}): ${e.message}. '
+        'Проверьте что backend запущен и устройство в той же сети.',
+      );
     } catch (e) {
       throw Exception('Не удалось обновить профиль: $e');
     }
@@ -212,12 +203,21 @@ class UserService {
           'latitude': latitude,
           'longitude': longitude,
         }),
-      );
+      ).timeout(AppConfig.receiveTimeout);
 
       if (response.statusCode != 200) {
         final errorData = json.decode(response.body);
         throw Exception(errorData['message'] ?? 'Ошибка обновления локации');
       }
+    } on TimeoutException {
+      throw Exception(
+        'Таймаут при запросе к API (${AppConfig.baseUrl}). '
+        'Проверьте доступность backend и правильность адреса.',
+      );
+    } on SocketException catch (e) {
+      throw Exception(
+        'Не удалось подключиться к API (${AppConfig.baseUrl}): ${e.message}',
+      );
     } catch (e) {
       throw Exception('Не удалось обновить локацию: $e');
     }
@@ -234,7 +234,7 @@ class UserService {
         headers: {
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(AppConfig.receiveTimeout);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -242,6 +242,15 @@ class UserService {
       } else {
         throw Exception('Не удалось получить профиль');
       }
+    } on TimeoutException {
+      throw Exception(
+        'Таймаут при запросе к API (${AppConfig.baseUrl}). '
+        'Проверьте доступность backend и правильность адреса.',
+      );
+    } on SocketException catch (e) {
+      throw Exception(
+        'Не удалось подключиться к API (${AppConfig.baseUrl}): ${e.message}',
+      );
     } catch (e) {
       throw Exception('Ошибка получения профиля: $e');
     }

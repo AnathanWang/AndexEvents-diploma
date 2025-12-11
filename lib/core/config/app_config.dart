@@ -5,6 +5,11 @@ class AppConfig {
   // API Configuration
   // Автоматическое определение адреса сервера
   static String get baseUrl {
+    const String overrideBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+    if (overrideBaseUrl.isNotEmpty) {
+      return overrideBaseUrl;
+    }
+
     if (kReleaseMode) {
       // TODO: Укажите адрес продакшн сервера
       return 'https://api.andexevents.com/api';
