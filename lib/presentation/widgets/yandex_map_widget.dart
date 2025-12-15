@@ -3,12 +3,11 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'package:geolocator/geolocator.dart';
-import '../home/screens/full_map_screen.dart';
 import '../../data/models/event_model.dart';
 
 class YandexMapWidget extends StatefulWidget {
   final List<EventModel> events;
-  
+
   const YandexMapWidget({super.key, required this.events});
 
   @override
@@ -20,9 +19,12 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
   Uint8List? _markerIcon;
   Uint8List? _userMarkerIcon;
   Point? _userLocation;
-  
+
   // Киров по умолчанию
-  final Point _initialTarget = const Point(latitude: 58.603591, longitude: 49.668023);
+  final Point _initialTarget = const Point(
+    latitude: 58.603591,
+    longitude: 49.668023,
+  );
 
   @override
   void initState() {
@@ -46,11 +48,14 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
       }
 
       final position = await Geolocator.getCurrentPosition();
-      
+
       // Проверяем mounted перед setState
       if (mounted) {
         setState(() {
-          _userLocation = Point(latitude: position.latitude, longitude: position.longitude);
+          _userLocation = Point(
+            latitude: position.latitude,
+            longitude: position.longitude,
+          );
         });
       }
 
@@ -58,10 +63,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
       if (_mapController != null && mounted) {
         _mapController?.moveCamera(
           CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: _userLocation!,
-              zoom: 12,
-            ),
+            CameraPosition(target: _userLocation!, zoom: 12),
           ),
         );
       }
@@ -73,7 +75,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
   Future<void> _initMarkerIcon() async {
     final icon = await _createMarkerIcon();
     final userIcon = await _createUserMarkerIcon();
-    
+
     // Проверяем mounted перед setState
     if (mounted) {
       setState(() {
@@ -96,23 +98,12 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
     const radius = size / 2;
 
     // Рисуем круг с белой обводкой
-    canvas.drawCircle(
-      const Offset(radius, radius),
-      radius - 2,
-      paint,
-    );
-    canvas.drawCircle(
-      const Offset(radius, radius),
-      radius - 2,
-      borderPaint,
-    );
+    canvas.drawCircle(const Offset(radius, radius), radius - 2, paint);
+    canvas.drawCircle(const Offset(radius, radius), radius - 2, borderPaint);
 
     // Рисуем иконку события
     final textPainter = TextPainter(
-      text: const TextSpan(
-        text: '📍',
-        style: TextStyle(fontSize: 24),
-      ),
+      text: const TextSpan(text: '📍', style: TextStyle(fontSize: 24)),
       textDirection: TextDirection.ltr,
     );
     textPainter.layout();
@@ -127,7 +118,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
   Future<Uint8List> _createUserMarkerIcon() async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-    
+
     const size = 40.0;
     const radius = size / 2;
 
@@ -151,22 +142,11 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
     return byteData!.buffer.asUint8List();
   }
 
-  void _openFullMap() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext context) => FullMapScreen(
-          events: widget.events,
-          userLocation: _userLocation,
-        ),
-      ),
-    );
-  }
-
   List<MapObject> _buildMarkers() {
     if (_markerIcon == null) return [];
-    
+
     final markers = <MapObject>[];
-    
+
     // Добавляем маркеры событий
     markers.addAll(
       widget.events.map((event) {
@@ -183,7 +163,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
         );
       }),
     );
-    
+
     // Добавляем маркер пользователя
     if (_userLocation != null && _userMarkerIcon != null) {
       markers.add(
@@ -200,7 +180,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
         ),
       );
     }
-    
+
     return markers;
   }
 
@@ -214,15 +194,12 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
           YandexMap(
             onMapCreated: (YandexMapController controller) {
               _mapController = controller;
-              
+
               // Если есть локация пользователя, центрируем на ней
               if (_userLocation != null) {
                 _mapController?.moveCamera(
                   CameraUpdate.newCameraPosition(
-                    CameraPosition(
-                      target: _userLocation!,
-                      zoom: 12,
-                    ),
+                    CameraPosition(target: _userLocation!, zoom: 12),
                   ),
                 );
               } else if (widget.events.isNotEmpty) {
@@ -243,10 +220,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
                 // Или на дефолтной позиции
                 _mapController?.moveCamera(
                   CameraUpdate.newCameraPosition(
-                    CameraPosition(
-                      target: _initialTarget,
-                      zoom: 12,
-                    ),
+                    CameraPosition(target: _initialTarget, zoom: 12),
                   ),
                 );
               }
@@ -259,7 +233,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
             zoomGesturesEnabled: false,
             fastTapEnabled: false,
           ),
-          
+
           // Градиентный оверлей
           Container(
             decoration: BoxDecoration(
@@ -273,7 +247,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
               ),
             ),
           ),
-          
+
           // Информация и кнопка
           Positioned(
             bottom: 16,
@@ -290,18 +264,6 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: _openFullMap,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF5E60CE),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  child: const Text('Открыть карту'),
-                ),
               ],
             ),
           ),
@@ -313,7 +275,9 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
   String _getEventWord(int count) {
     if (count % 10 == 1 && count % 100 != 11) {
       return 'событие';
-    } else if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) {
+    } else if (count % 10 >= 2 &&
+        count % 10 <= 4 &&
+        (count % 100 < 10 || count % 100 >= 20)) {
       return 'события';
     } else {
       return 'событий';

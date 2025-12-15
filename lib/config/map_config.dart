@@ -1,4 +1,13 @@
 class MapConfig {
-  static const String yandexMapKitApiKey = 'c1c767ce-7328-4c26-b263-8eba58f98c6a';
-  static const String yandexApiKey = '31d10366-2715-4f15-9fc7-a096fdda2be2'; // Для Geocoding/Suggest API
+  // Do NOT hardcode real API keys in source code.
+  // Provide them at build time via --dart-define or CI environment variables:
+  //   flutter build ... --dart-define=YANDEX_MAPKIT_API_KEY=your_key --dart-define=YANDEX_API_KEY=your_key
+  static const String yandexMapKitApiKey = String.fromEnvironment(
+    'YANDEX_MAPKIT_API_KEY',
+    defaultValue: '',
+  );
+  static const String yandexApiKey = String.fromEnvironment(
+    'YANDEX_API_KEY',
+    defaultValue: '',
+  ); // Для Geocoding/Suggest API
 }

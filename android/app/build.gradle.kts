@@ -28,6 +28,14 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Manifest placeholder for Yandex MapKit API key.
+        // IMPORTANT: Do NOT hardcode or commit the actual API key into the repository.
+        // Put the real key in a git-ignored file (e.g., local.properties) or set it as a CI secret:
+        //   YANDEX_MAPKIT_API_KEY=your_real_key_here
+        // The placeholder below reads the key from a project property (local.properties or --project-prop)
+        // and falls back to an empty string if not provided.
+        manifestPlaceholders["YANDEX_MAPKIT_API_KEY"] = project.findProperty("YANDEX_MAPKIT_API_KEY") ?: ""
     }
 
     buildTypes {

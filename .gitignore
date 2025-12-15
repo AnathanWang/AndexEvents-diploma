@@ -60,3 +60,7 @@ backend/logs/
 backend/uploads/
 backend/backups/
 backend/dist/
+
+# Local secrets directory (do NOT commit keys here)
+# Put local/temporary keys in this directory and keep it out of VCS.
+secrets/

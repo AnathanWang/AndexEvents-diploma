@@ -36,9 +36,9 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 512,  // Уменьшили для симулятора
+        maxWidth: 512, // Уменьшили для симулятора
         maxHeight: 512,
-        imageQuality: 60,  // Сильнее сжимаем
+        imageQuality: 60, // Сильнее сжимаем
       );
 
       if (image != null && mounted) {
@@ -48,7 +48,10 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
       }
     } catch (e) {
       if (mounted && e.toString().contains('multiple_request')) {
-        CustomNotification.error(context, 'Операция отменена. Попробуйте еще раз');
+        CustomNotification.error(
+          context,
+          'Операция отменена. Попробуйте еще раз',
+        );
       }
     }
   }
@@ -117,10 +120,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
             onPressed: _handleSkip,
             child: const Text(
               'Пропустить',
-              style: TextStyle(
-                color: Color(0xFF9E9E9E),
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 16),
             ),
           ),
         ],
@@ -181,10 +181,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                 const SizedBox(height: 8),
                 const Text(
                   'Это поможет найти интересных людей',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF9E9E9E),
-                  ),
+                  style: TextStyle(fontSize: 16, color: Color(0xFF9E9E9E)),
                 ),
                 const SizedBox(height: 40),
 
@@ -240,10 +237,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                 const Text(
                   'Добавить фото (опционально)',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF9E9E9E),
-                  ),
+                  style: TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
                 ),
                 const SizedBox(height: 40),
 
@@ -299,6 +293,8 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                       _selectedGender = value;
                     });
                   },
+                  useBottomSheet: true,
+                  showBottomSheetCount: false,
                 ),
                 const SizedBox(height: 40),
 
@@ -320,8 +316,9 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : const Text(
@@ -332,48 +329,48 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                           ),
                         ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Кнопка пропустить фото
                 TextButton(
-                  onPressed: _isLoading ? null : () async {
-                    if (_formKey.currentState?.validate() ?? false) {
-                      setState(() => _isLoading = true);
-                      
-                      try {
-                        // Отправляем только возраст и пол, без фото
-                        await _userService.updateProfile(
-                          age: int.tryParse(_ageController.text),
-                          gender: _selectedGender,
-                        );
+                  onPressed: _isLoading
+                      ? null
+                      : () async {
+                          if (_formKey.currentState?.validate() ?? false) {
+                            setState(() => _isLoading = true);
 
-                        if (mounted) {
-                          setState(() => _isLoading = false);
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (BuildContext context) => const SetupInterestsScreen(),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          setState(() => _isLoading = false);
-                          CustomNotification.show(
-                            context,
-                            'Ошибка при обновлении профиля: $e',
-                            isError: true,
-                          );
-                        }
-                      }
-                    }
-                  },
+                            try {
+                              // Отправляем только возраст и пол, без фото
+                              await _userService.updateProfile(
+                                age: int.tryParse(_ageController.text),
+                                gender: _selectedGender,
+                              );
+
+                              if (mounted) {
+                                setState(() => _isLoading = false);
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (BuildContext context) =>
+                                        const SetupInterestsScreen(),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                setState(() => _isLoading = false);
+                                CustomNotification.show(
+                                  context,
+                                  'Ошибка при обновлении профиля: $e',
+                                  isError: true,
+                                );
+                              }
+                            }
+                          }
+                        },
                   child: Text(
                     'Пропустить добавление фото',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   ),
                 ),
               ],

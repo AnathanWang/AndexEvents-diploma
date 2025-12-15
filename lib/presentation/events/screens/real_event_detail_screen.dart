@@ -13,10 +13,7 @@ import '../widgets/event_participants_dialog.dart';
 class RealEventDetailScreen extends StatefulWidget {
   final String eventId;
 
-  const RealEventDetailScreen({
-    super.key,
-    required this.eventId,
-  });
+  const RealEventDetailScreen({super.key, required this.eventId});
 
   @override
   State<RealEventDetailScreen> createState() => _RealEventDetailScreenState();
@@ -25,6 +22,7 @@ class RealEventDetailScreen extends StatefulWidget {
 class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   bool _isFavorite = false;
   bool _isGoing = false;
+  bool _isParticipationLoading = false;
 
   @override
   void initState() {
@@ -48,10 +46,10 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
 
   void _toggleGoing(EventModel event) {
     setState(() {
-      _isGoing = !_isGoing;
+      _isParticipationLoading = true;
     });
-    
-    if (_isGoing) {
+
+    if (!_isGoing) {
       context.read<EventBloc>().add(
         EventParticipateRequested(eventId: event.id, status: 'GOING'),
       );
@@ -60,29 +58,41 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
         EventCancelParticipationRequested(event.id),
       );
     }
-    
-    CustomNotification.show(
-      context,
-      _isGoing ? 'Вы идете на событие!' : 'Отменено участие',
-      duration: const Duration(seconds: 1),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<EventBloc, EventState>(
-      listenWhen: (previous, current) => current is EventDetailLoaded,
+      listenWhen: (previous, current) {
+        // Слушаем все состояния для обновления кнопки участия
+        return true;
+      },
       listener: (context, state) {
         if (state is EventDetailLoaded) {
           setState(() {
             _isGoing = state.event.isParticipating;
+            _isParticipationLoading = false;
           });
+        } else if (state is EventParticipationUpdating) {
+          setState(() {
+            _isParticipationLoading = true;
+          });
+        } else if (state is EventParticipationUpdated) {
+          // Состояние обновлено, ждем новые данные события
+          setState(() {
+            _isParticipationLoading = true;
+          });
+        } else if (state is EventError) {
+          setState(() {
+            _isParticipationLoading = false;
+          });
+          CustomNotification.show(context, state.message, isError: true);
         }
       },
       buildWhen: (previous, current) {
         // Не перестраиваем основной экран при загрузке участников
-        return current is! EventParticipantsLoading && 
-               current is! EventParticipantsLoaded;
+        return current is! EventParticipantsLoading &&
+            current is! EventParticipantsLoaded;
       },
       builder: (context, state) {
         if (state is EventDetailLoading) {
@@ -120,9 +130,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
           return _buildEventDetail(context, state.event);
         }
 
-        return const Scaffold(
-          body: Center(child: Text('Загрузка...')),
-        );
+        return const Scaffold(body: Center(child: Text('Загрузка...')));
       },
     );
   }
@@ -266,7 +274,10 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: categoryColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
@@ -281,7 +292,10 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                       ),
                       const Spacer(),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: event.price == 0
                               ? Colors.green.withOpacity(0.1)
@@ -289,9 +303,13 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          event.price == 0 ? 'Бесплатно' : '${event.price.toStringAsFixed(0)} ₽',
+                          event.price == 0
+                              ? 'Бесплатно'
+                              : '${event.price.toStringAsFixed(0)} ₽',
                           style: TextStyle(
-                            color: event.price == 0 ? Colors.green : Colors.orange,
+                            color: event.price == 0
+                                ? Colors.green
+                                : Colors.orange,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -320,16 +338,9 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                   _formatDate(event.dateTime),
                 ),
                 const SizedBox(height: 12),
-                _buildInfoRow(
-                  Icons.access_time,
-                  _formatTime(event.dateTime),
-                ),
+                _buildInfoRow(Icons.access_time, _formatTime(event.dateTime)),
                 const SizedBox(height: 12),
-                _buildInfoRow(
-                  Icons.location_on,
-                  event.location,
-                  onTap: () {},
-                ),
+                _buildInfoRow(Icons.location_on, event.location, onTap: () {}),
                 const SizedBox(height: 24),
 
                 // Участники
@@ -352,7 +363,10 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                           // Avatars
                           if (event.previewParticipants.isNotEmpty)
                             SizedBox(
-                              width: 25.0 * (event.previewParticipants.length - 1) + 40,
+                              width:
+                                  25.0 *
+                                      (event.previewParticipants.length - 1) +
+                                  40,
                               height: 40,
                               child: Stack(
                                 children: List.generate(
@@ -362,20 +376,44 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                                     child: Container(
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        border: Border.all(color: Colors.white, width: 2),
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 2,
+                                        ),
                                       ),
                                       child: CircleAvatar(
                                         radius: 18,
                                         backgroundColor: Colors.grey[200],
-                                        backgroundImage: event.previewParticipants[index].user.photoUrl != null
+                                        backgroundImage:
+                                            event
+                                                    .previewParticipants[index]
+                                                    .user
+                                                    .photoUrl !=
+                                                null
                                             ? CachedNetworkImageProvider(
-                                                event.previewParticipants[index].user.photoUrl!,
+                                                event
+                                                    .previewParticipants[index]
+                                                    .user
+                                                    .photoUrl!,
                                               )
                                             : null,
-                                        child: event.previewParticipants[index].user.photoUrl == null
+                                        child:
+                                            event
+                                                    .previewParticipants[index]
+                                                    .user
+                                                    .photoUrl ==
+                                                null
                                             ? Text(
-                                                event.previewParticipants[index].user.displayName.isNotEmpty
-                                                    ? event.previewParticipants[index].user.displayName[0].toUpperCase()
+                                                event
+                                                        .previewParticipants[index]
+                                                        .user
+                                                        .displayName
+                                                        .isNotEmpty
+                                                    ? event
+                                                          .previewParticipants[index]
+                                                          .user
+                                                          .displayName[0]
+                                                          .toUpperCase()
                                                     : '?',
                                                 style: const TextStyle(
                                                   color: Color(0xFF4A4D6A),
@@ -389,7 +427,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                                 ),
                               ),
                             ),
-                          
+
                           const SizedBox(width: 8),
                           GestureDetector(
                             onTap: () {
@@ -399,7 +437,10 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                               _showParticipantsDialog(context, event);
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF5F6FA),
                                 borderRadius: BorderRadius.circular(20),
@@ -442,7 +483,10 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                                 onTap: () {},
                                 borderRadius: BorderRadius.circular(20),
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
                                   child: Text(
                                     'Метчи',
                                     style: TextStyle(
@@ -518,26 +562,29 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                               if (event.creatorPhotoUrl != null)
                                 CachedNetworkImage(
                                   imageUrl: event.creatorPhotoUrl!,
-                                  imageBuilder: (context, imageProvider) => CircleAvatar(
-                                    radius: 30,
-                                    backgroundImage: imageProvider,
-                                  ),
-                                  placeholder: (context, url) => const CircleAvatar(
-                                    radius: 30,
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                  errorWidget: (context, url, error) => CircleAvatar(
-                                    radius: 30,
-                                    backgroundColor: categoryColor,
-                                    child: Text(
-                                      event.creatorName![0].toUpperCase(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.w600,
+                                  imageBuilder: (context, imageProvider) =>
+                                      CircleAvatar(
+                                        radius: 30,
+                                        backgroundImage: imageProvider,
                                       ),
-                                    ),
-                                  ),
+                                  placeholder: (context, url) =>
+                                      const CircleAvatar(
+                                        radius: 30,
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                  errorWidget: (context, url, error) =>
+                                      CircleAvatar(
+                                        radius: 30,
+                                        backgroundColor: categoryColor,
+                                        child: Text(
+                                          event.creatorName![0].toUpperCase(),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
                                 )
                               else
                                 CircleAvatar(
@@ -617,9 +664,13 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
         ),
         child: SafeArea(
           child: ElevatedButton(
-            onPressed: () => _toggleGoing(event),
+            onPressed: _isParticipationLoading
+                ? null
+                : () => _toggleGoing(event),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _isGoing ? Colors.grey : categoryColor,
+              backgroundColor: _isParticipationLoading
+                  ? Colors.grey.shade400
+                  : (_isGoing ? Colors.grey : categoryColor),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
@@ -628,13 +679,24 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
               elevation: 0,
               minimumSize: const Size(double.infinity, 0),
             ),
-            child: Text(
-              _isGoing ? 'Отменить участие' : 'Участвовать',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: _isParticipationLoading
+                ? SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.white.withOpacity(0.7),
+                      ),
+                    ),
+                  )
+                : Text(
+                    _isGoing ? 'Отменить участие' : 'Участвовать',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
           ),
         ),
       ),
@@ -654,20 +716,13 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                 color: const Color(0xFF5E60CE).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                icon,
-                color: const Color(0xFF5E60CE),
-                size: 20,
-              ),
+              child: Icon(icon, color: const Color(0xFF5E60CE), size: 20),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 text,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF4A4D6A),
-                ),
+                style: const TextStyle(fontSize: 16, color: Color(0xFF4A4D6A)),
               ),
             ),
             if (onTap != null)
@@ -756,9 +811,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
             child: BlocBuilder<EventBloc, EventState>(
               builder: (context, state) {
                 if (state is EventParticipantsLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 if (state is EventParticipantsLoaded) {
@@ -776,7 +829,11 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                          const Icon(
+                            Icons.error_outline,
+                            size: 48,
+                            color: Colors.red,
+                          ),
                           const SizedBox(height: 16),
                           Text(state.message),
                           const SizedBox(height: 16),
