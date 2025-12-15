@@ -221,8 +221,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Введите пароль';
                     }
-                    if (value.length < 6) {
-                      return 'Пароль должен быть минимум 6 символов';
+                    if (value.length < 8) {
+                      return 'Пароль должен быть минимум 8 символов';
+                    }
+                    // Проверка на сложность: минимум одна буква и одна цифра
+                    if (!RegExp(r'[a-zA-Z]').hasMatch(value)) {
+                      return 'Пароль должен содержать буквы';
+                    }
+                    if (!RegExp(r'[0-9]').hasMatch(value)) {
+                      return 'Пароль должен содержать цифры';
                     }
                     return null;
                   },

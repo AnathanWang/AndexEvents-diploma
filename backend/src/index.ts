@@ -3,16 +3,21 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import path from "path";
+import path from "node:path";
+import rateLimit from "express-rate-limit";
 import eventRoutes from "./routes/event.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import uploadRoutes from "./routes/upload.routes.js";
+import { fileAccessMiddleware } from "./middleware/file-access.middleware.js";
 import logger from "./utils/logger.js";
 
 // dotenv.config() is already loaded via 'import "dotenv/config"'
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Middleware для проверки доступа к файлам перед отправкой
+app.use('/uploads', fileAccessMiddleware);
 
 // Serve static files from public/uploads
 app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
@@ -41,6 +46,34 @@ app.use((req, res, next) => {
   next();
 });
 
+// Rate limiters для защиты от brute-force атак
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 минут
+  max: 5, // максимум 5 попыток
+  message: 'Слишком много попыток входа. Пожалуйста, попробуйте позже.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req: express.Request) => req.method !== 'POST', // применяем только к POST запросам
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 минута
+  max: 10, // максимум 10 загрузок в минуту
+  message: 'Слишком много загрузок. Пожалуйста, подождите.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 минут
+  max: 100, // максимум 100 запросов
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Применяем general limiter ко всем маршрутам
+app.use(generalLimiter);
+
 // Health check
 app.get("/health", (req, res) => {
   res.json({
@@ -50,10 +83,12 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Routes
+// Routes с rate limiters
 app.use("/api/events", eventRoutes);
+app.use("/api/users/login", authLimiter);
+app.use("/api/users/register", authLimiter);
 app.use("/api/users", userRoutes);
-app.use("/api/upload", uploadRoutes);
+app.use("/api/upload", uploadLimiter, uploadRoutes);
 
 app.get("/", (req, res) => {
   res.json({

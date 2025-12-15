@@ -1,6 +1,7 @@
 import { PrismaClient } from '../generated/prisma/index.js';
 import type { User } from '../generated/prisma/index.js';
 import logger from '../utils/logger.js';
+import { createUserStorageFolders } from '../utils/user-storage.js';
 
 const prisma = new PrismaClient();
 
@@ -28,6 +29,9 @@ export const createUser = async (data: CreateUserData): Promise<User> => {
         const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
         if (existingUser) {
             logger.info(`User already exists with email: ${data.email}`);
+            // Создаём папки для существующего пользователя (если их ещё нет)
+            createUserStorageFolders(existingUser.id);
+            
             // Если пользователь существует, но у него нет supabaseUid (например, старая запись), обновим его
             if (!existingUser.supabaseUid) {
                 logger.info(`Updating existing user ${existingUser.id} with supabaseUid: ${data.supabaseUid}`);
@@ -52,6 +56,10 @@ export const createUser = async (data: CreateUserData): Promise<User> => {
             },
         });
         logger.info(`User created with UID: ${data.supabaseUid}`);
+        
+        // Создаём папки для хранения файлов пользователя
+        createUserStorageFolders(newUser.id);
+        
         return newUser;
     } catch (error) {
         logger.error(`Error creating user with UID: ${data.supabaseUid}`, error);

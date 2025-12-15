@@ -4,27 +4,16 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../core/config/app_config.dart';
-import '../../core/utils/image_utils.dart';
 import '../models/user_model.dart';
+import 'local_storage_service.dart';
 
 /// Сервис для работы с профилем пользователя
 class UserService {
   final SupabaseClient _supabase = Supabase.instance.client;
+  late final LocalStorageService _storageService;
 
-  String _inferImageContentType(String fileExt) {
-    switch (fileExt.toLowerCase()) {
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      case 'png':
-        return 'image/png';
-      case 'webp':
-        return 'image/webp';
-      case 'gif':
-        return 'image/gif';
-      default:
-        return 'application/octet-stream';
-    }
+  UserService() {
+    _storageService = LocalStorageService();
   }
 
   /// Получить Supabase Access Token для авторизованных запросов
@@ -41,81 +30,22 @@ class UserService {
     return _supabase.auth.currentSession?.accessToken;
   }
 
-  /// Загрузить фото в Supabase Storage
+  /// Загрузить фото в локальное хранилище
   Future<String> uploadProfilePhoto(File photoFile) async {
     try {
       print('🔵 [UserService] Начинаем загрузку фото профиля...');
       
-      final user = _supabase.auth.currentUser;
-      if (user == null) {
-        print('🔴 [UserService] Нет активного пользователя');
-        throw Exception('Пользователь не авторизован');
-      }
-
-      if (!await photoFile.exists()) {
-        throw Exception('Файл не найден');
-      }
-
-      // Сжимаем изображение перед загрузкой
-      print('🔵 [UserService] Сжимаем изображение...');
-      var compressedFile = await ImageUtils.compressImage(photoFile);
-
-      final fileSize = await compressedFile.length();
-      if (fileSize > 5 * 1024 * 1024) {
-        // 5MB limit
-        throw Exception('Файл слишком большой (макс. 5MB, ваш файл ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB)');
-      }
-
-      final fileExt = compressedFile.path.split('.').last.toLowerCase();
-      final fileName = 'avatar.$fileExt';
-      final filePath = '${user.id}/$fileName';
-      
-      print('🔵 [UserService] User ID: ${user.id}');
-      print('🔵 [UserService] Path: $filePath');
-      print('🔵 [UserService] File size: ${(fileSize / 1024).toStringAsFixed(2)}KB');
-
-      // Загружаем через SDK
-      print('🔵 [UserService] Загружаем через SDK...');
-      
-      await _supabase.storage.from('avatars').upload(
-        filePath,
-        compressedFile,
-        fileOptions: FileOptions(
-          cacheControl: '3600',
-          contentType: _inferImageContentType(fileExt),
-          upsert: true,
-        ),
-      ).timeout(AppConfig.receiveTimeout);
-
-      print('🟢 [UserService] Upload successful!');
-      
-      // Получаем публичный URL
-      final String publicUrl = _supabase.storage.from('avatars').getPublicUrl(filePath);
-      
-      print('🟢 [UserService] Public URL: $publicUrl');
-      
-      return publicUrl;
-
-    } on StorageException catch (e) {
-      print('🔴 [UserService] StorageException: ${e.message} (${e.statusCode})');
-      
-      String errorMessage = e.message;
-      if (e.statusCode == '403') {
-        errorMessage = 'Нет прав доступа. Проверьте RLS политики в Supabase Dashboard';
-      } else if (e.statusCode == '404') {
-        errorMessage = 'Bucket "avatars" не найден. Проверьте Storage в Dashboard';
-      } else if (e.statusCode == '413') {
-        errorMessage = 'Файл слишком большой';
-      }
-      
-      throw Exception('Storage error: $errorMessage');
-    } on TimeoutException {
-      throw Exception(
-        'Таймаут при загрузке фото в Supabase Storage. '
-        'Проверьте интернет/ВПН и повторите попытку.',
+      final url = await _storageService.uploadProfilePhoto(
+        photoFile.path,
+        onProgress: (progress) {
+          print('🔵 [UserService] Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
+        },
       );
+
+      print('🟢 [UserService] Фото профиля успешно загружено: $url');
+      return url;
     } catch (e) {
-      print('🔴 [UserService] Ошибка: $e');
+      print('🔴 [UserService] Ошибка при загрузке фото профиля: $e');
       rethrow;
     }
   }

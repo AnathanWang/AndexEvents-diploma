@@ -52,6 +52,7 @@ dependencies:
   # Networking
   dio: ^5.7.0
   http: ^1.2.2
+  mime: ^1.0.5
   
   # Geolocation & Maps
   yandex_mapkit: ^4.1.0

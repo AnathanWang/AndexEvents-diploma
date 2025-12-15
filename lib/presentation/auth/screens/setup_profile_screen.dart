@@ -50,7 +50,6 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
       if (mounted && e.toString().contains('multiple_request')) {
         CustomNotification.error(context, 'Операция отменена. Попробуйте еще раз');
       }
-      print('Image picker error: $e');
     }
   }
 
@@ -63,27 +62,19 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
 
         // Загружаем фото если выбрано
         if (_profileImage != null) {
-          print('🔵 [SetupProfile] Загружаем фото...');
           try {
             photoUrl = await _userService.uploadProfilePhoto(_profileImage!);
-            print('🟢 [SetupProfile] Фото загружено: $photoUrl');
           } catch (photoError) {
-            print('🟡 [SetupProfile] Не удалось загрузить фото: $photoError');
-            print('🟡 [SetupProfile] Продолжаем без фото (можно добавить позже)');
             // Не прерываем процесс, продолжаем без фото
           }
-        } else {
-          print('🟡 [SetupProfile] Фото не выбрано');
         }
 
         // Отправляем данные профиля на backend
-        print('🔵 [SetupProfile] Отправляем профиль с photoUrl: $photoUrl');
         await _userService.updateProfile(
           photoUrl: photoUrl,
           age: int.tryParse(_ageController.text),
           gender: _selectedGender,
         );
-        print('🟢 [SetupProfile] Профиль обновлён');
 
         if (mounted) {
           setState(() => _isLoading = false);
@@ -94,7 +85,6 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
           );
         }
       } catch (e) {
-        print('🔴 [SetupProfile] Ошибка: $e');
         if (mounted) {
           setState(() => _isLoading = false);
           CustomNotification.show(context, 'Ошибка: $e', isError: true);

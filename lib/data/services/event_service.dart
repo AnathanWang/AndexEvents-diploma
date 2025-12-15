@@ -4,144 +4,38 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/config/app_config.dart';
-import '../../core/utils/image_utils.dart';
 import '../models/event_model.dart';
 import '../models/participant_model.dart';
+import 'local_storage_service.dart';
 
 /// Сервис для работы с событиями
 class EventService {
   final SupabaseClient _supabase = Supabase.instance.client;
+  late final LocalStorageService _storageService;
 
-  String _inferImageContentType(String fileExt) {
-    switch (fileExt.toLowerCase()) {
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      case 'png':
-        return 'image/png';
-      case 'webp':
-        return 'image/webp';
-      case 'gif':
-        return 'image/gif';
-      default:
-        return 'application/octet-stream';
+  EventService() {
+    _storageService = LocalStorageService();
+  }
+
+  /// Загрузить фото события в локальное хранилище
+  Future<String> uploadEventPhoto(File photoFile) async {
+    try {
+      final url = await _storageService.uploadEventPhoto(
+        photoFile.path,
+        onProgress: (progress) {
+          // Прогресс загрузки обновляется в UI слое
+        },
+      );
+
+      return url;
+    } catch (e) {
+      throw Exception('Не удалось загрузить фото события: $e');
     }
   }
 
   /// Получить Supabase Access Token для авторизованных запросов
   Future<String?> _getIdToken() async {
     return _supabase.auth.currentSession?.accessToken;
-  }
-
-  /// Загрузить фото события через Supabase Storage
-  Future<String> uploadEventPhoto(File photoFile) async {
-    try {
-      print('🔵 [EventService] Начинаем загрузку фото события...');
-      
-      final user = _supabase.auth.currentUser;
-      if (user == null) {
-        print('🔴 [EventService] Нет активного пользователя');
-        throw Exception('Пользователь не авторизован');
-      }
-
-      final session = _supabase.auth.currentSession;
-      print('🔵 [EventService] Session accessToken: ${session?.accessToken != null ? "present" : "null"}');
-
-      if (!await photoFile.exists()) {
-        throw Exception('Файл не существует');
-      }
-
-      // Сжимаем изображение перед загрузкой
-      print('🔵 [EventService] Сжимаем изображение...');
-      var compressedFile = await ImageUtils.compressImage(photoFile);
-
-      final fileSize = await compressedFile.length();
-      if (fileSize > 10 * 1024 * 1024) {
-        // 10MB limit for events (больше чем для аватаров)
-        throw Exception('Файл слишком большой (макс. 10MB, ваш файл ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB)');
-      }
-
-      final fileExt = compressedFile.path.split('.').last.toLowerCase();
-      final fileName = '${user.id}/${DateTime.now().millisecondsSinceEpoch}.$fileExt';
-      
-      print('🔵 [EventService] User ID: ${user.id}');
-      print('🔵 [EventService] File path: $fileName');
-      print('🔵 [EventService] File size: ${(fileSize / 1024).toStringAsFixed(2)}KB');
-
-      // Быстрый preflight: проверяем доступ к bucket (помогает отличить RLS/доступ от зависаний upload)
-      try {
-        final listed = await _supabase.storage
-            .from('events')
-            .list(path: user.id)
-            .timeout(const Duration(seconds: 10));
-        print('🔵 [EventService] Preflight list ok, files in folder: ${listed.length}');
-      } catch (e) {
-        print('🟡 [EventService] Preflight list failed: $e');
-      }
-      
-      // Загружаем через SDK
-      print('🔵 [EventService] Загружаем через SDK...');
-
-      // На некоторых платформах upload(File) может зависать.
-      // uploadBinary работает стабильнее для небольших изображений.
-      final bytes = await compressedFile.readAsBytes().timeout(AppConfig.receiveTimeout);
-
-      Future<void> doUpload() {
-        return _supabase.storage.from('events').uploadBinary(
-              fileName,
-              bytes,
-              fileOptions: FileOptions(
-                cacheControl: '3600',
-                contentType: _inferImageContentType(fileExt),
-                upsert: true,
-              ),
-            );
-      }
-
-      try {
-        await doUpload().timeout(AppConfig.receiveTimeout);
-      } on TimeoutException {
-        // Один ретрай на случай кратковременного залипания сети/SDK
-        print('🟡 [EventService] Upload timeout, retrying once...');
-        await Future.delayed(const Duration(seconds: 1));
-        await doUpload().timeout(AppConfig.receiveTimeout);
-      }
-
-      print('🟢 [EventService] Upload successful!');
-
-      // Get Public URL
-      final String publicUrl = _supabase.storage.from('events').getPublicUrl(fileName).trim();
-      
-      print('🟢 [EventService] URL: $publicUrl');
-      
-      return publicUrl;
-
-    } on StorageException catch (e) {
-      print('🔴 [EventService] StorageException: ${e.message} (${e.statusCode})');
-      
-      String errorMessage = e.message;
-      if (e.statusCode == '403') {
-        errorMessage = 'Нет прав доступа. Проверьте RLS политики в Supabase Dashboard';
-      } else if (e.statusCode == '404') {
-        errorMessage = 'Bucket "events" не найден. Проверьте Storage в Dashboard';
-      } else if (e.statusCode == '413') {
-        errorMessage = 'Файл слишком большой';
-      }
-      
-      throw Exception('Storage error: $errorMessage');
-    } on TimeoutException {
-      throw Exception(
-        'Таймаут при загрузке фото события в Supabase Storage. '
-        'Проверьте интернет/ВПН и повторите попытку.',
-      );
-    } on SocketException catch (e) {
-      throw Exception(
-        'Проблема сети при загрузке фото события: ${e.message}',
-      );
-    } catch (e) {
-      print('🔴 [EventService] Ошибка: $e');
-      throw Exception('Не удалось загрузить фото: $e');
-    }
   }
 
   /// Создать событие
