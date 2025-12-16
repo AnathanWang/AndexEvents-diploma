@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../widgets/common/custom_notification.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../data/services/user_service.dart';
 import 'setup_interests_screen.dart';
+import '../../widgets/common/custom_dropdown.dart';
 
 /// Экран 1: Настройка базового профиля
 /// Фото, возраст, пол
@@ -30,18 +32,27 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
-    );
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512, // Уменьшили для симулятора
+        maxHeight: 512,
+        imageQuality: 60, // Сильнее сжимаем
+      );
 
-    if (image != null) {
-      setState(() {
-        _profileImage = File(image.path);
-      });
+      if (image != null && mounted) {
+        setState(() {
+          _profileImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted && e.toString().contains('multiple_request')) {
+        CustomNotification.error(
+          context,
+          'Операция отменена. Попробуйте еще раз',
+        );
+      }
     }
   }
 
@@ -54,7 +65,11 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
 
         // Загружаем фото если выбрано
         if (_profileImage != null) {
-          photoUrl = await _userService.uploadProfilePhoto(_profileImage!);
+          try {
+            photoUrl = await _userService.uploadProfilePhoto(_profileImage!);
+          } catch (photoError) {
+            // Не прерываем процесс, продолжаем без фото
+          }
         }
 
         // Отправляем данные профиля на backend
@@ -75,12 +90,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
       } catch (e) {
         if (mounted) {
           setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Ошибка: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomNotification.show(context, 'Ошибка: $e', isError: true);
         }
       }
     }
@@ -110,10 +120,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
             onPressed: _handleSkip,
             child: const Text(
               'Пропустить',
-              style: TextStyle(
-                color: Color(0xFF9E9E9E),
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 16),
             ),
           ),
         ],
@@ -174,10 +181,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                 const SizedBox(height: 8),
                 const Text(
                   'Это поможет найти интересных людей',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF9E9E9E),
-                  ),
+                  style: TextStyle(fontSize: 16, color: Color(0xFF9E9E9E)),
                 ),
                 const SizedBox(height: 40),
 
@@ -233,10 +237,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                 const Text(
                   'Добавить фото (опционально)',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF9E9E9E),
-                  ),
+                  style: TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
                 ),
                 const SizedBox(height: 40),
 
@@ -277,27 +278,10 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                 const SizedBox(height: 16),
 
                 // Пол
-                DropdownButtonFormField<String>(
+                CustomDropdown<String>(
+                  label: 'Пол',
                   value: _selectedGender,
-                  decoration: InputDecoration(
-                    labelText: 'Пол',
-                    hintText: 'Выберите пол',
-                    prefixIcon: const Icon(Icons.wc_outlined),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF5E60CE),
-                        width: 2,
-                      ),
-                    ),
-                  ),
+                  prefixIcon: Icons.wc_outlined,
                   items: _genders.map((String gender) {
                     return DropdownMenuItem<String>(
                       value: gender,
@@ -309,6 +293,8 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                       _selectedGender = value;
                     });
                   },
+                  useBottomSheet: true,
+                  showBottomSheetCount: false,
                 ),
                 const SizedBox(height: 40),
 
@@ -330,8 +316,9 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : const Text(
@@ -342,49 +329,48 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                           ),
                         ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Кнопка пропустить фото
                 TextButton(
-                  onPressed: _isLoading ? null : () async {
-                    if (_formKey.currentState?.validate() ?? false) {
-                      setState(() => _isLoading = true);
-                      
-                      try {
-                        // Отправляем только возраст и пол, без фото
-                        await _userService.updateProfile(
-                          age: int.tryParse(_ageController.text),
-                          gender: _selectedGender,
-                        );
+                  onPressed: _isLoading
+                      ? null
+                      : () async {
+                          if (_formKey.currentState?.validate() ?? false) {
+                            setState(() => _isLoading = true);
 
-                        if (mounted) {
-                          setState(() => _isLoading = false);
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (BuildContext context) => const SetupInterestsScreen(),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          setState(() => _isLoading = false);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Ошибка: $e'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    }
-                  },
+                            try {
+                              // Отправляем только возраст и пол, без фото
+                              await _userService.updateProfile(
+                                age: int.tryParse(_ageController.text),
+                                gender: _selectedGender,
+                              );
+
+                              if (mounted) {
+                                setState(() => _isLoading = false);
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (BuildContext context) =>
+                                        const SetupInterestsScreen(),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                setState(() => _isLoading = false);
+                                CustomNotification.show(
+                                  context,
+                                  'Ошибка при обновлении профиля: $e',
+                                  isError: true,
+                                );
+                              }
+                            }
+                          }
+                        },
                   child: Text(
                     'Пропустить добавление фото',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   ),
                 ),
               ],

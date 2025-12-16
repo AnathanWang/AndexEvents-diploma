@@ -1,22 +1,20 @@
 import 'dart:convert';
 import 'dart:async';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/config/app_config.dart';
 
-/// Сервис для работы с Firebase Authentication
+/// Сервис для работы с Supabase Authentication
 class AuthService {
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
   late final GoogleSignIn _googleSignIn;
 
   AuthService() {
     print('🔵 [AuthService] Инициализирован');
     
     // Инициализируем GoogleSignIn с явным clientId для iOS
-    // На iOS необходимо явно указать clientId, чтобы GoogleSignIn знал, какой OAuth client использовать
-    // На Android это берётся из google-services.json автоматически
-    // clientId находится в GoogleService-Info.plist (CLIENT_ID)
     _googleSignIn = GoogleSignIn(
       clientId: '672417054710-2gm36ur4k2nj5a7ed2re974mmq4qmt34.apps.googleusercontent.com',
       scopes: [
@@ -24,60 +22,76 @@ class AuthService {
         'profile',
       ],
     );
-    print('🔵 [AuthService] GoogleSignIn инициализирован с clientId и scopes: email, profile');
+    print('🔵 [AuthService] GoogleSignIn инициализирован');
   }
 
-  /// Получить текущего пользователя Firebase
-  User? get currentUser => _firebaseAuth.currentUser;
+  /// Получить текущего пользователя Supabase
+  User? get currentUser => _supabase.auth.currentUser;
 
   /// Stream для отслеживания изменений состояния авторизации
-  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
+  Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
 
   /// Регистрация через Email и пароль
-  Future<UserCredential> signUpWithEmail({
+  Future<AuthResponse> signUpWithEmail({
     required String email,
     required String password,
     required String displayName,
   }) async {
+    print('🔵 [AuthService] signUpWithEmail: "$email" (len=${email.length}), name: "$displayName"');
     try {
-      // Создаём пользователя в Firebase
-      final UserCredential credential = await _firebaseAuth.createUserWithEmailAndPassword(
+      // Создаём пользователя в Supabase
+      final AuthResponse response = await _supabase.auth.signUp(
         email: email,
         password: password,
+        data: {'display_name': displayName},
+        emailRedirectTo: null, // Отключаем email редирект
       );
 
-      // Обновляем displayName
-      await credential.user?.updateDisplayName(displayName);
-      await credential.user?.reload();
+      print('🔵 [AuthService] Supabase response:');
+      print('  - User: ${response.user?.id}');
+      print('  - Session: ${response.session != null}');
+      print('  - User confirmed: ${response.user?.emailConfirmedAt != null}');
+      
+      // Если требуется подтверждение email, выбрасываем специальную ошибку
+      if (response.user != null && response.session == null) {
+        throw Exception(
+          'Для завершения регистрации необходимо подтвердить email. '
+          'Проверьте почту и перейдите по ссылке из письма.'
+        );
+      }
 
       // Создаём пользователя в нашей базе данных
-      if (credential.user != null) {
+      if (response.user != null) {
         await _createUserInBackend(
-          firebaseUid: credential.user!.uid,
+          supabaseUid: response.user!.id,
           email: email,
           displayName: displayName,
           photoUrl: null,
         );
       }
 
-      return credential;
-    } on FirebaseAuthException catch (e) {
-      throw _handleFirebaseAuthException(e);
+      return response;
+    } on AuthException catch (e) {
+      throw _handleSupabaseAuthException(e);
+    } catch (e) {
+      throw Exception('Ошибка регистрации: $e');
     }
   }
 
   /// Вход через Email и пароль
-  Future<UserCredential> signInWithEmail({
+  Future<AuthResponse> signInWithEmail({
     required String email,
     required String password,
   }) async {
     try {
-      return await _firebaseAuth.signInWithEmailAndPassword(
+      return await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
-    } on FirebaseAuthException catch (e) {
-      throw _handleFirebaseAuthException(e);
+    } on AuthException catch (e) {
+      throw _handleSupabaseAuthException(e);
+    } catch (e) {
+      throw Exception('Ошибка входа: $e');
     }
   }
 
@@ -86,97 +100,59 @@ class AuthService {
     try {
       print('🔵 [Google Sign-In] Начинаем процесс входа...');
       
-      // Сначала проверяем, уже ли пользователь авторизован
-      final GoogleSignInAccount? alreadySignedIn = await _googleSignIn.signInSilently();
-      print('🔵 [Google Sign-In] Уже авторизован? ${alreadySignedIn?.email}');
-      
       // Запускаем процесс входа через Google
-      print('🔵 [Google Sign-In] Вызываем signIn()...');
-      print('🔵 [Google Sign-In] GoogleSignIn currentUser: ${_googleSignIn.currentUser?.email}');
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn().timeout(
-        const Duration(seconds: 60),
-        onTimeout: () {
-          print('🔴 [Google Sign-In] Timeout при вызове signIn()');
-          throw Exception('Google Sign-In timeout after 60 seconds');
-        },
-      ).catchError((error) {
-        print('🔴 [Google Sign-In] Error при signIn: $error');
-        throw Exception('Google Sign-In error: $error');
-      });
-      
-      print('🔵 [Google Sign-In] Получен googleUser: ${googleUser?.email}');
-
       if (googleUser == null) {
-        print('🔴 [Google Sign-In] Пользователь отменил вход или signIn() вернул null');
         throw Exception('Google Sign-In отменён пользователем');
       }
 
       // Получаем данные аутентификации
-      print('🔵 [Google Sign-In] Получаем токены...');
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      print('🔵 [Google Sign-In] Токены получены: accessToken=${googleAuth.accessToken != null}, idToken=${googleAuth.idToken != null}');
-
-      // Проверяем, что у нас есть токены
-      if (googleAuth.idToken == null) {
-        print('🔴 [Google Sign-In] idToken == null!');
-        throw Exception('Не удалось получить idToken от Google');
+      
+      if (googleAuth.idToken == null || googleAuth.accessToken == null) {
+        throw Exception('Не удалось получить токены от Google');
       }
 
-      // Создаём credential для Firebase
-      final OAuthCredential credential = GoogleAuthProvider.credential(
+      // Входим в Supabase
+      print('🔵 [Google Sign-In] Входим в Supabase...');
+      final AuthResponse response = await _supabase.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: googleAuth.idToken!,
         accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
       );
-      print('🔵 [Google Sign-In] Credential создан');
-
-      // Входим в Firebase
-      print('🔵 [Google Sign-In] Входим в Firebase...');
-      final UserCredential userCredential = await _firebaseAuth.signInWithCredential(credential);
-      print('🔵 [Google Sign-In] Вход в Firebase успешен: ${userCredential.user?.email}');
-
-      // Проверяем, первый ли это вход (новый пользователь)
-      final bool isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
-      print('🔵 [Google Sign-In] Новый пользователь? $isNewUser');
       
-      if (isNewUser) {
-        print('🔵 [Google Sign-In] Создаём пользователя в backend...');
-        // Создаём пользователя в нашей базе данных
+      print('🔵 [Google Sign-In] Вход в Supabase успешен: ${response.user?.email}');
+
+      if (response.user != null) {
+        print('🔵 [Google Sign-In] Создаём/обновляем пользователя в backend...');
         await _createUserInBackend(
-          firebaseUid: userCredential.user!.uid,
-          email: userCredential.user!.email!,
-          displayName: userCredential.user!.displayName ?? 'User',
-          photoUrl: userCredential.user!.photoURL,
+          supabaseUid: response.user!.id,
+          email: response.user!.email!,
+          displayName: response.user!.userMetadata?['full_name'] ?? googleUser.displayName ?? 'User',
+          photoUrl: response.user!.userMetadata?['avatar_url'] ?? googleUser.photoUrl,
         );
-        print('🔵 [Google Sign-In] Пользователь создан в backend');
-        
-        // Добавляем небольшую задержку чтобы БД синхронизировалась
-        await Future.delayed(const Duration(milliseconds: 500));
       }
 
       // Получаем статус онбординга из backend
-      print('🔵 [Google Sign-In] Получаем статус онбординга от backend...');
       bool isOnboardingCompleted = false;
       try {
         final profileData = await getCurrentUserProfile();
         isOnboardingCompleted = profileData['isOnboardingCompleted'] as bool? ?? false;
-        print('🔵 [Google Sign-In] isOnboardingCompleted из backend: $isOnboardingCompleted');
       } catch (e) {
         print('🟡 [Google Sign-In] Не удалось получить статус онбординга: $e');
-        // Если не получилось получить из backend — используем isNewUser
-        isOnboardingCompleted = !isNewUser;
+        // Если не смогли получить профиль, считаем что онбординг не завершён
+        isOnboardingCompleted = false;
       }
 
-      print('🔵 [Google Sign-In] Успех!');
       return {
-        'userCredential': userCredential,
+        'userCredential': response, // Возвращаем AuthResponse вместо UserCredential
         'isOnboardingCompleted': isOnboardingCompleted,
       };
-    } on FirebaseAuthException catch (e) {
-      print('🔴 [Google Sign-In] FirebaseAuthException: ${e.code} - ${e.message}');
-      throw _handleFirebaseAuthException(e);
+    } on AuthException catch (e) {
+      throw _handleSupabaseAuthException(e);
     } catch (e) {
-      print('🔴 [Google Sign-In] Exception: $e\n${StackTrace.current}');
+      print('🔴 [Google Sign-In] Exception: $e');
       throw Exception('Ошибка входа через Google: $e');
     }
   }
@@ -184,41 +160,41 @@ class AuthService {
   /// Выход из системы
   Future<void> signOut() async {
     await Future.wait([
-      _firebaseAuth.signOut(),
+      _supabase.auth.signOut(),
       _googleSignIn.signOut(),
     ]);
   }
 
-  /// Получить Firebase ID Token для API запросов
+  /// Получить Supabase Access Token для API запросов
   Future<String?> getIdToken() async {
-    return await _firebaseAuth.currentUser?.getIdToken();
+    return _supabase.auth.currentSession?.accessToken;
   }
 
   /// Сброс пароля
   Future<void> resetPassword(String email) async {
     try {
-      await _firebaseAuth.sendPasswordResetEmail(email: email);
-    } on FirebaseAuthException catch (e) {
-      throw _handleFirebaseAuthException(e);
+      await _supabase.auth.resetPasswordForEmail(email);
+    } on AuthException catch (e) {
+      throw _handleSupabaseAuthException(e);
     }
   }
 
   /// Получить текущий профиль пользователя из бэкенда
   Future<Map<String, dynamic>> getCurrentUserProfile() async {
     try {
-      final user = _firebaseAuth.currentUser;
-      if (user == null) {
+      final session = _supabase.auth.currentSession;
+      if (session == null) {
         throw Exception('Пользователь не авторизован');
       }
 
-      final token = await user.getIdToken();
+      final token = session.accessToken;
       final response = await http.get(
         Uri.parse('${AppConfig.baseUrl}/users/me'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(AppConfig.receiveTimeout);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -226,6 +202,15 @@ class AuthService {
       } else {
         throw Exception('Не удалось загрузить профиль пользователя');
       }
+    } on TimeoutException {
+      throw Exception(
+        'Таймаут при запросе к API (${AppConfig.baseUrl}). '
+        'Если вы на физическом устройстве, задайте API_BASE_URL через --dart-define.',
+      );
+    } on SocketException catch (e) {
+      throw Exception(
+        'Не удалось подключиться к API (${AppConfig.baseUrl}): ${e.message}',
+      );
     } catch (e) {
       throw Exception('Ошибка загрузки профиля: $e');
     }
@@ -233,67 +218,59 @@ class AuthService {
 
   /// Создание пользователя в нашей базе данных через backend API
   Future<void> _createUserInBackend({
-    required String firebaseUid,
+    required String supabaseUid,
     required String email,
     required String displayName,
     String? photoUrl,
   }) async {
     try {
-      print('🔵 [Backend] Отправляем POST запрос на ${AppConfig.baseUrl}/users');
-      print('🔵 [Backend] Данные: firebaseUid=$firebaseUid, email=$email, displayName=$displayName');
-      
       final response = await http.post(
         Uri.parse('${AppConfig.baseUrl}/users'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          'firebaseUid': firebaseUid,
+          'supabaseUid': supabaseUid,
           'email': email,
           'displayName': displayName,
           'photoUrl': photoUrl,
         }),
-      ).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('🔴 [Backend] Timeout при создании пользователя');
-          throw Exception('Timeout при подключении к backend');
-        },
-      );
-
-      print('🔵 [Backend] Response status: ${response.statusCode}');
-      print('🔵 [Backend] Response body: ${response.body}');
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 201 && response.statusCode != 409) {
-        // 409 = пользователь уже существует (это нормально при повторном входе)
         throw Exception('Не удалось создать пользователя в базе данных (${response.statusCode})');
       }
-      print('🔵 [Backend] Пользователь успешно создан');
     } catch (e) {
-      // Логируем ошибку, но не бросаем - пользователь всё равно создан в Firebase
       print('🔴 [Backend] Ошибка создания пользователя в backend: $e');
     }
   }
 
-  /// Обработка Firebase ошибок с понятными сообщениями
-  String _handleFirebaseAuthException(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'weak-password':
-        return 'Слишком слабый пароль. Используйте минимум 6 символов.';
-      case 'email-already-in-use':
-        return 'Этот email уже зарегистрирован. Попробуйте войти.';
-      case 'invalid-email':
-        return 'Некорректный email адрес.';
-      case 'user-not-found':
-        return 'Пользователь с таким email не найден.';
-      case 'wrong-password':
-        return 'Неверный пароль.';
-      case 'user-disabled':
-        return 'Этот аккаунт заблокирован.';
-      case 'too-many-requests':
-        return 'Слишком много попыток. Попробуйте позже.';
-      case 'operation-not-allowed':
-        return 'Этот метод входа отключен. Обратитесь в поддержку.';
-      default:
-        return 'Ошибка авторизации: ${e.message}';
+  /// Обработка Supabase ошибок
+  String _handleSupabaseAuthException(AuthException e) {
+    // Маппинг распространённых ошибок Supabase на русский язык
+    final message = e.message.toLowerCase();
+    
+    if (message.contains('invalid') && message.contains('email')) {
+      return 'Некорректный формат email. Используйте формат: username@example.com';
     }
+    if (message.contains('user already registered')) {
+      return 'Пользователь с таким email уже зарегистрирован';
+    }
+    if (message.contains('invalid login credentials')) {
+      return 'Неверный email или пароль';
+    }
+    if (message.contains('email not confirmed')) {
+      return 'Email не подтверждён. Проверьте почту';
+    }
+    if (message.contains('password') && message.contains('short')) {
+      return 'Пароль слишком короткий. Минимум 6 символов';
+    }
+    if (message.contains('weak password')) {
+      return 'Слишком слабый пароль. Используйте буквы и цифры';
+    }
+    if (message.contains('rate limit')) {
+      return 'Слишком много попыток. Попробуйте позже';
+    }
+    
+    // Если не нашли подходящего сообщения, возвращаем оригинальное
+    return 'Ошибка авторизации: ${e.message}';
   }
 }

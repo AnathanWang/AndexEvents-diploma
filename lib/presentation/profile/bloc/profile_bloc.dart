@@ -11,9 +11,9 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final EventService _eventService;
 
   ProfileBloc({UserService? userService, EventService? eventService})
-      : _userService = userService ?? UserService(),
-        _eventService = eventService ?? EventService(),
-        super(const ProfileInitial()) {
+    : _userService = userService ?? UserService(),
+      _eventService = eventService ?? EventService(),
+      super(const ProfileInitial()) {
     on<ProfileLoadRequested>(_onProfileLoadRequested);
     on<ProfileUpdateRequested>(_onProfileUpdateRequested);
     on<ProfilePhotoUpdateRequested>(_onProfilePhotoUpdateRequested);
@@ -41,11 +41,15 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     final currentState = state;
     if (currentState is! ProfileLoaded) return;
 
-    emit(ProfileUpdating(currentState.user, userEvents: currentState.userEvents));
+    emit(
+      ProfileUpdating(currentState.user, userEvents: currentState.userEvents),
+    );
 
     try {
       await _userService.updateProfile(
         displayName: event.displayName,
+        photoUrl: event.photoUrl,
+        photos: event.photos,
         bio: event.bio,
         interests: event.interests,
         socialLinks: event.socialLinks,
@@ -56,10 +60,12 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       final userEvents = await _eventService.getUserEvents(updatedUser.id);
       emit(ProfileLoaded(updatedUser, userEvents: userEvents));
     } catch (e) {
-      emit(ProfileError(
-        'Не удалось обновить профиль: $e',
-        user: currentState.user,
-      ));
+      emit(
+        ProfileError(
+          'Не удалось обновить профиль: $e',
+          user: currentState.user,
+        ),
+      );
     }
   }
 
@@ -70,24 +76,37 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     final currentState = state;
     if (currentState is! ProfileLoaded) return;
 
-    emit(ProfileUpdating(currentState.user, userEvents: currentState.userEvents));
+    emit(
+      ProfileUpdating(currentState.user, userEvents: currentState.userEvents),
+    );
 
     try {
       // Загружаем фото
-      final photoUrl = await _userService.uploadProfilePhoto(File(event.photoPath));
+      print('🔵 [ProfileBloc] Начинаем загрузку фото...');
+      final photoUrl = await _userService.uploadProfilePhoto(
+        File(event.photoPath),
+      );
 
       // Обновляем профиль с новым URL фото
+      print('🔵 [ProfileBloc] Обновляем профиль с photoUrl: $photoUrl');
       await _userService.updateProfile(photoUrl: photoUrl);
 
       // Перезагружаем профиль
       final updatedUser = await _userService.getCurrentUser();
       final userEvents = await _eventService.getUserEvents(updatedUser.id);
+      print('🟢 [ProfileBloc] Фото обновлено успешно');
       emit(ProfileLoaded(updatedUser, userEvents: userEvents));
     } catch (e) {
-      emit(ProfileError(
-        'Не удалось обновить фото: $e',
-        user: currentState.user,
-      ));
+      print('🔴 [ProfileBloc] Ошибка обновления фото: $e');
+      print('⚠️ [ProfileBloc] Это может быть проблема VPN или симулятора iOS');
+
+      // Возвращаемся в ProfileLoaded без ошибки
+      emit(
+        ProfileError(
+          'Не удалось загрузить фото (проблема сети/симулятора). Попробуйте: 1) Отключить VPN 2) Использовать реальное устройство',
+          user: currentState.user,
+        ),
+      );
     }
   }
 }

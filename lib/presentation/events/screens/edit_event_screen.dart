@@ -4,7 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../core/config/app_config.dart';
+import '../../widgets/common/custom_dropdown.dart';
+import '../../widgets/common/custom_notification.dart';
 import '../../../data/models/event_model.dart';
 import '../bloc/event_bloc.dart';
 import '../bloc/event_event.dart';
@@ -129,15 +130,26 @@ class _EditEventScreenState extends State<EditEventScreen> {
   }
 
   Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    
-    if (image != null) {
-      setState(() {
-        _eventPhoto = File(image.path);
-      });
-      // Сразу загружаем фото
-      context.read<EventBloc>().add(EventPhotoUploadRequested(image.path));
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      
+      if (image != null && mounted) {
+        setState(() {
+          _eventPhoto = File(image.path);
+        });
+        // Сразу загружаем фото
+        context.read<EventBloc>().add(EventPhotoUploadRequested(image.path));
+      }
+    } catch (e) {
+      if (mounted && e.toString().contains('multiple_request')) {
+        CustomNotification.show(
+          context,
+          'Операция отменена. Попробуйте еще раз',
+          isError: true,
+        );
+      }
+      print('Image picker error: $e');
     }
   }
 
@@ -161,8 +173,10 @@ class _EditEventScreenState extends State<EditEventScreen> {
   void _updateEvent() {
     if (_formKey.currentState!.validate()) {
       if (_latitude == null || _longitude == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Пожалуйста, выберите местоположение на карте')),
+        CustomNotification.show(
+          context,
+          'Пожалуйста, выберите местоположение на карте',
+          isError: true,
         );
         return;
       }
@@ -224,33 +238,26 @@ class _EditEventScreenState extends State<EditEventScreen> {
         } else if (state is EventPhotoUploaded) {
           setState(() {
             _isPhotoUploading = false;
-            _uploadedPhotoUrl = state.photoUrl;
+            final url = state.photoUrl.trim();
+            _uploadedPhotoUrl = url.isEmpty ? null : url;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Фото успешно загружено')),
-          );
+          CustomNotification.show(context, 'Фото успешно загружено');
         } else if (state is EventUpdating || state is EventDeleting) {
           setState(() => _isLoading = true);
         } else if (state is EventUpdated) {
           setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Событие успешно обновлено')),
-          );
+          CustomNotification.show(context, 'Событие успешно обновлено');
           Navigator.pop(context, true); // Возвращаем true, чтобы обновить список
         } else if (state is EventDeleted) {
           setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Событие удалено')),
-          );
+          CustomNotification.show(context, 'Событие удалено');
           Navigator.pop(context, true); // Возвращаем true, чтобы обновить список
         } else if (state is EventError) {
           setState(() {
             _isLoading = false;
             _isPhotoUploading = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-          );
+          CustomNotification.show(context, state.message, isError: true);
         }
       },
       child: Scaffold(
@@ -290,9 +297,6 @@ class _EditEventScreenState extends State<EditEventScreen> {
                                         borderRadius: BorderRadius.circular(16),
                                         child: CachedNetworkImage(
                                           imageUrl: _uploadedPhotoUrl!,
-                                          httpHeaders: {
-                                            'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
-                                          },
                                           fit: BoxFit.cover,
                                           placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
                                           errorWidget: (context, url, error) => const Icon(Icons.error),
@@ -331,13 +335,10 @@ class _EditEventScreenState extends State<EditEventScreen> {
                     const SizedBox(height: 16),
 
                     // Категория
-                    DropdownButtonFormField<String>(
+                    CustomDropdown<String>(
+                      label: 'Категория',
                       value: _selectedCategory,
-                      decoration: InputDecoration(
-                        labelText: 'Категория',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        prefixIcon: const Icon(Icons.category),
-                      ),
+                      prefixIcon: Icons.category,
                       items: _categories.map((String category) {
                         return DropdownMenuItem<String>(
                           value: category,

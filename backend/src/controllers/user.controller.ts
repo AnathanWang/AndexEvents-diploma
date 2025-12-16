@@ -10,20 +10,24 @@ import logger from '../utils/logger.js';
 export async function createUser(req: Request, res: Response): Promise<void> {
   try {
     // 1. Получаем данные из тела запроса
-    const { firebaseUid, email, displayName, photoUrl } = req.body;
+    const { supabaseUid, email, displayName, photoUrl } = req.body;
+    
+    logger.info(`[CreateUser] Request received for email: ${email}, uid: ${supabaseUid}`);
 
     // 2. Валидация обязательных полей
-    if (!firebaseUid || !email) {
+    if (!supabaseUid || !email) {
+      logger.warn('[CreateUser] Missing required fields');
       res.status(400).json({
         success: false,
-        message: 'firebaseUid and email are required',
+        message: 'supabaseUid and email are required',
       });
       return;
     }
 
     // 3. Создаём пользователя через сервис
+    logger.info(`[CreateUser] Calling userService.createUser with: ${JSON.stringify({ supabaseUid, email, displayName })}`);
     const user = await userService.createUser({
-      firebaseUid,
+      supabaseUid,
       email,
       displayName: displayName || null,
       photoUrl: photoUrl || null,

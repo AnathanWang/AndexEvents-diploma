@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/common/custom_notification.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({
@@ -442,11 +443,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 child: ElevatedButton.icon(
                   onPressed: () {
                     // TODO: Открыть чат
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Открыть чат'),
-                        duration: Duration(seconds: 1),
-                      ),
+                    CustomNotification.show(
+                      context,
+                      'Открыть чат',
+                      duration: const Duration(seconds: 1),
                     );
                   },
                   icon: const Icon(Icons.message),
@@ -471,11 +471,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 child: IconButton(
                   onPressed: () {
                     // TODO: Добавить в друзья
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Запрос отправлен'),
-                        duration: Duration(seconds: 1),
-                      ),
+                    CustomNotification.show(
+                      context,
+                      'Запрос отправлен',
+                      duration: const Duration(seconds: 1),
                     );
                   },
                   icon: const Icon(Icons.person_add, color: Color(0xFF5E60CE)),
@@ -548,11 +547,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${widget.userName} заблокирован'),
-                    backgroundColor: Colors.orange,
-                  ),
+                CustomNotification.show(
+                  context,
+                  '${widget.userName} заблокирован',
+                  duration: const Duration(seconds: 2),
                 );
               },
               child: const Text(
@@ -585,11 +583,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 title: Text(reason),
                 onTap: () {
                   Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Жалоба отправлена. Спасибо!'),
-                      backgroundColor: Colors.green,
-                    ),
+                  CustomNotification.success(
+                    context,
+                    'Жалоба отправлена. Спасибо!',
+                    duration: const Duration(seconds: 2),
                   );
                 },
               );

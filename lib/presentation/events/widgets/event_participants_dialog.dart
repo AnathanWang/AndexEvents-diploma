@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../../core/config/app_config.dart';
 import '../../../data/models/participant_model.dart';
 
 /// Dialog для отображения списка участников события
@@ -116,9 +115,6 @@ class _ParticipantTile extends StatelessWidget {
                 ? DecorationImage(
                     image: CachedNetworkImageProvider(
                       participant.user.photoUrl!,
-                      headers: {
-                        'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
-                      },
                     ),
                     fit: BoxFit.cover,
                   )

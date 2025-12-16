@@ -16,19 +16,30 @@ class ProfileLoadRequested extends ProfileEvent {
 /// Обновить профиль
 class ProfileUpdateRequested extends ProfileEvent {
   final String? displayName;
+  final String? photoUrl;
+  final List<String>? photos;
   final String? bio;
   final List<String>? interests;
   final Map<String, String>? socialLinks;
 
   const ProfileUpdateRequested({
     this.displayName,
+    this.photoUrl,
+    this.photos,
     this.bio,
     this.interests,
     this.socialLinks,
   });
 
   @override
-  List<Object?> get props => [displayName, bio, interests, socialLinks];
+  List<Object?> get props => [
+    displayName,
+    photoUrl,
+    photos,
+    bio,
+    interests,
+    socialLinks,
+  ];
 }
 
 /// Обновить фото профиля

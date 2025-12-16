@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/event_preview.dart';
 import '../../profile/screens/user_profile_screen.dart';
+import '../../widgets/common/custom_notification.dart';
 
 class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({
@@ -22,11 +23,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     setState(() {
       _isFavorite = !_isFavorite;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_isFavorite ? 'Добавлено в избранное' : 'Удалено из избранного'),
-        duration: const Duration(seconds: 1),
-      ),
+    CustomNotification.show(
+      context,
+      _isFavorite ? 'Добавлено в избранное' : 'Удалено из избранного',
+      duration: const Duration(seconds: 1),
     );
   }
 
@@ -34,22 +34,19 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     setState(() {
       _isGoing = !_isGoing;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_isGoing ? 'Вы идете на событие!' : 'Отменено участие'),
-        duration: const Duration(seconds: 1),
-        backgroundColor: _isGoing ? Colors.green : null,
-      ),
+    CustomNotification.show(
+      context,
+      _isGoing ? 'Вы идете на событие!' : 'Отменено участие',
+      duration: const Duration(seconds: 1),
     );
   }
 
   void _shareEvent() {
     // TODO: Реализовать шаринг
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Поделиться событием'),
-        duration: Duration(seconds: 1),
-      ),
+    CustomNotification.show(
+      context,
+      'Поделиться событием',
+      duration: const Duration(seconds: 1),
     );
   }
 

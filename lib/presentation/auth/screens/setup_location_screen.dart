@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/common/custom_notification.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../data/services/user_service.dart';
 import '../../home/home_shell.dart';
@@ -57,11 +58,9 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
         });
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Разрешите доступ к местоположению для продолжения'),
-              backgroundColor: Color(0xFFE53935),
-            ),
+          CustomNotification.error(
+            context,
+            'Разрешите доступ к местоположению для продолжения',
           );
         }
       }
@@ -69,12 +68,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
       setState(() => _isLoading = false);
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка: $e'),
-            backgroundColor: const Color(0xFFE53935),
-          ),
-        );
+        CustomNotification.error(context, 'Ошибка: $e');
       }
     }
   }
@@ -131,12 +125,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
       print('DEBUG: Ошибка в _completeOnboarding: $e');
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка завершения настройки: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomNotification.error(context, 'Ошибка завершения настройки: $e');
       }
     }
   }
@@ -161,12 +150,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomNotification.error(context, 'Ошибка: $e');
       }
     }
   }

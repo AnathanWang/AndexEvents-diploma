@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Состояния для AuthBloc
 abstract class AuthState extends Equatable {

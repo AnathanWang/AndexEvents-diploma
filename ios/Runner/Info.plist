@@ -30,6 +30,23 @@
 	<string>Приложению нужен доступ к вашей геолокации</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Приложению нужен доступ к вашей геолокации для показа событий рядом</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>supabase.co</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSTemporaryExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+			</dict>
+		</dict>
+	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -49,8 +66,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Yandex MapKit API Key: set via build configuration (e.g. in Xcode build settings, Info.plist preprocessor, or CI secrets).
+	     Do NOT commit the actual key into the repository. Example: define YANDEX_MAPKIT_API_KEY in your CI or local xcconfig
+	     and reference it during the build. -->
 	<key>YandexMapKitApiKey</key>
-	<string>c1c767ce-7328-4c26-b263-8eba58f98c6a</string>
+	<string>$(YANDEX_MAPKIT_API_KEY)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

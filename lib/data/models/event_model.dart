@@ -61,15 +61,19 @@ class EventModel {
   factory EventModel.fromJson(Map<String, dynamic> json) {
     // Извлекаем данные организатора из объекта createdBy
     final createdBy = json['createdBy'] as Map<String, dynamic>?;
-    
+
     // Извлекаем количество участников из _count.participants или participantsCount
     final countData = json['_count'] as Map<String, dynamic>?;
-    final participantsCount = countData?['participants'] as int? ?? 
-                              json['participantsCount'] as int? ?? 0;
-    
-    final previewParticipants = (json['participants'] as List<dynamic>?)
-        ?.map((e) => ParticipantModel.fromJson(e as Map<String, dynamic>))
-        .toList() ?? [];
+    final participantsCount =
+        countData?['participants'] as int? ??
+        json['participantsCount'] as int? ??
+        0;
+
+    final previewParticipants =
+        (json['participants'] as List<dynamic>?)
+            ?.map((e) => ParticipantModel.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [];
 
     return EventModel(
       id: json['id'] as String,

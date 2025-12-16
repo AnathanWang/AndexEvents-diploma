@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
@@ -35,12 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _handleRegister() {
     if (_formKey.currentState?.validate() ?? false) {
       if (!_acceptTerms) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Примите условия использования'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomNotification.error(context, 'Примите условия использования');
         return;
       }
 
@@ -76,23 +72,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
 
         if (state is AuthAuthenticated) {
-          // Если онбординг не завершён - переходим на настройку профиля
-          if (!state.isOnboardingCompleted) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute<void>(
-                builder: (BuildContext context) => const SetupProfileScreen(),
-              ),
-            );
-          }
-          // Если онбординг завершён - ничего не делаем, навигация через andex_app.dart
+          // Навигация через andex_app.dart - ничего не делаем здесь
+          print('🟡 [RegisterScreen] AuthAuthenticated получен');
         } else if (state is AuthFailure) {
           // Показываем ошибку
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomNotification.error(context, state.message);
         }
       },
       child: Scaffold(
@@ -188,8 +172,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Введите email';
                     }
-                    if (!value.contains('@')) {
-                      return 'Введите корректный email';
+                    // Более строгая валидация email для Supabase
+                    final emailRegex = RegExp(
+                      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+                    );
+                    if (!emailRegex.hasMatch(value.trim())) {
+                      return 'Введите корректный email (например: user@example.com)';
+                    }
+                    // Проверка минимальной длины локальной части (до @)
+                    final localPart = value.trim().split('@')[0];
+                    if (localPart.length < 3) {
+                      return 'Email должен содержать минимум 3 символа до @';
                     }
                     return null;
                   },
@@ -228,8 +221,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Введите пароль';
                     }
-                    if (value.length < 6) {
-                      return 'Пароль должен быть минимум 6 символов';
+                    if (value.length < 8) {
+                      return 'Пароль должен быть минимум 8 символов';
+                    }
+                    // Проверка на сложность: минимум одна буква и одна цифра
+                    if (!RegExp(r'[a-zA-Z]').hasMatch(value)) {
+                      return 'Пароль должен содержать буквы';
+                    }
+                    if (!RegExp(r'[0-9]').hasMatch(value)) {
+                      return 'Пароль должен содержать цифры';
                     }
                     return null;
                   },
