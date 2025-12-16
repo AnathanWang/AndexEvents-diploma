@@ -34,11 +34,13 @@ class UserService {
   Future<String> uploadProfilePhoto(File photoFile) async {
     try {
       print('🔵 [UserService] Начинаем загрузку фото профиля...');
-      
+
       final url = await _storageService.uploadProfilePhoto(
         photoFile.path,
         onProgress: (progress) {
-          print('🔵 [UserService] Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
+          print(
+            '🔵 [UserService] Upload progress: ${(progress * 100).toStringAsFixed(1)}%',
+          );
         },
       );
 
@@ -54,6 +56,7 @@ class UserService {
   Future<void> updateProfile({
     String? displayName,
     String? photoUrl,
+    List<String>? photos,
     String? bio,
     int? age,
     String? gender,
@@ -63,34 +66,39 @@ class UserService {
   }) async {
     try {
       final String? token = await _getIdToken();
-      if (token == null) throw Exception('Не удалось получить токен авторизации');
-      
+      if (token == null)
+        throw Exception('Не удалось получить токен авторизации');
+
       print('DEBUG: Token получен, длина: ${token.length}');
       print('DEBUG: Token начинается с: ${token.substring(0, 20)}...');
 
       final Map<String, dynamic> body = {};
       if (displayName != null) body['displayName'] = displayName;
       if (photoUrl != null) body['photoUrl'] = photoUrl;
+      if (photos != null) body['photos'] = photos;
       if (bio != null) body['bio'] = bio;
       if (age != null) body['age'] = age;
       if (gender != null) body['gender'] = gender;
       if (interests != null) body['interests'] = interests;
       if (socialLinks != null) body['socialLinks'] = socialLinks;
-      if (isOnboardingCompleted != null) body['isOnboardingCompleted'] = isOnboardingCompleted;
+      if (isOnboardingCompleted != null)
+        body['isOnboardingCompleted'] = isOnboardingCompleted;
 
       final url = '${AppConfig.baseUrl}/users/me';
       print('DEBUG: Отправка PUT запроса на: $url');
       print('DEBUG: Body: ${json.encode(body)}');
 
-      final response = await http.put(
-        Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode(body),
-      ).timeout(AppConfig.receiveTimeout);
-      
+      final response = await http
+          .put(
+            Uri.parse(url),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: json.encode(body),
+          )
+          .timeout(AppConfig.receiveTimeout);
+
       print('DEBUG: Ответ статус: ${response.statusCode}');
       print('DEBUG: Ответ body: ${response.body}');
 
@@ -121,19 +129,19 @@ class UserService {
   }) async {
     try {
       final String? token = await _getIdToken();
-      if (token == null) throw Exception('Не удалось получить токен авторизации');
+      if (token == null)
+        throw Exception('Не удалось получить токен авторизации');
 
-      final response = await http.put(
-        Uri.parse('${AppConfig.baseUrl}/users/me/location'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode({
-          'latitude': latitude,
-          'longitude': longitude,
-        }),
-      ).timeout(AppConfig.receiveTimeout);
+      final response = await http
+          .put(
+            Uri.parse('${AppConfig.baseUrl}/users/me/location'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: json.encode({'latitude': latitude, 'longitude': longitude}),
+          )
+          .timeout(AppConfig.receiveTimeout);
 
       if (response.statusCode != 200) {
         final errorData = json.decode(response.body);
@@ -157,14 +165,15 @@ class UserService {
   Future<UserModel> getCurrentUser() async {
     try {
       final String? token = await _getIdToken();
-      if (token == null) throw Exception('Не удалось получить токен авторизации');
+      if (token == null)
+        throw Exception('Не удалось получить токен авторизации');
 
-      final response = await http.get(
-        Uri.parse('${AppConfig.baseUrl}/users/me'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(AppConfig.receiveTimeout);
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.baseUrl}/users/me'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(AppConfig.receiveTimeout);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

@@ -57,7 +57,8 @@ class EventService {
   }) async {
     try {
       final String? token = await _getIdToken();
-      if (token == null) throw Exception('Не удалось получить токен авторизации');
+      if (token == null)
+        throw Exception('Не удалось получить токен авторизации');
 
       final Map<String, dynamic> body = {
         'title': title,
@@ -71,7 +72,8 @@ class EventService {
         'isOnline': isOnline,
       };
 
-      if (endDateTime != null) body['endDateTime'] = endDateTime.toIso8601String();
+      if (endDateTime != null)
+        body['endDateTime'] = endDateTime.toIso8601String();
       if (imageUrl != null) body['imageUrl'] = imageUrl;
       if (maxParticipants != null) body['maxParticipants'] = maxParticipants;
       if (minAge != null) body['minAge'] = minAge;
@@ -109,7 +111,7 @@ class EventService {
   }) async {
     try {
       final String? token = await _getIdToken();
-      
+
       final Map<String, String> queryParams = {
         'page': page.toString(),
         'limit': limit.toString(),
@@ -118,13 +120,14 @@ class EventService {
       if (category != null) queryParams['category'] = category;
       if (latitude != null) queryParams['latitude'] = latitude.toString();
       if (longitude != null) queryParams['longitude'] = longitude.toString();
-      if (maxDistance != null) queryParams['maxDistance'] = maxDistance.toString();
+      if (maxDistance != null)
+        queryParams['maxDistance'] = maxDistance.toString();
 
-      final uri = Uri.parse('${AppConfig.baseUrl}/events').replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '${AppConfig.baseUrl}/events',
+      ).replace(queryParameters: queryParams);
 
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-      };
+      final headers = <String, String>{'Content-Type': 'application/json'};
       if (token != null) headers['Authorization'] = 'Bearer $token';
 
       final response = await http.get(uri, headers: headers);
@@ -136,7 +139,7 @@ class EventService {
 
       final responseData = json.decode(response.body);
       final List<dynamic> eventsJson = responseData['data']['events'];
-      
+
       return eventsJson.map((json) => EventModel.fromJson(json)).toList();
     } catch (e) {
       throw Exception('Ошибка загрузки событий: $e');
@@ -147,10 +150,8 @@ class EventService {
   Future<EventModel> getEventById(String eventId) async {
     try {
       final String? token = await _getIdToken();
-      
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-      };
+
+      final headers = <String, String>{'Content-Type': 'application/json'};
       if (token != null) headers['Authorization'] = 'Bearer $token';
 
       final response = await http.get(
@@ -174,7 +175,8 @@ class EventService {
   Future<void> participateInEvent(String eventId, String status) async {
     try {
       final String? token = await _getIdToken();
-      if (token == null) throw Exception('Не удалось получить токен авторизации');
+      if (token == null)
+        throw Exception('Не удалось получить токен авторизации');
 
       final response = await http.post(
         Uri.parse('${AppConfig.baseUrl}/events/$eventId/participate'),
@@ -198,7 +200,8 @@ class EventService {
   Future<void> cancelParticipation(String eventId) async {
     try {
       final String? token = await _getIdToken();
-      if (token == null) throw Exception('Не удалось получить токен авторизации');
+      if (token == null)
+        throw Exception('Не удалось получить токен авторизации');
 
       final response = await http.delete(
         Uri.parse('${AppConfig.baseUrl}/events/$eventId/participate'),
@@ -221,10 +224,8 @@ class EventService {
   Future<List<EventModel>> getUserEvents(String userId) async {
     try {
       final String? token = await _getIdToken();
-      
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-      };
+
+      final headers = <String, String>{'Content-Type': 'application/json'};
       if (token != null) headers['Authorization'] = 'Bearer $token';
 
       final response = await http.get(
@@ -234,12 +235,14 @@ class EventService {
 
       if (response.statusCode != 200) {
         final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Ошибка загрузки событий пользователя');
+        throw Exception(
+          errorData['message'] ?? 'Ошибка загрузки событий пользователя',
+        );
       }
 
       final responseData = json.decode(response.body);
       final List<dynamic> eventsJson = responseData['data'];
-      
+
       return eventsJson.map((json) => EventModel.fromJson(json)).toList();
     } catch (e) {
       throw Exception('Ошибка загрузки событий пользователя: $e');
@@ -259,8 +262,10 @@ class EventService {
 
       final responseData = json.decode(response.body);
       final List<dynamic> participantsJson = responseData['data'];
-      
-      return participantsJson.map((json) => ParticipantModel.fromJson(json)).toList();
+
+      return participantsJson
+          .map((json) => ParticipantModel.fromJson(json))
+          .toList();
     } catch (e) {
       throw Exception('Ошибка загрузки участников: $e');
     }
@@ -286,7 +291,8 @@ class EventService {
   }) async {
     try {
       final String? token = await _getIdToken();
-      if (token == null) throw Exception('Не удалось получить токен авторизации');
+      if (token == null)
+        throw Exception('Не удалось получить токен авторизации');
 
       final Map<String, dynamic> body = {};
       if (title != null) body['title'] = title;
@@ -296,7 +302,8 @@ class EventService {
       if (latitude != null) body['latitude'] = latitude;
       if (longitude != null) body['longitude'] = longitude;
       if (dateTime != null) body['dateTime'] = dateTime.toIso8601String();
-      if (endDateTime != null) body['endDateTime'] = endDateTime.toIso8601String();
+      if (endDateTime != null)
+        body['endDateTime'] = endDateTime.toIso8601String();
       if (price != null) body['price'] = price;
       if (imageUrl != null) body['imageUrl'] = imageUrl;
       if (isOnline != null) body['isOnline'] = isOnline;
@@ -329,7 +336,8 @@ class EventService {
   Future<void> deleteEvent(String eventId) async {
     try {
       final String? token = await _getIdToken();
-      if (token == null) throw Exception('Не удалось получить токен авторизации');
+      if (token == null)
+        throw Exception('Не удалось получить токен авторизации');
 
       final response = await http.delete(
         Uri.parse('${AppConfig.baseUrl}/events/$eventId'),
@@ -349,14 +357,22 @@ class EventService {
   }
 
   /// Загрузить изображение в Supabase Storage
-  Future<String?> uploadImage(File imageFile, String bucketName, String fileName) async {
+  Future<String?> uploadImage(
+    File imageFile,
+    String bucketName,
+    String fileName,
+  ) async {
     try {
-      final response = await _supabase.storage.from(bucketName).upload(fileName, imageFile);
+      final response = await _supabase.storage
+          .from(bucketName)
+          .upload(fileName, imageFile);
       if (response.isEmpty) {
         throw Exception('Ошибка загрузки: пустой ответ от сервера');
       }
       // Получение публичного URL файла
-      final publicUrl = _supabase.storage.from(bucketName).getPublicUrl(fileName);
+      final publicUrl = _supabase.storage
+          .from(bucketName)
+          .getPublicUrl(fileName);
       return publicUrl;
     } catch (e) {
       print('Ошибка загрузки изображения: $e');

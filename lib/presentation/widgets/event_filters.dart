@@ -278,48 +278,54 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
         _selectedDate != 'week' ||
         _sortBy != 'nearest';
 
-    return GestureDetector(
-      onTap: _showFiltersBottomSheet,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5F6FA),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.tune, color: Color(0xFF5E60CE), size: 18),
-            const SizedBox(width: 8),
-            const Text(
-              'Фильтры',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF4A4D6A),
-              ),
-            ),
-            if (hasActiveFilters) ...[
-              const SizedBox(width: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF5E60CE),
-                  borderRadius: BorderRadius.circular(8),
+    return Align(
+      alignment: Alignment.centerRight,
+      child: GestureDetector(
+        onTap: _showFiltersBottomSheet,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F6FA),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.tune, color: Color(0xFF5E60CE), size: 18),
+              const SizedBox(width: 8),
+              const Text(
+                'Фильтры',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF4A4D6A),
                 ),
-                child: const Text(
-                  '⚙️',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+              ),
+              if (hasActiveFilters) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5E60CE),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    '⚙️',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
-              ),
+              ],
+              const SizedBox(width: 4),
+              const Icon(Icons.expand_more, color: Color(0xFF9E9E9E), size: 18),
             ],
-            const SizedBox(width: 4),
-            const Icon(Icons.expand_more, color: Color(0xFF9E9E9E), size: 18),
-          ],
+          ),
         ),
       ),
     );

@@ -36,7 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    
+
     return BlocBuilder<ProfileBloc, ProfileState>(
       builder: (context, state) {
         if (state is ProfileLoading) {
@@ -51,7 +51,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Text(state.message),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () => context.read<ProfileBloc>().add(const ProfileLoadRequested()),
+                  onPressed: () => context.read<ProfileBloc>().add(
+                    const ProfileLoadRequested(),
+                  ),
                   child: const Text('Повторить'),
                 ),
               ],
@@ -59,8 +61,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }
 
-        final UserModel? user = state is ProfileLoaded ? state.user : 
-                                (state is ProfileUpdating ? state.user : null);
+        final UserModel? user = state is ProfileLoaded
+            ? state.user
+            : (state is ProfileUpdating ? state.user : null);
 
         if (user == null) {
           return const Center(child: Text('Профиль не загружен'));
@@ -71,7 +74,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             context.read<ProfileBloc>().add(const ProfileLoadRequested());
           },
           child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: MediaQuery.of(context).padding.top + 16,
+              bottom: 16,
+            ),
             children: <Widget>[
               _buildProfileCard(context, user, theme),
               const SizedBox(height: 24),
@@ -101,7 +109,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 12),
               if (widget.matches.isEmpty)
-                const Text('Как только произойдут совпадения, они появятся здесь.')
+                const Text(
+                  'Как только произойдут совпадения, они появятся здесь.',
+                )
               else
                 ...widget.matches.take(2).map((MatchPreview match) {
                   return Padding(
@@ -123,7 +133,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileCard(BuildContext context, UserModel user, ThemeData theme) {
+  Widget _buildProfileCard(
+    BuildContext context,
+    UserModel user,
+    ThemeData theme,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -172,12 +186,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           errorWidget: (context, url, error) {
-                            print('🔴 [ProfileScreen] Ошибка загрузки аватара: $error');
+                            print(
+                              '🔴 [ProfileScreen] Ошибка загрузки аватара: $error',
+                            );
                             return CircleAvatar(
                               radius: 32,
                               backgroundColor: const Color(0xFF5E60CE),
                               child: Text(
-                                user.displayName?.isNotEmpty == true 
+                                user.displayName?.isNotEmpty == true
                                     ? user.displayName![0].toUpperCase()
                                     : user.email[0].toUpperCase(),
                                 style: const TextStyle(
@@ -195,7 +211,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       radius: 32,
                       backgroundColor: const Color(0xFF5E60CE),
                       child: Text(
-                        user.displayName?.isNotEmpty == true 
+                        user.displayName?.isNotEmpty == true
                             ? user.displayName![0].toUpperCase()
                             : user.email[0].toUpperCase(),
                         style: const TextStyle(
@@ -240,10 +256,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
                 if (user.bio != null) ...[
                   const SizedBox(height: 4),
-                  Text(
-                    user.bio!,
-                    style: theme.textTheme.bodyMedium,
-                  ),
+                  Text(user.bio!, style: theme.textTheme.bodyMedium),
                 ],
                 if (user.interests.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -273,7 +286,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ],
-                if (user.socialLinks != null && user.socialLinks!.isNotEmpty) ...[
+                if (user.socialLinks != null &&
+                    user.socialLinks!.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
@@ -342,13 +356,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else if (platformLower.contains('telegram')) {
       icon = Icons.send;
       color = const Color(0xFF0088cc);
-    } else if (platformLower.contains('vk') || platformLower.contains('вконтакте')) {
+    } else if (platformLower.contains('vk') ||
+        platformLower.contains('вконтакте')) {
       icon = Icons.group;
       color = const Color(0xFF0077FF);
     } else if (platformLower.contains('facebook')) {
       icon = Icons.facebook;
       color = const Color(0xFF1877F2);
-    } else if (platformLower.contains('twitter') || platformLower.contains('x')) {
+    } else if (platformLower.contains('twitter') ||
+        platformLower.contains('x')) {
       icon = Icons.alternate_email;
       color = Colors.black;
     } else {
@@ -386,7 +402,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             if (event.imageUrl != null)
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
                 child: CachedNetworkImage(
                   imageUrl: event.imageUrl!,
                   height: 140,
@@ -398,7 +416,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: const Center(child: CircularProgressIndicator()),
                   ),
                   errorWidget: (context, url, error) {
-                    print('Error loading profile event image: $url, error: $error');
+                    print(
+                      'Error loading profile event image: $url, error: $error',
+                    );
                     return Container(
                       height: 180,
                       decoration: BoxDecoration(
@@ -424,7 +444,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: _getCategoryColor(event.category),
                       borderRadius: BorderRadius.circular(8),
@@ -452,23 +475,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(Icons.access_time, size: 16, color: Color(0xFF9E9E9E)),
+                      const Icon(
+                        Icons.access_time,
+                        size: 16,
+                        color: Color(0xFF9E9E9E),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         _formatDate(event.dateTime),
-                        style: const TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF9E9E9E),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF9E9E9E)),
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 16,
+                        color: Color(0xFF9E9E9E),
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           event.location,
-                          style: const TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF9E9E9E),
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -511,8 +548,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _formatDate(DateTime dateTime) {
     final months = [
-      'янв', 'фев', 'мар', 'апр', 'май', 'июн',
-      'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'
+      'янв',
+      'фев',
+      'мар',
+      'апр',
+      'май',
+      'июн',
+      'июл',
+      'авг',
+      'сен',
+      'окт',
+      'ноя',
+      'дек',
     ];
     return '${dateTime.day} ${months[dateTime.month - 1]}, ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
   }

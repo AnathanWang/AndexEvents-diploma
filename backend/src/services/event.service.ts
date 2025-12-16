@@ -64,7 +64,6 @@ class EventService {
       where: {
         status: "APPROVED",
       },
-      distinct: ["id"],
       orderBy: { createdAt: "desc" },
       include: {
         createdBy: {
@@ -72,6 +71,22 @@ class EventService {
             id: true,
             displayName: true,
             photoUrl: true,
+          },
+        },
+        participants: {
+          take: 5,
+          orderBy: {
+            joinedAt: "desc",
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                displayName: true,
+                photoUrl: true,
+                email: true,
+              },
+            },
           },
         },
         _count: {
@@ -143,7 +158,7 @@ class EventService {
 
     const total = Number(totalResult[0].count);
 
-    // Добавляем информацию об участии текущего пользователя для каждого события
+    // Добавляем информацию об участии текущего пользователя и загружаем участников для каждого события
     const eventsWithParticipation = await Promise.all(
       events.map(async (event) => {
         let isParticipating = false;
@@ -158,9 +173,30 @@ class EventService {
           });
           isParticipating = !!participation;
         }
+
+        // Загружаем первых 5 участников
+        const participants = await prisma.participant.findMany({
+          where: { eventId: event.id },
+          take: 5,
+          orderBy: {
+            joinedAt: "desc",
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                displayName: true,
+                photoUrl: true,
+                email: true,
+              },
+            },
+          },
+        });
+
         return {
           ...event,
           isParticipating,
+          participants,
         };
       }),
     );
@@ -185,6 +221,22 @@ class EventService {
             id: true,
             displayName: true,
             photoUrl: true,
+          },
+        },
+        participants: {
+          take: 5,
+          orderBy: {
+            joinedAt: "desc",
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                displayName: true,
+                photoUrl: true,
+                email: true,
+              },
+            },
           },
         },
         _count: {
@@ -327,6 +379,22 @@ class EventService {
             id: true,
             displayName: true,
             photoUrl: true,
+          },
+        },
+        participants: {
+          take: 5,
+          orderBy: {
+            joinedAt: "desc",
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                displayName: true,
+                photoUrl: true,
+                email: true,
+              },
+            },
           },
         },
         _count: {

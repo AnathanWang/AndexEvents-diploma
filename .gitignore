@@ -58,9 +58,23 @@ backend/.env
 backend/firebase-service-account.json
 backend/logs/
 backend/uploads/
+backend/public/uploads/
 backend/backups/
 backend/dist/
 
 # Local secrets directory (do NOT commit keys here)
 # Put local/temporary keys in this directory and keep it out of VCS.
 secrets/
+
+# iOS Secrets config - NEVER commit actual keys
+ios/Secrets.xcconfig
+
+# Documentation and summary files (optional - remove if you want to commit them)
+FIXES_SUMMARY.txt
+MATCHES_ONBOARDING_FIX.md
+TINDER_STYLE_MATCHES.md
+FINAL_MATCHES_REFACTOR.md
+MATCHES_REFACTORING_SUMMARY.md
+
+# SVG icons
+Direction Arrow Icon.svg

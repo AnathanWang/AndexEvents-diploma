@@ -5,6 +5,7 @@ class UserModel {
   final String email;
   final String? displayName;
   final String? photoUrl;
+  final List<String> photos;
   final String? bio;
   final List<String> interests;
   final Map<String, dynamic>? socialLinks;
@@ -22,6 +23,7 @@ class UserModel {
     required this.email,
     this.displayName,
     this.photoUrl,
+    this.photos = const [],
     this.bio,
     this.interests = const [],
     this.socialLinks,
@@ -41,10 +43,17 @@ class UserModel {
       email: json['email'] as String,
       displayName: json['displayName'] as String?,
       photoUrl: json['photoUrl'] as String?,
+      photos:
+          (json['photos'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
       bio: json['bio'] as String?,
-      interests: (json['interests'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ?? [],
+      interests:
+          (json['interests'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
       socialLinks: json['socialLinks'] as Map<String, dynamic>?,
       age: json['age'] as int?,
       gender: json['gender'] as String?,
@@ -63,6 +72,7 @@ class UserModel {
       'email': email,
       'displayName': displayName,
       'photoUrl': photoUrl,
+      'photos': photos,
       'bio': bio,
       'interests': interests,
       'socialLinks': socialLinks,
@@ -82,6 +92,7 @@ class UserModel {
     String? email,
     String? displayName,
     String? photoUrl,
+    List<String>? photos,
     String? bio,
     List<String>? interests,
     Map<String, dynamic>? socialLinks,
@@ -99,6 +110,7 @@ class UserModel {
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
       photoUrl: photoUrl ?? this.photoUrl,
+      photos: photos ?? this.photos,
       bio: bio ?? this.bio,
       interests: interests ?? this.interests,
       socialLinks: socialLinks ?? this.socialLinks,
@@ -106,7 +118,8 @@ class UserModel {
       gender: gender ?? this.gender,
       lastLatitude: lastLatitude ?? this.lastLatitude,
       lastLongitude: lastLongitude ?? this.lastLongitude,
-      isOnboardingCompleted: isOnboardingCompleted ?? this.isOnboardingCompleted,
+      isOnboardingCompleted:
+          isOnboardingCompleted ?? this.isOnboardingCompleted,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

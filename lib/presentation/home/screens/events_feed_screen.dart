@@ -10,6 +10,7 @@ import '../../events/screens/real_event_detail_screen.dart';
 import '../../../data/models/event_model.dart';
 import '../../widgets/event_carousel.dart';
 import '../../widgets/event_filters.dart';
+import './search_screen.dart';
 
 class EventsFeedScreen extends StatefulWidget {
   const EventsFeedScreen({super.key});
@@ -204,59 +205,49 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
               context.read<EventBloc>().add(const EventsLoadRequested());
             },
             child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: MediaQuery.of(context).padding.top + 8,
+                bottom: 8,
+              ),
               children: <Widget>[
-                // City selector
-                GestureDetector(
-                  onTap: _showCityBottomSheet,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F6FA),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.location_on_outlined,
-                          color: Color(0xFF5E60CE),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _selectedCity,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF4A4D6A),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.expand_more,
-                          color: Color(0xFF9E9E9E),
-                          size: 18,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Filters
-                EventFiltersWidget(
-                  initialFilters: _currentFilters,
-                  onFiltersChanged: _handleFiltersChanged,
-                ),
-                const SizedBox(height: 20),
-
                 // Search bar
                 TextField(
                   controller: _searchController,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            BlocProvider(
+                              create: (context) => EventBloc(),
+                              child: SearchScreen(
+                                initialQuery: _searchController.text,
+                              ),
+                            ),
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                              const begin = Offset(0.0, 1.0);
+                              const end = Offset.zero;
+                              final curve = Curves.easeOutCubic;
+                              final curvedAnimation = curve.transform(
+                                animation.value,
+                              );
+                              final tween = Tween(begin: begin, end: end);
+                              final offsetAnimation = tween.animate(
+                                AlwaysStoppedAnimation(curvedAnimation),
+                              );
+
+                              return SlideTransition(
+                                position: offsetAnimation,
+                                child: child,
+                              );
+                            },
+                        transitionDuration: const Duration(milliseconds: 280),
+                      ),
+                    );
+                  },
                   onChanged: (query) {
                     setState(() {
                       _filterEvents(state.events, query);
@@ -264,13 +255,19 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                   },
                   decoration: InputDecoration(
                     hintText: 'Поиск событий...',
+                    hintStyle: const TextStyle(
+                      color: Color(0xFFB0B0B0),
+                      fontSize: 16,
+                    ),
                     prefixIcon: const Icon(
                       Icons.search,
                       color: Color(0xFF5E60CE),
+                      size: 22,
                     ),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear),
+                            color: Color(0xFF5E60CE),
                             onPressed: () {
                               _searchController.clear();
                               setState(() {
@@ -280,27 +277,89 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                           )
                         : null,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(
+                        color: Color(0xFFE8E8E8),
+                        width: 1.5,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(
+                        color: Color(0xFFE8E8E8),
+                        width: 1.5,
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(20),
                       borderSide: const BorderSide(
                         color: Color(0xFF5E60CE),
                         width: 2,
                       ),
                     ),
+                    filled: true,
+                    fillColor: const Color(0xFFFAFAFA),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
-                      vertical: 12,
+                      vertical: 14,
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
+
+                // City selector and Filters in one row
+                Row(
+                  children: [
+                    // City selector
+                    GestureDetector(
+                      onTap: _showCityBottomSheet,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F6FA),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.location_on_outlined,
+                              color: Color(0xFF5E60CE),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _selectedCity,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF4A4D6A),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.expand_more,
+                              color: Color(0xFF9E9E9E),
+                              size: 18,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Filters
+                    Expanded(
+                      child: EventFiltersWidget(
+                        initialFilters: _currentFilters,
+                        onFiltersChanged: _handleFiltersChanged,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
 
                 // Carousel section
                 if (state.events.isNotEmpty) ...[
@@ -311,22 +370,45 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                       color: const Color(0xFF4A4D6A),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   EventCarousel(
                     events: state.events,
                     onEventSelected: (event) {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => BlocProvider(
-                            create: (context) => EventBloc(),
-                            child: RealEventDetailScreen(eventId: event.id),
-                          ),
+                        PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  BlocProvider(
+                                    create: (context) => EventBloc(),
+                                    child: RealEventDetailScreen(
+                                      eventId: event.id,
+                                    ),
+                                  ),
+                          transitionsBuilder:
+                              (context, animation, secondaryAnimation, child) {
+                                const begin = Offset(0.0, 1.0);
+                                const end = Offset.zero;
+                                final curve = Curves.easeOutCubic;
+                                final curvedAnimation = curve.transform(
+                                  animation.value,
+                                );
+                                final tween = Tween(begin: begin, end: end);
+                                final offsetAnimation = tween.animate(
+                                  AlwaysStoppedAnimation(curvedAnimation),
+                                );
+
+                                return SlideTransition(
+                                  position: offsetAnimation,
+                                  child: child,
+                                );
+                              },
+                          transitionDuration: const Duration(milliseconds: 280),
                         ),
                       );
                     },
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
                 ],
 
                 // Regular events list
@@ -337,7 +419,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                     color: const Color(0xFF4A4D6A),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 if (_filteredEvents.isEmpty)
                   Center(
@@ -381,11 +463,29 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => BlocProvider(
-              create: (context) => EventBloc(),
-              child: RealEventDetailScreen(eventId: event.id),
-            ),
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                BlocProvider(
+                  create: (context) => EventBloc(),
+                  child: RealEventDetailScreen(eventId: event.id),
+                ),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  const begin = Offset(0.0, 1.0);
+                  const end = Offset.zero;
+                  final curve = Curves.easeOutCubic;
+                  final curvedAnimation = curve.transform(animation.value);
+                  final tween = Tween(begin: begin, end: end);
+                  final offsetAnimation = tween.animate(
+                    AlwaysStoppedAnimation(curvedAnimation),
+                  );
+
+                  return SlideTransition(
+                    position: offsetAnimation,
+                    child: child,
+                  );
+                },
+            transitionDuration: const Duration(milliseconds: 280),
           ),
         );
       },
@@ -523,40 +623,147 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                   const SizedBox(height: 16),
 
                   // Участники и организатор
-                  Row(
-                    children: <Widget>[
-                      SizedBox(
-                        width: 70,
-                        height: 28,
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: List<Widget>.generate(3, (int index) {
-                            return Positioned(
-                              left: index * 18,
-                              child: CircleAvatar(
-                                radius: 14,
-                                backgroundColor: categoryColor.withOpacity(
-                                  0.7 - index * 0.2,
-                                ),
-                                child: const Icon(
-                                  Icons.person,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            );
-                          }),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          '${event.participantsCount}+ участников',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ),
-                    ],
+                  // Debug: временное логирование
+                  Builder(
+                    builder: (context) {
+                      print('🔍 [EventCard] Событие: ${event.title}');
+                      print(
+                        '🔍 [EventCard] participantsCount: ${event.participantsCount}',
+                      );
+                      print(
+                        '🔍 [EventCard] previewParticipants.length: ${event.previewParticipants.length}',
+                      );
+                      if (event.previewParticipants.isNotEmpty) {
+                        print(
+                          '🔍 [EventCard] Первый участник: ${event.previewParticipants[0].user.displayName}',
+                        );
+                        print(
+                          '🔍 [EventCard] Первый участник photoUrl: ${event.previewParticipants[0].user.photoUrl}',
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
                   ),
+                  if (event.participantsCount > 0)
+                    Row(
+                      children: <Widget>[
+                        // Аватарки участников (до 5 штук)
+                        if (event.previewParticipants.isNotEmpty)
+                          SizedBox(
+                            width:
+                                event.previewParticipants.take(5).length *
+                                    18.0 +
+                                14,
+                            height: 28,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: List<Widget>.generate(
+                                event.previewParticipants.take(5).length,
+                                (int index) {
+                                  final participant =
+                                      event.previewParticipants[index];
+                                  return Positioned(
+                                    left: index * 18.0,
+                                    child: participant.user.photoUrl != null
+                                        ? CachedNetworkImage(
+                                            imageUrl:
+                                                participant.user.photoUrl!,
+                                            imageBuilder:
+                                                (context, imageProvider) =>
+                                                    CircleAvatar(
+                                                      radius: 14,
+                                                      backgroundImage:
+                                                          imageProvider,
+                                                      backgroundColor:
+                                                          Colors.white,
+                                                    ),
+                                            placeholder: (context, url) =>
+                                                CircleAvatar(
+                                                  radius: 14,
+                                                  backgroundColor: categoryColor
+                                                      .withOpacity(0.3),
+                                                  child: const SizedBox(
+                                                    width: 12,
+                                                    height: 12,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          color: Colors.white,
+                                                        ),
+                                                  ),
+                                                ),
+                                            errorWidget:
+                                                (
+                                                  context,
+                                                  url,
+                                                  error,
+                                                ) => CircleAvatar(
+                                                  radius: 14,
+                                                  backgroundColor: categoryColor
+                                                      .withOpacity(
+                                                        0.7 - index * 0.1,
+                                                      ),
+                                                  child: Text(
+                                                    participant
+                                                        .user
+                                                        .displayName[0]
+                                                        .toUpperCase(),
+                                                    style: const TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                          )
+                                        : CircleAvatar(
+                                            radius: 14,
+                                            backgroundColor: categoryColor
+                                                .withOpacity(0.7 - index * 0.1),
+                                            child: Text(
+                                              participant.user.displayName[0]
+                                                  .toUpperCase(),
+                                              style: const TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                  );
+                                },
+                              ),
+                            ),
+                          )
+                        else
+                          // Показываем иконку, если нет аватарок
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: categoryColor.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.group,
+                              size: 16,
+                              color: categoryColor,
+                            ),
+                          ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            event.participantsCount == 1
+                                ? '${event.participantsCount} участник'
+                                : event.participantsCount < 5
+                                ? '${event.participantsCount} участника'
+                                : '${event.participantsCount} участников',
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ),
+                      ],
+                    ),
 
                   // Организатор
                   if (event.creatorName != null) ...[

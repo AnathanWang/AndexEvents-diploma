@@ -71,7 +71,51 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
         return Stack(
           children: [
             // Full screen map
-            YandexMapWidget(events: events),
+            YandexMapWidget(
+              events: events,
+              isInteractive: true,
+              onMapCreated: (controller) {
+                setState(() {
+                  _mapController = controller;
+                });
+              },
+              onUserLocationUpdated: (location) {
+                setState(() {
+                  _currentUserLocation = location;
+                });
+              },
+              onEventMarkerTapped: (event) {
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        BlocProvider(
+                          create: (context) => EventBloc(),
+                          child: RealEventDetailScreen(eventId: event.id),
+                        ),
+                    transitionsBuilder:
+                        (context, animation, secondaryAnimation, child) {
+                          const begin = Offset(0.0, 1.0);
+                          const end = Offset.zero;
+                          final curve = Curves.easeOutCubic;
+                          final curvedAnimation = curve.transform(
+                            animation.value,
+                          );
+                          final tween = Tween(begin: begin, end: end);
+                          final offsetAnimation = tween.animate(
+                            AlwaysStoppedAnimation(curvedAnimation),
+                          );
+
+                          return SlideTransition(
+                            position: offsetAnimation,
+                            child: child,
+                          );
+                        },
+                    transitionDuration: const Duration(milliseconds: 280),
+                  ),
+                );
+              },
+            ),
 
             // Zoom buttons (top right)
             Positioned(
