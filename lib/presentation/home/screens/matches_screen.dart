@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' as ui;
 import 'dart:math' as math;
 import '../../../data/services/user_service.dart';
 import '../../../data/models/user_model.dart';
@@ -27,6 +28,7 @@ class _MatchesScreenState extends State<MatchesScreen>
 
   // Для показа детальной информации
   bool _showDetails = false;
+  bool _showHint = true;
   late AnimationController _detailsController;
   late Animation<double> _detailsAnimation;
 
@@ -113,37 +115,38 @@ class _MatchesScreenState extends State<MatchesScreen>
 
   void _onPanEnd(DragEndDetails details) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
 
-    // Свайп вниз - показать детали
-    if (_dragPosition.dy > 100) {
+    // Свайп вниз - показать детали (больший радиус)
+    if (_dragPosition.dy > screenHeight * 0.25) {
       _showDetailsScreen();
       _resetDrag();
       return;
     }
 
-    // Свайп вверх - "подумаю"
-    if (_dragPosition.dy < -100) {
+    // Свайп вверх - "подумаю" (больший радиус)
+    if (_dragPosition.dy < -screenHeight * 0.25) {
       _handleSuperLike();
       _animateCardOut(const Offset(0, -1000));
       return;
     }
 
-    // Свайп влево - дизлайк
-    if (_dragPosition.dx < -screenWidth * 0.3) {
+    // Свайп влево - дизлайк (больший радиус)
+    if (_dragPosition.dx < -screenWidth * 0.4) {
       _handleDislike();
       _animateCardOut(const Offset(-1000, 0));
       return;
     }
 
-    // Свайп вправо - лайк
-    if (_dragPosition.dx > screenWidth * 0.3) {
+    // Свайп вправо - лайк (больший радиус)
+    if (_dragPosition.dx > screenWidth * 0.4) {
       _handleLike();
       _animateCardOut(const Offset(1000, 0));
       return;
     }
 
-    // Вернуть карточку на место
-    _resetDrag();
+    // Вернуть карточку на место с плавной анимацией
+    _resetDragWithAnimation();
   }
 
   void _resetDrag() {
@@ -154,17 +157,79 @@ class _MatchesScreenState extends State<MatchesScreen>
     });
   }
 
-  void _animateCardOut(Offset targetPosition) {
-    // TODO: Добавить плавную анимацию вылета карточки
-    setState(() {
-      _dragPosition = targetPosition;
-    });
+  void _resetDragWithAnimation() {
+    // Плавный возврат карточки с анимацией
+    final startPosition = _dragPosition;
+    final animationDuration = const Duration(milliseconds: 300);
+    final startTime = DateTime.now();
 
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) {
+    void animateReset() {
+      if (!mounted) return;
+
+      final elapsed = DateTime.now().difference(startTime);
+      final progress =
+          (elapsed.inMilliseconds / animationDuration.inMilliseconds).clamp(
+            0.0,
+            1.0,
+          );
+
+      // Кривая анимации (ease-out cubic)
+      final easeProgress = 1 - (1 - progress) * (1 - progress) * (1 - progress);
+
+      setState(() {
+        _dragPosition = Offset(
+          startPosition.dx * (1 - easeProgress),
+          startPosition.dy * (1 - easeProgress),
+        );
+        _dragDistance = _dragPosition.distance;
+      });
+
+      if (progress < 1.0) {
+        Future.delayed(const Duration(milliseconds: 16), animateReset);
+      } else {
+        _resetDrag();
+      }
+    }
+
+    animateReset();
+  }
+
+  void _animateCardOut(Offset targetPosition) {
+    // Плавная анимация вылета карточки
+    final startPosition = _dragPosition;
+    final animationDuration = const Duration(milliseconds: 400);
+    final startTime = DateTime.now();
+
+    void animateOut() {
+      if (!mounted) return;
+
+      final elapsed = DateTime.now().difference(startTime);
+      final progress =
+          (elapsed.inMilliseconds / animationDuration.inMilliseconds).clamp(
+            0.0,
+            1.0,
+          );
+
+      // Кривая анимации (ease-in cubic)
+      final easeProgress = progress * progress * progress;
+
+      setState(() {
+        _dragPosition = Offset(
+          startPosition.dx +
+              (targetPosition.dx - startPosition.dx) * easeProgress,
+          startPosition.dy +
+              (targetPosition.dy - startPosition.dy) * easeProgress,
+        );
+      });
+
+      if (progress < 1.0) {
+        Future.delayed(const Duration(milliseconds: 16), animateOut);
+      } else {
         _nextCard();
       }
-    });
+    }
+
+    animateOut();
   }
 
   void _nextCard() {
@@ -416,8 +481,74 @@ class _MatchesScreenState extends State<MatchesScreen>
         if (_isDragging && _dragDistance > 30)
           Positioned.fill(child: IgnorePointer(child: _buildSwipeIndicator())),
 
-        // Кнопки действий внизу
-        Positioned(bottom: 40, left: 0, right: 0, child: _buildActionButtons()),
+        // Подсказка о свайпе вниз (независимая от карточки)
+        if (_showHint)
+          Positioned(
+            top: MediaQuery.of(context).padding.top,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Свайп вниз для подробностей',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black54,
+                                blurRadius: 2,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _showHint = false;
+                            });
+                          },
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -429,13 +560,13 @@ class _MatchesScreenState extends State<MatchesScreen>
       onPanEnd: isTop ? _onPanEnd : null,
       child: Container(
         margin: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top,
-          bottom: isTop ? 0 : 20,
-          left: isTop ? 0 : 10,
-          right: isTop ? 0 : 10,
+          top: MediaQuery.of(context).padding.top + 16,
+          bottom: 20,
+          left: 8,
+          right: 8,
         ),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(isTop ? 0 : 20),
+          borderRadius: BorderRadius.circular(48),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.2),
@@ -445,7 +576,7 @@ class _MatchesScreenState extends State<MatchesScreen>
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(isTop ? 0 : 20),
+          borderRadius: BorderRadius.circular(48),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -462,20 +593,23 @@ class _MatchesScreenState extends State<MatchesScreen>
 
               // Фото пользователя (если есть)
               if (_currentUser?.photoUrl != null)
-                Image.network(
-                  _currentUser!.photoUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFF5E60CE), Color(0xFF4ECCA3)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(48),
+                  child: Image.network(
+                    _currentUser!.photoUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF5E60CE), Color(0xFF4ECCA3)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
 
               // Затемнение для читаемости текста
@@ -494,7 +628,7 @@ class _MatchesScreenState extends State<MatchesScreen>
               Positioned(
                 left: 24,
                 right: 24,
-                bottom: 140,
+                bottom: 40,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -580,44 +714,6 @@ class _MatchesScreenState extends State<MatchesScreen>
                   ],
                 ),
               ),
-
-              // Подсказка о свайпе вниз
-              if (isTop)
-                Positioned(
-                  top: MediaQuery.of(context).padding.top + 20,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black26,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(
-                            Icons.keyboard_arrow_down,
-                            color: Colors.white70,
-                            size: 20,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            'Свайп вниз для подробностей',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
@@ -654,84 +750,6 @@ class _MatchesScreenState extends State<MatchesScreen>
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Дизлайк
-        _buildActionButton(
-          icon: Icons.close,
-          color: Colors.red,
-          size: 56,
-          onTap: () {
-            _handleDislike();
-            _animateCardOut(const Offset(-1000, 0));
-          },
-        ),
-        const SizedBox(width: 20),
-
-        // Супер лайк
-        _buildActionButton(
-          icon: Icons.star,
-          color: Colors.blue,
-          size: 48,
-          onTap: () {
-            _handleSuperLike();
-            _animateCardOut(const Offset(0, -1000));
-          },
-        ),
-        const SizedBox(width: 20),
-
-        // Лайк
-        _buildActionButton(
-          icon: Icons.favorite,
-          color: Colors.green,
-          size: 64,
-          onTap: () {
-            _handleLike();
-            _animateCardOut(const Offset(1000, 0));
-          },
-        ),
-        const SizedBox(width: 20),
-
-        // Подробнее
-        _buildActionButton(
-          icon: Icons.info_outline,
-          color: Color(0xFF5E60CE),
-          size: 48,
-          onTap: _showDetailsScreen,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required Color color,
-    required double size,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Icon(icon, color: color, size: size * 0.5),
       ),
     );
   }
