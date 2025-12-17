@@ -10,6 +10,7 @@ import '../../events/bloc/event_state.dart';
 import '../../events/screens/real_event_detail_screen.dart';
 import '../../widgets/yandex_map_widget.dart';
 import '../../../data/models/event_model.dart';
+import '../screens/search_screen.dart';
 
 class MapExploreScreen extends StatefulWidget {
   const MapExploreScreen({super.key});
@@ -20,19 +21,34 @@ class MapExploreScreen extends StatefulWidget {
 
 class _MapExploreScreenState extends State<MapExploreScreen> {
   late DraggableScrollableController _scrollableController;
+  late TextEditingController _searchController;
   YandexMapController? _mapController;
   Point? _currentUserLocation;
+  double _sheetSize = 0.25; // Текущий размер bottom sheet
+  List<EventModel> _filteredEvents = [];
 
   @override
   void initState() {
     super.initState();
     _scrollableController = DraggableScrollableController();
+    _searchController = TextEditingController();
+
+    // Слушаем изменения размера bottom sheet
+    _scrollableController.addListener(() {
+      if (mounted) {
+        setState(() {
+          _sheetSize = _scrollableController.size;
+        });
+      }
+    });
+
     context.read<EventBloc>().add(const EventsLoadRequested());
   }
 
   @override
   void dispose() {
     _scrollableController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -42,6 +58,20 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
+  }
+
+  void _filterEvents(List<EventModel> events, String query) {
+    if (query.isEmpty) {
+      _filteredEvents = events;
+    } else {
+      _filteredEvents = events
+          .where(
+            (event) =>
+                event.title.toLowerCase().contains(query.toLowerCase()) ||
+                event.description.toLowerCase().contains(query.toLowerCase()),
+          )
+          .toList();
+    }
   }
 
   void _centerOnUserLocation() {
@@ -67,6 +97,11 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
         }
 
         final events = state is EventsLoaded ? state.events : <EventModel>[];
+
+        // Фильтруем события при загрузке
+        if (_searchController.text.isEmpty) {
+          _filteredEvents = events;
+        }
 
         return Stack(
           children: [
@@ -117,12 +152,137 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
               },
             ),
 
-            // Zoom buttons (top right)
+            // Search bar at top
             Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              left: 16,
               right: 16,
-              top: MediaQuery.of(context).padding.top + 16,
+              child: Opacity(
+                opacity: 0.85,
+                child: TextField(
+                  controller: _searchController,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            BlocProvider(
+                              create: (context) => EventBloc(),
+                              child: SearchScreen(
+                                initialQuery: _searchController.text,
+                              ),
+                            ),
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                              const begin = Offset(0.0, 1.0);
+                              const end = Offset.zero;
+                              final curve = Curves.easeOutCubic;
+                              final curvedAnimation = curve.transform(
+                                animation.value,
+                              );
+                              final tween = Tween(begin: begin, end: end);
+                              final offsetAnimation = tween.animate(
+                                AlwaysStoppedAnimation(curvedAnimation),
+                              );
+
+                              return SlideTransition(
+                                position: offsetAnimation,
+                                child: child,
+                              );
+                            },
+                        transitionDuration: const Duration(milliseconds: 280),
+                      ),
+                    );
+                  },
+                  onChanged: (query) {
+                    setState(() {
+                      _filterEvents(events, query);
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Поиск событий...',
+                    hintStyle: const TextStyle(
+                      color: Color(0xFFB0B0B0),
+                      fontSize: 16,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: Color(0xFF5E60CE),
+                      size: 22,
+                    ),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            color: Color(0xFF5E60CE),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _filterEvents(events, '');
+                              });
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(
+                        color: Color(0xFFE8E8E8),
+                        width: 1.5,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(
+                        color: Color(0xFFE8E8E8),
+                        width: 1.5,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF5E60CE),
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFFAFAFA),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Map control buttons (bottom right for one-hand use)
+            // Позиция адаптируется к размеру bottom sheet
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 100),
+              right: 16,
+              bottom: MediaQuery.of(context).size.height * _sheetSize + 8,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
+                  // My location button
+                  Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    elevation: 4,
+                    child: InkWell(
+                      onTap: _centerOnUserLocation,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        child: const Icon(
+                          Icons.my_location,
+                          color: Color(0xFF5E60CE),
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Zoom in button
                   Material(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
@@ -149,6 +309,7 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
+                  // Zoom out button
                   Material(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
@@ -178,41 +339,20 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
               ),
             ),
 
-            // My location button (top right, below zoom)
-            Positioned(
-              right: 16,
-              top: MediaQuery.of(context).padding.top + 140,
-              child: Material(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                elevation: 4,
-                child: InkWell(
-                  onTap: _centerOnUserLocation,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    child: const Icon(
-                      Icons.my_location,
-                      color: Color(0xFF5E60CE),
-                      size: 24,
-                    ),
-                  ),
+            // Open events button (when collapsed)
+            // Показывается только когда sheet свернут
+            if (_sheetSize < 0.3)
+              Positioned(
+                bottom: 20,
+                left: 16,
+                child: FloatingActionButton(
+                  onPressed: _restoreSheet,
+                  backgroundColor: const Color(0xFF5E60CE),
+                  mini: true,
+                  elevation: 8,
+                  child: const Icon(Icons.arrow_upward, size: 20),
                 ),
               ),
-            ),
-
-            // Restore sheet button (when collapsed)
-            Positioned(
-              bottom: 20,
-              right: 16,
-              child: FloatingActionButton.extended(
-                onPressed: _restoreSheet,
-                backgroundColor: const Color(0xFF5E60CE),
-                icon: const Icon(Icons.arrow_upward),
-                label: const Text('События'),
-                elevation: 8,
-              ),
-            ),
 
             // Draggable bottom sheet with events
             DraggableScrollableSheet(
@@ -279,7 +419,7 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                                   ),
                             ),
                             Text(
-                              '${events.length}',
+                              '${_filteredEvents.length}',
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(color: Colors.grey),
                             ),
@@ -290,10 +430,12 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
 
                       // Events list
                       Expanded(
-                        child: events.isEmpty
+                        child: _filteredEvents.isEmpty
                             ? Center(
                                 child: Text(
-                                  'Нет событий рядом',
+                                  _searchController.text.isNotEmpty
+                                      ? 'События не найдены'
+                                      : 'Нет событий рядом',
                                   style: Theme.of(context).textTheme.bodyMedium
                                       ?.copyWith(color: Colors.grey),
                                 ),
@@ -304,11 +446,11 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                                   horizontal: 20,
                                   vertical: 8,
                                 ),
-                                itemCount: events.length,
+                                itemCount: _filteredEvents.length,
                                 separatorBuilder: (_, __) =>
                                     const SizedBox(height: 12),
                                 itemBuilder: (context, index) {
-                                  final event = events[index];
+                                  final event = _filteredEvents[index];
                                   return _buildEventCard(event, context);
                                 },
                               ),
