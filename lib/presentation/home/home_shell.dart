@@ -178,25 +178,43 @@ class _HomeShellState extends State<HomeShell> {
             ProfileScreen(events: _events, matches: _matches),
           ],
         ),
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                offset: const Offset(0, -4),
+        bottomNavigationBar: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: <Widget>[
-                _buildNavItem(Icons.map_outlined, 'Карта', 0),
-                _buildNavItem(Icons.event_outlined, 'Афиша', 1),
-                GestureDetector(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: <Widget>[
+                    _buildNavItem(Icons.map_outlined, 'Карта', 0),
+                    _buildNavItem(Icons.event_outlined, 'Афиша', 1),
+                    const SizedBox(width: 56),
+                    _buildNavItem(Icons.favorite_outline, 'Матчи', 2),
+                    _buildNavItem(Icons.person_outline, 'Профиль', 3),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              top: -10,
+              child: Center(
+                child: GestureDetector(
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
@@ -213,15 +231,20 @@ class _HomeShellState extends State<HomeShell> {
                     decoration: BoxDecoration(
                       color: const Color(0xFF5E60CE),
                       borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF5E60CE).withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: const Icon(Icons.add, color: Colors.white, size: 28),
                   ),
                 ),
-                _buildNavItem(Icons.favorite_outline, 'Матчи', 2),
-                _buildNavItem(Icons.person_outline, 'Профиль', 3),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
