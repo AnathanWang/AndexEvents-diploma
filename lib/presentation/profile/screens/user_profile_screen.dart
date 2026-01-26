@@ -1,21 +1,493 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../widgets/common/custom_notification.dart';
+import '../../../data/models/user_model.dart';
+import '../../../data/services/friend_service.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({
     required this.userName,
     required this.userInitials,
     super.key,
-  });
+  })  : user = null,
+        matchPercentage = null,
+        commonInterests = const <String>[],
+        canViewSensitiveInfo = false;
+
+  UserProfileScreen.fromUser({
+    required UserModel user,
+    int? matchPercentage,
+    List<String> commonInterests = const <String>[],
+    bool canViewSensitiveInfo = false,
+    super.key,
+  })  : userName = (user.displayName?.isNotEmpty == true)
+            ? user.displayName!
+            : user.email.split('@').first,
+        userInitials = _initialsFrom(
+          (user.displayName?.isNotEmpty == true)
+              ? user.displayName!
+              : user.email.split('@').first,
+        ),
+        user = user,
+        matchPercentage = matchPercentage,
+        commonInterests = commonInterests,
+        canViewSensitiveInfo = canViewSensitiveInfo;
 
   final String userName;
   final String userInitials;
+  final UserModel? user;
+  final int? matchPercentage;
+  final List<String> commonInterests;
+  final bool canViewSensitiveInfo;
+
+  static String _initialsFrom(String name) {
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return '??';
+    return parts.take(2).map((p) => p[0]).join().toUpperCase();
+  }
 
   @override
   State<UserProfileScreen> createState() => _UserProfileScreenState();
 }
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
+  final FriendService _friendService = FriendService();
+
+  FriendshipStatus _friendshipStatus = FriendshipStatus.none;
+  bool _isFriendshipLoading = true;
+  bool _isFriendshipActionLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFriendshipStatus();
+  }
+
+  Future<void> _loadFriendshipStatus() async {
+    final otherUserId = widget.user?.id;
+    if (otherUserId == null) {
+      setState(() {
+        _isFriendshipLoading = false;
+        _friendshipStatus = FriendshipStatus.none;
+      });
+      return;
+    }
+
+    try {
+      final status = await _friendService.getStatus(otherUserId);
+      if (!mounted) return;
+      setState(() {
+        _friendshipStatus = status;
+        _isFriendshipLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _friendshipStatus = FriendshipStatus.none;
+        _isFriendshipLoading = false;
+      });
+    }
+  }
+
+  Future<void> _sendFriendRequest() async {
+    final otherUserId = widget.user?.id;
+    if (otherUserId == null) return;
+    if (_isFriendshipActionLoading) return;
+
+    setState(() {
+      _isFriendshipActionLoading = true;
+    });
+
+    try {
+      final status = await _friendService.sendRequest(otherUserId);
+      if (!mounted) return;
+      setState(() {
+        _friendshipStatus = status;
+      });
+      if (status == FriendshipStatus.friends) {
+        CustomNotification.success(
+          context,
+          'Вы друзья',
+          duration: const Duration(seconds: 1),
+        );
+      } else {
+        CustomNotification.show(
+          context,
+          'Запрос отправлен',
+          duration: const Duration(seconds: 1),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      CustomNotification.error(
+        context,
+        'Не удалось отправить запрос: $e',
+        duration: const Duration(seconds: 2),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isFriendshipActionLoading = false;
+      });
+    }
+  }
+
+  Future<void> _cancelFriendRequest() async {
+    final otherUserId = widget.user?.id;
+    if (otherUserId == null) return;
+    if (_isFriendshipActionLoading) return;
+
+    setState(() {
+      _isFriendshipActionLoading = true;
+    });
+
+    try {
+      final status = await _friendService.cancelRequest(otherUserId);
+      if (!mounted) return;
+      setState(() {
+        _friendshipStatus = status;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      CustomNotification.error(
+        context,
+        'Не удалось отменить запрос: $e',
+        duration: const Duration(seconds: 2),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isFriendshipActionLoading = false;
+      });
+    }
+  }
+
+  Future<void> _acceptFriendRequest() async {
+    final otherUserId = widget.user?.id;
+    if (otherUserId == null) return;
+    if (_isFriendshipActionLoading) return;
+
+    setState(() {
+      _isFriendshipActionLoading = true;
+    });
+
+    try {
+      final status = await _friendService.acceptRequest(otherUserId);
+      if (!mounted) return;
+      setState(() {
+        _friendshipStatus = status;
+      });
+      CustomNotification.success(
+        context,
+        'Вы друзья',
+        duration: const Duration(seconds: 1),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      CustomNotification.error(
+        context,
+        'Не удалось принять запрос: $e',
+        duration: const Duration(seconds: 2),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isFriendshipActionLoading = false;
+      });
+    }
+  }
+
+  Future<void> _declineFriendRequest() async {
+    final otherUserId = widget.user?.id;
+    if (otherUserId == null) return;
+    if (_isFriendshipActionLoading) return;
+
+    setState(() {
+      _isFriendshipActionLoading = true;
+    });
+
+    try {
+      final status = await _friendService.declineRequest(otherUserId);
+      if (!mounted) return;
+      setState(() {
+        _friendshipStatus = status;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      CustomNotification.error(
+        context,
+        'Не удалось отклонить запрос: $e',
+        duration: const Duration(seconds: 2),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isFriendshipActionLoading = false;
+      });
+    }
+  }
+
+  void _openChat() {
+    // TODO: Открыть чат
+    CustomNotification.show(
+      context,
+      'Открыть чат',
+      duration: const Duration(seconds: 1),
+    );
+  }
+
+  Map<String, String> _normalizedSocialLinks() {
+    final raw = widget.user?.socialLinks;
+    if (raw == null || raw.isEmpty) return <String, String>{};
+
+    final Map<String, String> result = <String, String>{};
+    for (final entry in raw.entries) {
+      final key = entry.key.toString().trim();
+      final value = entry.value;
+      if (key.isEmpty || value == null) continue;
+      final stringValue = value.toString().trim();
+      if (stringValue.isEmpty) continue;
+      result[key] = stringValue;
+    }
+    return result;
+  }
+
+  List<MapEntry<String, String>> _sortedSocialLinks(Map<String, String> links) {
+    const priority = <String, int>{
+      'telegram': 1,
+      'tg': 2,
+      'instagram': 3,
+      'inst': 4,
+      'vk': 5,
+      'vkontakte': 6,
+      'tiktok': 7,
+      'whatsapp': 8,
+      'phone': 9,
+      'website': 10,
+    };
+
+    final entries = links.entries.toList();
+    entries.sort((a, b) {
+      final ap = priority[a.key.toLowerCase()] ?? 999;
+      final bp = priority[b.key.toLowerCase()] ?? 999;
+      if (ap != bp) return ap.compareTo(bp);
+      return a.key.toLowerCase().compareTo(b.key.toLowerCase());
+    });
+    return entries;
+  }
+
+  String _displaySocialName(String key) {
+    switch (key.toLowerCase()) {
+      case 'tg':
+      case 'telegram':
+        return 'Telegram';
+      case 'instagram':
+      case 'inst':
+        return 'Instagram';
+      case 'vk':
+      case 'vkontakte':
+        return 'VK';
+      case 'tiktok':
+        return 'TikTok';
+      case 'whatsapp':
+        return 'WhatsApp';
+      case 'website':
+        return 'Сайт';
+      case 'phone':
+        return 'Телефон';
+      default:
+        if (key.isEmpty) return 'Ссылка';
+        return key[0].toUpperCase() + key.substring(1);
+    }
+  }
+
+  ({IconData icon, List<Color> gradient}) _socialStyle(String key) {
+    switch (key.toLowerCase()) {
+      case 'tg':
+      case 'telegram':
+        return (
+          icon: Icons.send,
+          gradient: const <Color>[Color(0xFF2AABEE), Color(0xFF229ED9)],
+        );
+      case 'vk':
+      case 'vkontakte':
+        return (
+          icon: Icons.group,
+          gradient: const <Color>[Color(0xFF4C75A3), Color(0xFF3B5F89)],
+        );
+      case 'instagram':
+      case 'inst':
+        return (
+          icon: Icons.camera_alt,
+          gradient: const <Color>[
+            Color(0xFFF58529),
+            Color(0xFFDD2A7B),
+            Color(0xFF8134AF),
+          ],
+        );
+      case 'tiktok':
+        return (
+          icon: Icons.music_note,
+          gradient: const <Color>[Color(0xFF111111), Color(0xFF444444)],
+        );
+      case 'whatsapp':
+        return (
+          icon: Icons.chat,
+          gradient: const <Color>[Color(0xFF25D366), Color(0xFF128C7E)],
+        );
+      case 'website':
+        return (
+          icon: Icons.language,
+          gradient: const <Color>[Color(0xFF5E60CE), Color(0xFF9370DB)],
+        );
+      case 'phone':
+        return (
+          icon: Icons.phone,
+          gradient: const <Color>[Color(0xFF5E60CE), Color(0xFF9370DB)],
+        );
+      default:
+        return (
+          icon: Icons.link,
+          gradient: const <Color>[Color(0xFF5E60CE), Color(0xFF9370DB)],
+        );
+    }
+  }
+
+  Widget _buildSocialLinksCard() {
+    if (!widget.canViewSensitiveInfo) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Row(
+          children: <Widget>[
+            Icon(
+              Icons.lock_outline,
+              color: Color(0xFF9E9E9E),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Соцсети доступны после взаимного лайка',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF4A4D6A),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final links = _normalizedSocialLinks();
+    if (links.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Row(
+          children: <Widget>[
+            Icon(Icons.info_outline, color: Color(0xFF9E9E9E)),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Соцсети не указаны',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF4A4D6A),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final entries = _sortedSocialLinks(links);
+    return Column(
+      children: entries.map((entry) {
+        final style = _socialStyle(entry.key);
+        final title = _displaySocialName(entry.key);
+        final value = entry.value;
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Material(
+            color: const Color(0xFFF5F5F5),
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () async {
+                await Clipboard.setData(ClipboardData(text: value));
+                if (!mounted) return;
+                CustomNotification.success(
+                  context,
+                  'Скопировано',
+                  duration: const Duration(seconds: 1),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: <Widget>[
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: style.gradient),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(style.icon, color: Colors.white, size: 20),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF9E9E9E),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            value,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF4A4D6A),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.copy,
+                      color: Color(0xFF9E9E9E),
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -354,67 +826,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ),
                 const SizedBox(height: 24),
                 
-                // Instagram
+                // Соцсети (доступны только после взаимного лайка)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F5F5),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: <Color>[
-                                Color(0xFFF58529),
-                                Color(0xFFDD2A7B),
-                                Color(0xFF8134AF),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                'Instagram',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF9E9E9E),
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                '@user_instagram',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF4A4D6A),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(
-                          Icons.open_in_new,
-                          color: Color(0xFF9E9E9E),
-                          size: 20,
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: _buildSocialLinksCard(),
                 ),
                 const SizedBox(height: 100),
               ],
@@ -439,48 +854,133 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         child: SafeArea(
           child: Row(
             children: <Widget>[
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Открыть чат
-                    CustomNotification.show(
-                      context,
-                      'Открыть чат',
-                      duration: const Duration(seconds: 1),
-                    );
-                  },
-                  icon: const Icon(Icons.message),
-                  label: const Text('Написать'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5E60CE),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+              if (_isFriendshipLoading) ...[
+                const Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                    elevation: 0,
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFF5E60CE)),
-                  borderRadius: BorderRadius.circular(16),
+              ] else if (_friendshipStatus == FriendshipStatus.friends) ...[
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _openChat,
+                    icon: const Icon(Icons.message),
+                    label: const Text('Написать'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF5E60CE),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
                 ),
-                child: IconButton(
-                  onPressed: () {
-                    // TODO: Добавить в друзья
-                    CustomNotification.show(
-                      context,
-                      'Запрос отправлен',
-                      duration: const Duration(seconds: 1),
-                    );
-                  },
-                  icon: const Icon(Icons.person_add, color: Color(0xFF5E60CE)),
-                  padding: const EdgeInsets.all(12),
+                const SizedBox(width: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xFF5E60CE)),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: IconButton(
+                    onPressed: null,
+                    icon: const Icon(
+                      Icons.check,
+                      color: Color(0xFF5E60CE),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                  ),
                 ),
-              ),
+              ] else if (_friendshipStatus == FriendshipStatus.outgoingRequest) ...[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.hourglass_top),
+                    label: const Text('Запрос отправлен'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF5E60CE),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: const BorderSide(color: Color(0xFF5E60CE)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xFF5E60CE)),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: IconButton(
+                    onPressed: _isFriendshipActionLoading ? null : _cancelFriendRequest,
+                    icon: const Icon(
+                      Icons.close,
+                      color: Color(0xFF5E60CE),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    tooltip: 'Отменить запрос',
+                  ),
+                ),
+              ] else if (_friendshipStatus == FriendshipStatus.incomingRequest) ...[
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _isFriendshipActionLoading ? null : _acceptFriendRequest,
+                    icon: const Icon(Icons.person_add_alt_1),
+                    label: const Text('Принять'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF5E60CE),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xFF5E60CE)),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: IconButton(
+                    onPressed: _isFriendshipActionLoading ? null : _declineFriendRequest,
+                    icon: const Icon(
+                      Icons.close,
+                      color: Color(0xFF5E60CE),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    tooltip: 'Отклонить',
+                  ),
+                ),
+              ] else ...[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isFriendshipActionLoading ? null : _sendFriendRequest,
+                    icon: const Icon(Icons.person_add),
+                    label: const Text('Добавить в друзья'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF5E60CE),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: const BorderSide(color: Color(0xFF5E60CE)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

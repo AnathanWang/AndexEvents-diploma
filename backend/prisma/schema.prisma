@@ -36,6 +36,13 @@ enum ParticipantStatus {
   GOING
 }
 
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELED
+}
+
 model User {
   id            String   @id @default(uuid())
   supabaseUid   String   @unique
@@ -77,9 +84,51 @@ model User {
   matchesAsUserB    Match[] @relation("MatchUserB")
   sentNotifications Notification[] @relation("NotificationSender")
   receivedNotifications Notification[] @relation("NotificationReceiver")
+
+  // Дружба
+  sentFriendRequests     FriendRequest[] @relation("FriendRequestSender")
+  receivedFriendRequests FriendRequest[] @relation("FriendRequestReceiver")
+  friendshipsAsUser1     Friendship[] @relation("FriendshipUser1")
+  friendshipsAsUser2     Friendship[] @relation("FriendshipUser2")
   
   @@index([supabaseUid])
   @@index([email])
+}
+
+model Friendship {
+  id        String   @id @default(uuid())
+
+  user1Id   String
+  user1     User     @relation("FriendshipUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+
+  user2Id   String
+  user2     User     @relation("FriendshipUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id])
+  @@index([user2Id])
+}
+
+model FriendRequest {
+  id          String              @id @default(uuid())
+
+  requesterId String
+  requester   User                @relation("FriendRequestSender", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  addresseeId String
+  addressee   User                @relation("FriendRequestReceiver", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  status      FriendRequestStatus @default(PENDING)
+  respondedAt DateTime?
+
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId, status])
+  @@index([addresseeId, status])
 }
 
 model Event {

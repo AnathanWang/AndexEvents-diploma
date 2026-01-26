@@ -224,9 +224,17 @@ class AuthService {
     String? photoUrl,
   }) async {
     try {
+      final token = _supabase.auth.currentSession?.accessToken;
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
       final response = await http.post(
         Uri.parse('${AppConfig.baseUrl}/users'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
         body: json.encode({
           'supabaseUid': supabaseUid,
           'email': email,

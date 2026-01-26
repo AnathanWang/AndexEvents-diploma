@@ -14,6 +14,15 @@ import '../../models/match_preview.dart';
 import '../../widgets/admin_panel_snippet.dart';
 import '../../widgets/match_card.dart';
 import '../../widgets/section_header.dart';
+import '../../../data/services/user_service.dart';
+import '../../profile/screens/user_profile_screen.dart';
+
+enum _ProfileMatchFilter {
+  mutual,
+  liked,
+  skipped,
+  postponed,
+}
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.events, required this.matches});
@@ -26,11 +35,201 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final UserService _userService = UserService();
+
+  _ProfileMatchFilter _filter = _ProfileMatchFilter.mutual;
+  bool _matchesLoading = false;
+  String? _matchesError;
+  String? _loadedForUserId;
+
+  final Map<_ProfileMatchFilter, List<MatchPreview>> _matchesByFilter =
+      <_ProfileMatchFilter, List<MatchPreview>>{};
+
   @override
   void initState() {
     super.initState();
     // Загружаем профиль при открытии экрана
     context.read<ProfileBloc>().add(const ProfileLoadRequested());
+
+    // Используем данные, которые могли прийти из HomeShell как стартовые
+    _matchesByFilter[_ProfileMatchFilter.mutual] = widget.matches;
+  }
+
+  Future<void> _loadMatchesFor(
+    _ProfileMatchFilter filter,
+    UserModel currentUser,
+  ) async {
+    setState(() {
+      _matchesLoading = true;
+      _matchesError = null;
+    });
+
+    try {
+      late final List<UserModel> users;
+      switch (filter) {
+        case _ProfileMatchFilter.mutual:
+          users = await _userService.getMutualMatches();
+          break;
+        case _ProfileMatchFilter.liked:
+          users = await _userService.getUsersByMatchAction(action: 'LIKE');
+          break;
+        case _ProfileMatchFilter.skipped:
+          users = await _userService.getUsersByMatchAction(action: 'DISLIKE');
+          break;
+        case _ProfileMatchFilter.postponed:
+          // "Отложил" = SUPER_LIKE (свайп вверх "подумаю")
+          users =
+              await _userService.getUsersByMatchAction(action: 'SUPER_LIKE');
+          break;
+      }
+
+      final previews = users
+          .map(
+            (u) => MatchPreview.fromUserModel(
+              u,
+              currentUserInterests: currentUser.interests,
+            ),
+          )
+          .toList();
+
+      if (!mounted) return;
+      setState(() {
+        _matchesByFilter[filter] = previews;
+        _matchesLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _matchesLoading = false;
+        _matchesError = e.toString();
+        _matchesByFilter[filter] = <MatchPreview>[];
+      });
+    }
+  }
+
+  void _ensureLoaded(UserModel currentUser) {
+    // Загружаем один раз на пользователя при первом открытии экрана
+    if (_loadedForUserId == currentUser.id) return;
+    _loadedForUserId = currentUser.id;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadMatchesFor(_filter, currentUser);
+    });
+  }
+
+  Widget _buildMatchFilterChips(UserModel currentUser) {
+    Widget chip(_ProfileMatchFilter f, String label) {
+      final selected = _filter == f;
+      return ChoiceChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (value) {
+          if (!value) return;
+          setState(() {
+            _filter = f;
+          });
+          _loadMatchesFor(f, currentUser);
+        },
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: <Widget>[
+          chip(_ProfileMatchFilter.mutual, 'Взаимные'),
+          const SizedBox(width: 10),
+          chip(_ProfileMatchFilter.liked, 'Лайкнул'),
+          const SizedBox(width: 10),
+          chip(_ProfileMatchFilter.skipped, 'Пропустил'),
+          const SizedBox(width: 10),
+          chip(_ProfileMatchFilter.postponed, 'Отложил'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMatchesList() {
+    final matches = _matchesByFilter[_filter] ?? <MatchPreview>[];
+    final canViewSensitiveInfo = _filter == _ProfileMatchFilter.mutual;
+
+    final String filterKey = _filter.toString();
+    late final Widget content;
+
+    if (_matchesLoading) {
+      content = const Padding(
+        key: ValueKey<String>('matches-loading'),
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    } else if (_matchesError != null) {
+      content = Padding(
+        key: ValueKey<String>('matches-error'),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Text(
+          'Не удалось загрузить список: $_matchesError',
+          style: const TextStyle(color: Colors.redAccent),
+        ),
+      );
+    } else if (matches.isEmpty) {
+      content = const Padding(
+        key: ValueKey<String>('matches-empty'),
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Text('Пока пусто.'),
+      );
+    } else {
+      content = Column(
+        key: ValueKey<String>('matches-$filterKey-${matches.length}'),
+        children: matches
+            .take(10)
+            .map(
+              (match) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                    child: MatchCard(
+                      match: match,
+                      onOpenProfile: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (context) => UserProfileScreen.fromUser(
+                              user: match.userModel,
+                              matchPercentage: match.matchPercentage,
+                              commonInterests: match.commonInterests,
+                              canViewSensitiveInfo: canViewSensitiveInfo,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+              ),
+            )
+            .toList(),
+      );
+    }
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final fade = FadeTransition(opacity: animation, child: child);
+          final slide = SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.06, 0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: fade,
+          );
+          return slide;
+        },
+        child: content,
+      ),
+    );
   }
 
   @override
@@ -68,6 +267,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (user == null) {
           return const Center(child: Text('Профиль не загружен'));
         }
+
+        _ensureLoaded(user);
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -108,17 +309,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 caption: 'Последние матчи и приглашения',
               ),
               const SizedBox(height: 12),
-              if (widget.matches.isEmpty)
-                const Text(
-                  'Как только произойдут совпадения, они появятся здесь.',
-                )
-              else
-                ...widget.matches.take(2).map((MatchPreview match) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: MatchCard(match: match),
-                  );
-                }),
+              _buildMatchFilterChips(user),
+              const SizedBox(height: 12),
+              _buildMatchesList(),
               const SizedBox(height: 24),
               const SectionHeader(
                 title: 'Инструменты модератора',

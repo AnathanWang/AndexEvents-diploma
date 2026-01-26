@@ -73,7 +73,7 @@ function sanitizeFilename(filename: string): string {
         .trim();
 }
 
-// Configure multer for LOCAL DISK storage с системой папок по пользователям
+// Configure multer for TEMP storage (файлы затем загружаются в MinIO)
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         try {
@@ -99,37 +99,17 @@ const storage = multer.diskStorage({
                 return cb(new Error('User ID is required'), '');
             }
 
-            // Санитизируем userId (защита от path traversal)
-            const sanitizedUserId = sanitizeFilename(userId);
-            if (sanitizedUserId !== userId) {
-                logger.warn(`[Upload] UserID санитизирован: ${userId} -> ${sanitizedUserId}`);
-            }
-
-            // Структура: public/uploads/{bucket}/{userId}/
-            const uploadDir = path.join(process.cwd(), `public/uploads/${bucket}/${sanitizedUserId}`);
+            // Используем системную временную директорию для промежуточного хранения
+            const os = require('node:os');
+            const tempDir = path.join(os.tmpdir(), 'andexevents-uploads');
             
-            // Создаем базовую директорию если её нет
-            const baseUploadDir = path.join(process.cwd(), 'public/uploads');
-            if (!fs.existsSync(baseUploadDir)) {
-                fs.mkdirSync(baseUploadDir, { recursive: true });
+            // Создаем временную директорию если её нет
+            if (!fs.existsSync(tempDir)) {
+                fs.mkdirSync(tempDir, { recursive: true });
             }
             
-            // Проверяем, что путь остаётся в пределах public/uploads
-            const realUploadDir = fs.realpathSync(baseUploadDir);
-            const realTargetDir = fs.realpathSync(uploadDir);
-            
-            if (!realTargetDir.startsWith(realUploadDir)) {
-                logger.error(`[Upload] Попытка Path Traversal: ${realTargetDir}`);
-                return cb(new Error('Invalid upload directory'), '');
-            }
-            
-            // Создаем директорию если её нет
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-            }
-            
-            logger.info(`[Upload] Бакет: ${bucket}, Пользователь: ${sanitizedUserId}, Директория создана`);
-            cb(null, uploadDir);
+            logger.info(`[Upload] Бакет: ${bucket}, Пользователь: ${userId}, Temp директория: ${tempDir}`);
+            cb(null, tempDir);
         } catch (error: any) {
             logger.error(`[Upload] Ошибка в destination: ${error.message}`);
             cb(error, '');

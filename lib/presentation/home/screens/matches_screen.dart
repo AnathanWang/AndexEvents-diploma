@@ -3,11 +3,13 @@ import 'dart:ui' as ui;
 import 'dart:math' as math;
 import '../../../data/services/user_service.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/services/match_seen_service.dart';
 import '../../models/match_preview.dart';
 import '../../profile/screens/edit_profile_screen.dart';
+import '../../profile/screens/user_profile_screen.dart';
 
 class MatchesScreen extends StatefulWidget {
-  const MatchesScreen({super.key, required this.matches});
+  const MatchesScreen({super.key, this.matches = const []});
 
   final List<MatchPreview> matches;
 
@@ -20,11 +22,14 @@ class _MatchesScreenState extends State<MatchesScreen>
   int _currentIndex = 0;
   bool _isLoading = true;
   UserModel? _currentUser;
+  late List<MatchPreview> _matches;
 
   // Для анимации свайпа
   Offset _dragPosition = Offset.zero;
   bool _isDragging = false;
   double _dragDistance = 0;
+  bool _isAnimating =
+      false; // Флаг для предотвращения свайпов во время анимации
 
   // Для показа детальной информации
   bool _showDetails = false;
@@ -33,12 +38,92 @@ class _MatchesScreenState extends State<MatchesScreen>
   late Animation<double> _detailsAnimation;
 
   final UserService _userService = UserService();
+  final MatchSeenService _matchSeenService = MatchSeenService();
 
   @override
   void initState() {
     super.initState();
+    _matches = widget.matches;
     _loadUserData();
     _setupAnimations();
+  }
+
+  Future<void> _loadMatches() async {
+    try {
+      if (_currentUser == null) {
+        debugPrint(
+          '🟡 [MatchesScreen] _currentUser is null, cannot load matches',
+        );
+        return;
+      }
+
+      debugPrint('🔵 [MatchesScreen] Starting to load matches...');
+      debugPrint(
+        '🔵 [MatchesScreen] Current user location: lat=${_currentUser!.lastLatitude}, lon=${_currentUser!.lastLongitude}',
+      );
+
+      final otherUsers = await _userService.getOtherUsers(
+        limit: 20,
+        latitude: _currentUser!.lastLatitude,
+        longitude: _currentUser!.lastLongitude,
+      );
+
+      debugPrint(
+        '🔵 [MatchesScreen] Received ${otherUsers.length} users from service',
+      );
+
+      final currentUserId = _currentUser!.id;
+      final seen = await _matchSeenService.getSeenUserIds(currentUserId);
+      final Map<String, UserModel> uniqueUsers = <String, UserModel>{};
+      for (final u in otherUsers) {
+        if (u.id == currentUserId) continue;
+        if (seen.contains(u.id)) continue;
+        uniqueUsers[u.id] = u;
+      }
+
+      final filteredUsers = uniqueUsers.values.toList();
+
+      if (otherUsers.isNotEmpty) {
+        debugPrint(
+          '🔵 [MatchesScreen] First user: name=${otherUsers.first.displayName}, photoUrl=${otherUsers.first.photoUrl}',
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          // Конвертируем UserModel в MatchPreview
+          _matches = filteredUsers.map((user) {
+            final match = MatchPreview.fromUserModel(
+              user,
+              currentUserInterests: _currentUser?.interests ?? const <String>[],
+            );
+            debugPrint(
+              '🟢 [MatchesScreen] Created match: name=${match.name}, age=${match.age}, photoUrl=${match.photoUrl}',
+            );
+            return match;
+          }).toList();
+          _currentIndex = 0;
+          debugPrint(
+            '🟢 [MatchesScreen] Loaded ${_matches.length} matches into state',
+          );
+        });
+      }
+    } catch (e) {
+      debugPrint('🔴 [MatchesScreen] Error loading matches: $e');
+    }
+  }
+
+  void _openUserProfile(MatchPreview match) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => UserProfileScreen.fromUser(
+          user: match.userModel,
+          matchPercentage: match.matchPercentage,
+          commonInterests: match.commonInterests,
+          canViewSensitiveInfo: false,
+        ),
+      ),
+    );
   }
 
   void _setupAnimations() {
@@ -64,16 +149,33 @@ class _MatchesScreenState extends State<MatchesScreen>
     });
 
     try {
+      debugPrint('🔵 [MatchesScreen] Loading current user...');
       final user = await _userService.getCurrentUser();
+
+      debugPrint(
+        '🟢 [MatchesScreen] User loaded: name=${user.displayName}, onboardingCompleted=${user.isOnboardingCompleted}',
+      );
 
       if (mounted) {
         setState(() {
           _currentUser = user;
           _isLoading = false;
         });
+
+        // После загрузки текущего пользователя, загружаем матчи
+        if (user.isOnboardingCompleted) {
+          debugPrint(
+            '🔵 [MatchesScreen] Onboarding completed, loading matches...',
+          );
+          await _loadMatches();
+        } else {
+          debugPrint(
+            '🟡 [MatchesScreen] Onboarding not completed, showing incomplete screen',
+          );
+        }
       }
     } catch (e) {
-      debugPrint('Error loading user data: $e');
+      debugPrint('🔴 [MatchesScreen] Error loading user data: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -101,12 +203,22 @@ class _MatchesScreenState extends State<MatchesScreen>
   }
 
   void _onPanStart(DragStartDetails details) {
+    // Не позволяем начинать свайп во время анимации
+    if (_isAnimating) {
+      return;
+    }
+
     setState(() {
       _isDragging = true;
     });
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
+    // Не позволяем обновлять позицию во время анимации
+    if (_isAnimating) {
+      return;
+    }
+
     setState(() {
       _dragPosition += details.delta;
       _dragDistance = _dragPosition.distance;
@@ -114,12 +226,17 @@ class _MatchesScreenState extends State<MatchesScreen>
   }
 
   void _onPanEnd(DragEndDetails details) {
+    // Не позволяем завершить свайп во время анимации
+    if (_isAnimating) {
+      return;
+    }
+
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
     // Свайп вниз - показать детали (больший радиус)
     if (_dragPosition.dy > screenHeight * 0.25) {
-      _showDetailsScreen();
+      _openUserProfile(_matches[_currentIndex]);
       _resetDrag();
       return;
     }
@@ -164,7 +281,9 @@ class _MatchesScreenState extends State<MatchesScreen>
     final startTime = DateTime.now();
 
     void animateReset() {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       final elapsed = DateTime.now().difference(startTime);
       final progress =
@@ -196,12 +315,17 @@ class _MatchesScreenState extends State<MatchesScreen>
 
   void _animateCardOut(Offset targetPosition) {
     // Плавная анимация вылета карточки
+    _isAnimating = true;
+
     final startPosition = _dragPosition;
     final animationDuration = const Duration(milliseconds: 400);
     final startTime = DateTime.now();
 
     void animateOut() {
-      if (!mounted) return;
+      if (!mounted) {
+        _isAnimating = false;
+        return;
+      }
 
       final elapsed = DateTime.now().difference(startTime);
       final progress =
@@ -226,6 +350,7 @@ class _MatchesScreenState extends State<MatchesScreen>
         Future.delayed(const Duration(milliseconds: 16), animateOut);
       } else {
         _nextCard();
+        _isAnimating = false;
       }
     }
 
@@ -233,36 +358,88 @@ class _MatchesScreenState extends State<MatchesScreen>
   }
 
   void _nextCard() {
-    setState(() {
-      if (_currentIndex < widget.matches.length - 1) {
-        _currentIndex++;
-      } else {
+    if (!mounted) {
+      return;
+    }
+
+    if (_currentIndex < _matches.length - 1) {
+      _currentIndex++;
+    } else {
+      // Достигли конца списка матчей: не зацикливаемся на начало
+      setState(() {
         _currentIndex = 0;
-      }
-      _resetDrag();
-    });
+        _matches = <MatchPreview>[];
+      });
+      return;
+    }
+
+    // Сброс состояния свайпа
+    _dragPosition = Offset.zero;
+    _isDragging = false;
+    _dragDistance = 0;
   }
 
   void _handleLike() {
-    debugPrint('Like: ${widget.matches[_currentIndex].name}');
-    // TODO: Отправить лайк на сервер
+    final match = _matches[_currentIndex];
+    debugPrint('🟢 [_handleLike] Like: ${match.name}');
+
+    final currentUserId = _currentUser?.id;
+    if (currentUserId != null) {
+      _matchSeenService.markSeen(currentUserId, match.id);
+    }
+
+    _userService
+        .sendLike(match.id)
+        .then((_) {
+          debugPrint(
+            '🟢 [_handleLike] Successfully sent like for ${match.name}',
+          );
+        })
+        .catchError((e) {
+          debugPrint('🔴 [_handleLike] Error sending like: $e');
+        });
   }
 
   void _handleDislike() {
-    debugPrint('Dislike: ${widget.matches[_currentIndex].name}');
-    // TODO: Отправить дизлайк на сервер
+    final match = _matches[_currentIndex];
+    debugPrint('🔴 [_handleDislike] Dislike: ${match.name}');
+
+    final currentUserId = _currentUser?.id;
+    if (currentUserId != null) {
+      _matchSeenService.markSeen(currentUserId, match.id);
+    }
+
+    _userService
+        .sendDislike(match.id)
+        .then((_) {
+          debugPrint(
+            '🟢 [_handleDislike] Successfully sent dislike for ${match.name}',
+          );
+        })
+        .catchError((e) {
+          debugPrint('🔴 [_handleDislike] Error sending dislike: $e');
+        });
   }
 
   void _handleSuperLike() {
-    debugPrint('Super Like: ${widget.matches[_currentIndex].name}');
-    // TODO: Отправить супер-лайк на сервер
-  }
+    final match = _matches[_currentIndex];
+    debugPrint('🔵 [_handleSuperLike] Super Like: ${match.name}');
 
-  void _showDetailsScreen() {
-    setState(() {
-      _showDetails = true;
-    });
-    _detailsController.forward();
+    final currentUserId = _currentUser?.id;
+    if (currentUserId != null) {
+      _matchSeenService.markSeen(currentUserId, match.id);
+    }
+
+    _userService
+        .sendSuperLike(match.id)
+        .then((_) {
+          debugPrint(
+            '🟢 [_handleSuperLike] Successfully sent super like for ${match.name}',
+          );
+        })
+        .catchError((e) {
+          debugPrint('🔴 [_handleSuperLike] Error sending super like: $e');
+        });
   }
 
   void _hideDetailsScreen() {
@@ -319,7 +496,7 @@ class _MatchesScreenState extends State<MatchesScreen>
       return _buildProfileIncompleteScreen();
     }
 
-    if (widget.matches.isEmpty) {
+    if (_matches.isEmpty) {
       return _buildNoMatchesScreen();
     }
 
@@ -452,15 +629,19 @@ class _MatchesScreenState extends State<MatchesScreen>
   }
 
   Widget _buildMainContent() {
+    if (_currentIndex >= _matches.length) {
+      debugPrint(
+        '🔴 [_buildMainContent] ERROR: _currentIndex($_currentIndex) >= _matches.length(${_matches.length})',
+      );
+      return _buildNoMatchesScreen();
+    }
+
     return Stack(
       children: [
         // Следующая карточка (для предпросмотра)
-        if (_currentIndex < widget.matches.length - 1)
+        if (_currentIndex < _matches.length - 1)
           Positioned.fill(
-            child: _buildMatchCard(
-              widget.matches[_currentIndex + 1],
-              isTop: false,
-            ),
+            child: _buildMatchCard(_matches[_currentIndex + 1], isTop: false),
           ),
 
         // Текущая карточка с анимацией
@@ -469,10 +650,7 @@ class _MatchesScreenState extends State<MatchesScreen>
             offset: _dragPosition,
             child: Transform.rotate(
               angle: _rotation,
-              child: _buildMatchCard(
-                widget.matches[_currentIndex],
-                isTop: true,
-              ),
+              child: _buildMatchCard(_matches[_currentIndex], isTop: true),
             ),
           ),
         ),
@@ -592,11 +770,11 @@ class _MatchesScreenState extends State<MatchesScreen>
               ),
 
               // Фото пользователя (если есть)
-              if (_currentUser?.photoUrl != null)
+              if (match.photoUrl != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(48),
                   child: Image.network(
-                    _currentUser!.photoUrl!,
+                    match.photoUrl!,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
@@ -632,14 +810,34 @@ class _MatchesScreenState extends State<MatchesScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      match.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        shadows: [Shadow(color: Colors.black26, blurRadius: 8)],
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            match.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                              shadows: [
+                                Shadow(color: Colors.black26, blurRadius: 8),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (match.age != null)
+                          Text(
+                            ', ${match.age}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                              shadows: [
+                                Shadow(color: Colors.black26, blurRadius: 8),
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -676,13 +874,16 @@ class _MatchesScreenState extends State<MatchesScreen>
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      match.subtitle,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
+                    if (match.bio != null && match.bio!.isNotEmpty)
+                      Text(
+                        match.bio!,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
                     const SizedBox(height: 16),
                     Wrap(
                       spacing: 8,
@@ -755,7 +956,7 @@ class _MatchesScreenState extends State<MatchesScreen>
   }
 
   Widget _buildDetailsOverlay() {
-    final match = widget.matches[_currentIndex];
+    final match = _matches[_currentIndex];
 
     return GestureDetector(
       onTap: _hideDetailsScreen,
