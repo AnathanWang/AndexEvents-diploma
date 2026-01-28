@@ -79,3 +79,14 @@ MATCHES_REFACTORING_SUMMARY.md
 # SVG icons
 Direction Arrow Icon.svg
 backend/dist/
+secrets/firebase-service-account.json
+
+# Root level secrets
+.env
+.env.local
+*.env
+"Andexevents Firebase Admin SDK.json"
+"Andexevents Google Service Info.plist"
+*Firebase*Admin*SDK*.json
+*Google*Service*Info*.plist
+
