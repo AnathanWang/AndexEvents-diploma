@@ -49,10 +49,9 @@ type Event struct {
 
 // EventCreator содержит информацию о создателе события
 type EventCreator struct {
-	ID       string  `json:"id"`
-	Name     string  `json:"name"`
-	Email    string  `json:"email"`
-	PhotoURL *string `json:"photoUrl,omitempty"`
+	ID          string  `json:"id"`
+	DisplayName string  `json:"displayName"`
+	PhotoURL    *string `json:"photoUrl,omitempty"`
 }
 
 // Participant представляет участника события
@@ -126,17 +125,20 @@ type UpdateEventRequest struct {
 
 // GetEventsRequest параметры запроса списка событий
 type GetEventsRequest struct {
-	Page      int          `form:"page,default=1"`
-	PageSize  int          `form:"pageSize,default=20"`
-	Category  string       `form:"category"`
-	Status    *EventStatus `form:"status"`
-	IsOnline  *bool        `form:"isOnline"`
-	Latitude  *float64     `form:"latitude"`
-	Longitude *float64     `form:"longitude"`
-	Radius    *float64     `form:"radius"`
-	Search    string       `form:"search"`
-	SortBy    string       `form:"sortBy,default=dateTime"`
-	SortOrder string       `form:"sortOrder,default=asc"`
+	Page        int          `form:"page,default=1"`
+	PageSize    int          `form:"pageSize,default=20"`
+	Limit       int          `form:"limit"`  // alias for pageSize (Node.js compatibility)
+	Category    string       `form:"category"`
+	Status      *EventStatus `form:"status"`
+	IsOnline    *bool        `form:"isOnline"`
+	Latitude    *float64     `form:"latitude"`
+	Longitude   *float64     `form:"longitude"`
+	MaxDistance *float64     `form:"maxDistance"` // in meters (Node.js compatibility)
+	Radius      *float64     `form:"radius"`      // alias for maxDistance
+	Search      string       `form:"search"`
+	SortBy      string       `form:"sortBy,default=dateTime"`
+	SortOrder   string       `form:"sortOrder,default=asc"`
+	UserID      string       `form:"-"` // set from auth context
 }
 
 // ParticipateRequest запрос на участие в событии
@@ -162,11 +164,41 @@ type PaginatedEventsResponse struct {
 	TotalPages int     `json:"totalPages"`
 }
 
+// CountWrapper обёртка для счётчиков (Prisma format)
+type CountWrapper struct {
+	Participants int `json:"participants"`
+}
+
 // EventResponse ответ с событием и дополнительной информацией
 type EventResponse struct {
-	Event            Event         `json:"event"`
-	ParticipantCount int           `json:"participantCount"`
-	Creator          *EventCreator `json:"creator,omitempty"`
+	Event           Event                 `json:"event"`
+	Count           CountWrapper          `json:"_count"`
+	CreatedBy       *EventCreator         `json:"createdBy,omitempty"`
+	IsParticipating bool                  `json:"isParticipating"`
+	Participants    []ParticipantWithUser `json:"participants,omitempty"`
+}
+
+// EventWithDetails событие с дополнительной информацией для списков
+type EventWithDetails struct {
+	Event
+	CreatedBy       *EventCreator         `json:"createdBy,omitempty"`
+	Count           CountWrapper          `json:"_count"`
+	IsParticipating bool                  `json:"isParticipating"`
+	Participants    []ParticipantWithUser `json:"participants,omitempty"`
+}
+
+// PaginationInfo информация о пагинации (Node.js format)
+type PaginationInfo struct {
+	Page       int `json:"page"`
+	Limit      int `json:"limit"`
+	Total      int `json:"total"`
+	TotalPages int `json:"totalPages"`
+}
+
+// PaginatedEventsWithDetailsResponse ответ со списком событий с деталями
+type PaginatedEventsWithDetailsResponse struct {
+	Events     []EventWithDetails `json:"events"`
+	Pagination PaginationInfo     `json:"pagination"`
 }
 
 // ParticipantsResponse ответ со списком участников

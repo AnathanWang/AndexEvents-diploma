@@ -389,7 +389,7 @@ func (r *eventRepository) Delete(ctx context.Context, id string) error {
 // GetCreatorByEventID получает информацию о создателе события
 func (r *eventRepository) GetCreatorByEventID(ctx context.Context, eventID string) (*model.EventCreator, error) {
 	query := `
-		SELECT u.id, u.name, u.email, u."photoURL"
+		SELECT u.id, u."displayName", u."photoURL"
 		FROM "User" u
 		JOIN "Event" e ON e."createdById" = u.id
 		WHERE e.id = $1
@@ -397,7 +397,7 @@ func (r *eventRepository) GetCreatorByEventID(ctx context.Context, eventID strin
 
 	var creator model.EventCreator
 	err := r.pool.QueryRow(ctx, query, eventID).Scan(
-		&creator.ID, &creator.Name, &creator.Email, &creator.PhotoURL,
+		&creator.ID, &creator.DisplayName, &creator.PhotoURL,
 	)
 
 	if err == pgx.ErrNoRows {

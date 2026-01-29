@@ -136,20 +136,70 @@ services:
   #   ...
 
   # Match Service (TODO: implement)
-  # match-service:
-  #   build:
-  #     context: .
-  #     dockerfile: services/match-service/Dockerfile
-  #   container_name: andexevents-match-service
-  #   ...
+  match-service:
+    build:
+      context: .
+      dockerfile: services/match-service/Dockerfile
+    container_name: andexevents-match-service
+    restart: unless-stopped
+    environment:
+      PORT: "8005"
+      ENVIRONMENT: development
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: andexevents
+      DB_PASSWORD: andexevents_dev_password
+      DB_NAME: andexevents
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
+    ports:
+      - "8005:8005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - andexevents-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.matches.rule=PathPrefix(`/api/matches`)"
+      - "traefik.http.services.matches.loadbalancer.server.port=8005"
 
   # Upload Service (TODO: implement)
-  # upload-service:
-  #   build:
-  #     context: .
-  #     dockerfile: services/upload-service/Dockerfile
-  #   container_name: andexevents-upload-service
-  #   ...
+  upload-service:
+    build:
+      context: .
+      dockerfile: services/upload-service/Dockerfile
+    container_name: andexevents-upload-service
+    restart: unless-stopped
+    environment:
+      PORT: "8006"
+      ENVIRONMENT: development
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: andexevents
+      DB_PASSWORD: andexevents_dev_password
+      DB_NAME: andexevents
+      DB_SSL_MODE: disable
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: andexevents
+      MINIO_SECRET_KEY: andexevents_minio_secret
+      MINIO_USE_SSL: "0"
+      FIREBASE_CREDENTIALS_FILE: /app/firebase-credentials.json
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+    ports:
+      - "8006:8006"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./secrets/firebase-credentials.json:/app/firebase-credentials.json:ro
+    networks:
+      - andexevents-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.upload.rule=PathPrefix(`/api/upload`) || PathPrefix(`/uploads`)"
+      - "traefik.http.services.upload.loadbalancer.server.port=8006"
 
   # ============================================
   # API GATEWAY

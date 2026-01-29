@@ -57,22 +57,44 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 // @Produce json
 // @Param page query int false "Page number"
 // @Param pageSize query int false "Page size"
+// @Param limit query int false "Page size (alias for Node.js compatibility)"
 // @Param category query string false "Category filter"
 // @Param search query string false "Search query"
-// @Param lat query number false "Latitude for nearby search"
-// @Param lon query number false "Longitude for nearby search"
-// @Param radius query number false "Radius in meters"
-// @Success 200 {object} model.PaginatedEventsResponse
+// @Param latitude query number false "Latitude for nearby search"
+// @Param longitude query number false "Longitude for nearby search"
+// @Param maxDistance query number false "Max distance in meters"
+// @Success 200 {object} model.PaginatedEventsWithDetailsResponse
 // @Router /api/events [get]
 func (h *EventHandler) GetEvents(c *gin.Context) {
-	lat, _ := strconv.ParseFloat(c.Query("lat"), 64)
-	lon, _ := strconv.ParseFloat(c.Query("lon"), 64)
-	radius, _ := strconv.ParseFloat(c.Query("radius"), 64)
+	// Support both lat/lon and latitude/longitude (Node.js compatibility)
+	lat, _ := strconv.ParseFloat(c.Query("latitude"), 64)
+	if lat == 0 {
+		lat, _ = strconv.ParseFloat(c.Query("lat"), 64)
+	}
+	lon, _ := strconv.ParseFloat(c.Query("longitude"), 64)
+	if lon == 0 {
+		lon, _ = strconv.ParseFloat(c.Query("lon"), 64)
+	}
+
+	// Support both maxDistance and radius
+	maxDistance, _ := strconv.ParseFloat(c.Query("maxDistance"), 64)
+	if maxDistance == 0 {
+		maxDistance, _ = strconv.ParseFloat(c.Query("radius"), 64)
+	}
+
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	
+	// Support both pageSize and limit (Node.js compatibility)
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
+	if limit, err := strconv.Atoi(c.Query("limit")); err == nil && limit > 0 {
+		pageSize = limit
+	}
+
+	// Get userID from context (optional auth)
+	userID := c.GetString("userID")
 
 	if lat != 0 && lon != 0 {
-		events, err := h.eventService.GetNearbyEvents(c.Request.Context(), lat, lon, radius, page, pageSize)
+		events, err := h.eventService.GetNearbyEvents(c.Request.Context(), lat, lon, maxDistance, page, pageSize, userID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 			return
@@ -102,6 +124,7 @@ func (h *EventHandler) GetEvents(c *gin.Context) {
 		SortOrder: c.DefaultQuery("sortOrder", "asc"),
 		IsOnline:  isOnline,
 		Status:    status,
+		UserID:    userID,
 	}
 
 	events, err := h.eventService.GetEvents(c.Request.Context(), req)
@@ -123,8 +146,9 @@ func (h *EventHandler) GetEvents(c *gin.Context) {
 // @Router /api/events/{id} [get]
 func (h *EventHandler) GetEventByID(c *gin.Context) {
 	id := c.Param("id")
+	userID := c.GetString("userID") // optional auth
 
-	event, err := h.eventService.GetEventByID(c.Request.Context(), id)
+	event, err := h.eventService.GetEventByID(c.Request.Context(), id, userID)
 	if err != nil {
 		if err == service.ErrEventNotFound {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "event not found"})
@@ -239,7 +263,9 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 // JoinEvent присоединяет пользователя к событию
 // @Summary Join event
 // @Tags events
+// @Accept json
 // @Param id path string true "Event ID"
+// @Param status body model.ParticipateRequest true "Participation status"
 // @Success 200
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -253,13 +279,26 @@ func (h *EventHandler) JoinEvent(c *gin.Context) {
 
 	eventID := c.Param("id")
 
-	err := h.eventService.JoinEvent(c.Request.Context(), userID, eventID)
+	// Parse participation status from body
+	var req model.ParticipateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// Default to GOING if no body provided (backward compatibility)
+		req.Status = model.ParticipantStatusGoing
+	}
+
+	// Validate status
+	if req.Status != model.ParticipantStatusGoing && req.Status != model.ParticipantStatusInterested {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid status, must be GOING or INTERESTED"})
+		return
+	}
+
+	err := h.eventService.JoinEvent(c.Request.Context(), userID, eventID, req.Status)
 	if err != nil {
 		switch err {
 		case service.ErrEventNotFound:
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "event not found"})
-		case service.ErrAlreadyParticipant:
-			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "already a participant"})
+		case service.ErrEventNotApproved:
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "cannot participate in unapproved event"})
 		case service.ErrEventFull:
 			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "event is full"})
 		default:
@@ -268,7 +307,15 @@ func (h *EventHandler) JoinEvent(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "successfully joined event"})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Participation status updated",
+		"data": gin.H{
+			"eventId": eventID,
+			"userId":  userID,
+			"status":  req.Status,
+		},
+	})
 }
 
 // LeaveEvent удаляет пользователя из участников события

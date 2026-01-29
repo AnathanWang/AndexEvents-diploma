@@ -7,6 +7,8 @@
 | Файл | Описание |
 |------|----------|
 | [auth-service.md](./auth-service.md) | Auth Service - аутентификация и управление пользователями |
+| [match-service.md](./match-service.md) | Match Service - лайки/дизлайки и взаимные мэтчи |
+| [upload-service.md](./upload-service.md) | Upload Service - загрузка изображений и публичные `/uploads/*` |
 | [architecture.md](./architecture.md) | Общая архитектура микросервисов |
 | [api-reference.md](./api-reference.md) | Справочник по всем API endpoints |
 

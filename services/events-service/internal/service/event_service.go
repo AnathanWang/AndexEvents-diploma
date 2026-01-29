@@ -16,18 +16,19 @@ var (
 	ErrAlreadyParticipant = errors.New("already a participant")
 	ErrNotParticipant     = errors.New("not a participant")
 	ErrEventFull          = errors.New("event is full")
+	ErrEventNotApproved   = errors.New("cannot participate in unapproved event")
 )
 
 // EventService интерфейс сервиса событий
 type EventService interface {
 	CreateEvent(ctx context.Context, userID string, req *model.CreateEventRequest) (*model.Event, error)
-	GetEventByID(ctx context.Context, id string) (*model.EventResponse, error)
-	GetEvents(ctx context.Context, req *model.GetEventsRequest) (*model.PaginatedEventsResponse, error)
-	GetUserEvents(ctx context.Context, userID string, page, pageSize int) (*model.PaginatedEventsResponse, error)
-	GetNearbyEvents(ctx context.Context, lat, lon, radius float64, page, pageSize int) (*model.PaginatedEventsResponse, error)
+	GetEventByID(ctx context.Context, id string, userID string) (*model.EventResponse, error)
+	GetEvents(ctx context.Context, req *model.GetEventsRequest) (*model.PaginatedEventsWithDetailsResponse, error)
+	GetUserEvents(ctx context.Context, userID string, page, pageSize int) (*model.PaginatedEventsWithDetailsResponse, error)
+	GetNearbyEvents(ctx context.Context, lat, lon, radius float64, page, pageSize int, userID string) (*model.PaginatedEventsWithDetailsResponse, error)
 	UpdateEvent(ctx context.Context, userID, eventID string, req *model.UpdateEventRequest) (*model.Event, error)
 	DeleteEvent(ctx context.Context, userID, eventID string) error
-	JoinEvent(ctx context.Context, userID, eventID string) error
+	JoinEvent(ctx context.Context, userID, eventID string, status model.ParticipantStatus) error
 	LeaveEvent(ctx context.Context, userID, eventID string) error
 	GetParticipants(ctx context.Context, eventID string, page, pageSize int) (*model.ParticipantsResponse, error)
 }
@@ -75,7 +76,7 @@ func (s *eventService) CreateEvent(ctx context.Context, userID string, req *mode
 }
 
 // GetEventByID получает событие по ID с информацией о создателе
-func (s *eventService) GetEventByID(ctx context.Context, id string) (*model.EventResponse, error) {
+func (s *eventService) GetEventByID(ctx context.Context, id string, userID string) (*model.EventResponse, error) {
 	event, err := s.eventRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -94,20 +95,77 @@ func (s *eventService) GetEventByID(ctx context.Context, id string) (*model.Even
 		return nil, err
 	}
 
+	// Получаем первых 5 участников
+	participants, _, err := s.participantRepo.GetParticipants(ctx, id, 1, 5)
+	if err != nil {
+		return nil, err
+	}
+
+	// Проверяем участие пользователя
+	isParticipating := false
+	if userID != "" {
+		participation, err := s.participantRepo.GetParticipation(ctx, id, userID)
+		if err != nil {
+			return nil, err
+		}
+		isParticipating = participation != nil
+	}
+
 	return &model.EventResponse{
-		Event:            *event,
-		ParticipantCount: participantCount,
-		Creator:          creator,
+		Event:           *event,
+		Count:           model.CountWrapper{Participants: participantCount},
+		CreatedBy:       creator,
+		IsParticipating: isParticipating,
+		Participants:    participants,
+	}, nil
+}
+
+// enrichEventWithDetails добавляет детали к событию
+func (s *eventService) enrichEventWithDetails(ctx context.Context, event model.Event, userID string) (model.EventWithDetails, error) {
+	participantCount, err := s.participantRepo.GetParticipantCount(ctx, event.ID)
+	if err != nil {
+		return model.EventWithDetails{}, err
+	}
+
+	creator, err := s.eventRepo.GetCreatorByEventID(ctx, event.ID)
+	if err != nil {
+		return model.EventWithDetails{}, err
+	}
+
+	participants, _, err := s.participantRepo.GetParticipants(ctx, event.ID, 1, 5)
+	if err != nil {
+		return model.EventWithDetails{}, err
+	}
+
+	isParticipating := false
+	if userID != "" {
+		participation, err := s.participantRepo.GetParticipation(ctx, event.ID, userID)
+		if err != nil {
+			return model.EventWithDetails{}, err
+		}
+		isParticipating = participation != nil
+	}
+
+	return model.EventWithDetails{
+		Event:           event,
+		CreatedBy:       creator,
+		Count:           model.CountWrapper{Participants: participantCount},
+		IsParticipating: isParticipating,
+		Participants:    participants,
 	}, nil
 }
 
 // GetEvents получает список событий с фильтрацией
-func (s *eventService) GetEvents(ctx context.Context, req *model.GetEventsRequest) (*model.PaginatedEventsResponse, error) {
+func (s *eventService) GetEvents(ctx context.Context, req *model.GetEventsRequest) (*model.PaginatedEventsWithDetailsResponse, error) {
 	if req.Page <= 0 {
 		req.Page = 1
 	}
 	if req.PageSize <= 0 {
 		req.PageSize = 20
+	}
+	// Support Node.js 'limit' parameter
+	if req.Limit > 0 {
+		req.PageSize = req.Limit
 	}
 
 	events, total, err := s.eventRepo.GetAll(ctx, req)
@@ -115,17 +173,29 @@ func (s *eventService) GetEvents(ctx context.Context, req *model.GetEventsReques
 		return nil, err
 	}
 
-	return &model.PaginatedEventsResponse{
-		Events:     events,
-		Total:      total,
-		Page:       req.Page,
-		PageSize:   req.PageSize,
-		TotalPages: (total + req.PageSize - 1) / req.PageSize,
+	// Обогащаем события деталями
+	eventsWithDetails := make([]model.EventWithDetails, 0, len(events))
+	for _, event := range events {
+		eventWithDetails, err := s.enrichEventWithDetails(ctx, event, req.UserID)
+		if err != nil {
+			return nil, err
+		}
+		eventsWithDetails = append(eventsWithDetails, eventWithDetails)
+	}
+
+	return &model.PaginatedEventsWithDetailsResponse{
+		Events: eventsWithDetails,
+		Pagination: model.PaginationInfo{
+			Page:       req.Page,
+			Limit:      req.PageSize,
+			Total:      total,
+			TotalPages: (total + req.PageSize - 1) / req.PageSize,
+		},
 	}, nil
 }
 
 // GetUserEvents получает события пользователя
-func (s *eventService) GetUserEvents(ctx context.Context, userID string, page, pageSize int) (*model.PaginatedEventsResponse, error) {
+func (s *eventService) GetUserEvents(ctx context.Context, userID string, page, pageSize int) (*model.PaginatedEventsWithDetailsResponse, error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -138,17 +208,29 @@ func (s *eventService) GetUserEvents(ctx context.Context, userID string, page, p
 		return nil, err
 	}
 
-	return &model.PaginatedEventsResponse{
-		Events:     events,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: (total + pageSize - 1) / pageSize,
+	// Обогащаем события деталями
+	eventsWithDetails := make([]model.EventWithDetails, 0, len(events))
+	for _, event := range events {
+		eventWithDetails, err := s.enrichEventWithDetails(ctx, event, "")
+		if err != nil {
+			return nil, err
+		}
+		eventsWithDetails = append(eventsWithDetails, eventWithDetails)
+	}
+
+	return &model.PaginatedEventsWithDetailsResponse{
+		Events: eventsWithDetails,
+		Pagination: model.PaginationInfo{
+			Page:       page,
+			Limit:      pageSize,
+			Total:      total,
+			TotalPages: (total + pageSize - 1) / pageSize,
+		},
 	}, nil
 }
 
 // GetNearbyEvents получает события поблизости
-func (s *eventService) GetNearbyEvents(ctx context.Context, lat, lon, radius float64, page, pageSize int) (*model.PaginatedEventsResponse, error) {
+func (s *eventService) GetNearbyEvents(ctx context.Context, lat, lon, radius float64, page, pageSize int, userID string) (*model.PaginatedEventsWithDetailsResponse, error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -156,7 +238,7 @@ func (s *eventService) GetNearbyEvents(ctx context.Context, lat, lon, radius flo
 		pageSize = 20
 	}
 	if radius <= 0 {
-		radius = 10000 // 10 км по умолчанию
+		radius = 50000 // 50 км по умолчанию (как в Node.js)
 	}
 
 	events, total, err := s.eventRepo.GetNearby(ctx, lat, lon, radius, page, pageSize)
@@ -164,12 +246,24 @@ func (s *eventService) GetNearbyEvents(ctx context.Context, lat, lon, radius flo
 		return nil, err
 	}
 
-	return &model.PaginatedEventsResponse{
-		Events:     events,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: (total + pageSize - 1) / pageSize,
+	// Обогащаем события деталями
+	eventsWithDetails := make([]model.EventWithDetails, 0, len(events))
+	for _, event := range events {
+		eventWithDetails, err := s.enrichEventWithDetails(ctx, event, userID)
+		if err != nil {
+			return nil, err
+		}
+		eventsWithDetails = append(eventsWithDetails, eventWithDetails)
+	}
+
+	return &model.PaginatedEventsWithDetailsResponse{
+		Events: eventsWithDetails,
+		Pagination: model.PaginationInfo{
+			Page:       page,
+			Limit:      pageSize,
+			Total:      total,
+			TotalPages: (total + pageSize - 1) / pageSize,
+		},
 	}, nil
 }
 
@@ -212,8 +306,8 @@ func (s *eventService) DeleteEvent(ctx context.Context, userID, eventID string) 
 	return s.eventRepo.Delete(ctx, eventID)
 }
 
-// JoinEvent добавляет пользователя как участника события
-func (s *eventService) JoinEvent(ctx context.Context, userID, eventID string) error {
+// JoinEvent добавляет пользователя как участника события (upsert - обновляет статус если уже участник)
+func (s *eventService) JoinEvent(ctx context.Context, userID, eventID string, status model.ParticipantStatus) error {
 	event, err := s.eventRepo.GetByID(ctx, eventID)
 	if err != nil {
 		return err
@@ -222,15 +316,18 @@ func (s *eventService) JoinEvent(ctx context.Context, userID, eventID string) er
 		return ErrEventNotFound
 	}
 
+	// Проверяем что событие одобрено
+	if event.Status != model.EventStatusApproved {
+		return ErrEventNotApproved
+	}
+
+	// Проверяем лимит участников (только для новых участников)
 	existing, err := s.participantRepo.GetParticipation(ctx, eventID, userID)
 	if err != nil {
 		return err
 	}
-	if existing != nil {
-		return ErrAlreadyParticipant
-	}
 
-	if event.MaxParticipants != nil {
+	if existing == nil && event.MaxParticipants != nil {
 		count, err := s.participantRepo.GetParticipantCount(ctx, eventID)
 		if err != nil {
 			return err
@@ -240,10 +337,11 @@ func (s *eventService) JoinEvent(ctx context.Context, userID, eventID string) er
 		}
 	}
 
+	// Используем upsert - добавляем или обновляем статус
 	participant := &model.Participant{
 		EventID: eventID,
 		UserID:  userID,
-		Status:  model.ParticipantStatusGoing,
+		Status:  status,
 	}
 
 	return s.participantRepo.AddParticipant(ctx, participant)

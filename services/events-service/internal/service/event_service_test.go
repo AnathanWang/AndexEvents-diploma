@@ -166,21 +166,64 @@ func TestGetEventByID(t *testing.T) {
 	}
 
 	expectedCreator := &model.EventCreator{
-		ID:   "user-123",
-		Name: "Test User",
+		ID:        "user-123",
+		DisplayName: "Test User",
+	}
+
+	participants := []model.ParticipantWithUser{
+		{EventID: "event-123", UserID: "user-1", Name: "Participant 1"},
 	}
 
 	eventRepo.On("GetByID", ctx, "event-123").Return(expectedEvent, nil)
 	participantRepo.On("GetParticipantCount", ctx, "event-123").Return(5, nil)
 	eventRepo.On("GetCreatorByEventID", ctx, "event-123").Return(expectedCreator, nil)
+	participantRepo.On("GetParticipants", ctx, "event-123", 1, 5).Return(participants, 1, nil)
+	participantRepo.On("GetParticipation", ctx, "event-123", "user-123").Return(&model.Participant{EventID: "event-123", UserID: "user-123", Status: model.ParticipantStatusGoing}, nil)
 
-	response, err := svc.GetEventByID(ctx, "event-123")
+	response, err := svc.GetEventByID(ctx, "event-123", "user-123")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
 	assert.Equal(t, "event-123", response.Event.ID)
-	assert.Equal(t, 5, response.ParticipantCount)
-	assert.Equal(t, "Test User", response.Creator.Name)
+	assert.Equal(t, 5, response.Count.Participants)
+	assert.Equal(t, "Test User", response.CreatedBy.DisplayName)
+	assert.True(t, response.IsParticipating)
+	eventRepo.AssertExpectations(t)
+	participantRepo.AssertExpectations(t)
+}
+
+func TestGetEventByID_NoUser(t *testing.T) {
+	ctx := context.Background()
+	eventRepo := new(MockEventRepository)
+	participantRepo := new(MockParticipantRepository)
+	svc := NewEventService(eventRepo, participantRepo)
+
+	expectedEvent := &model.Event{
+		ID:          "event-123",
+		Title:       "Test Event",
+		CreatedByID: "user-123",
+	}
+
+	expectedCreator := &model.EventCreator{
+		ID:        "user-123",
+		DisplayName: "Test User",
+	}
+
+	participants := []model.ParticipantWithUser{
+		{EventID: "event-123", UserID: "user-1", Name: "Participant 1"},
+	}
+
+	eventRepo.On("GetByID", ctx, "event-123").Return(expectedEvent, nil)
+	participantRepo.On("GetParticipantCount", ctx, "event-123").Return(5, nil)
+	eventRepo.On("GetCreatorByEventID", ctx, "event-123").Return(expectedCreator, nil)
+	participantRepo.On("GetParticipants", ctx, "event-123", 1, 5).Return(participants, 1, nil)
+
+	response, err := svc.GetEventByID(ctx, "event-123", "")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, response)
+	assert.Equal(t, "event-123", response.Event.ID)
+	assert.False(t, response.IsParticipating)
 	eventRepo.AssertExpectations(t)
 	participantRepo.AssertExpectations(t)
 }
@@ -193,7 +236,7 @@ func TestGetEventByID_NotFound(t *testing.T) {
 
 	eventRepo.On("GetByID", ctx, "nonexistent").Return(nil, nil)
 
-	response, err := svc.GetEventByID(ctx, "nonexistent")
+	response, err := svc.GetEventByID(ctx, "nonexistent", "")
 
 	assert.Error(t, err)
 	assert.Equal(t, ErrEventNotFound, err)
@@ -208,8 +251,8 @@ func TestGetEvents(t *testing.T) {
 	svc := NewEventService(eventRepo, participantRepo)
 
 	events := []model.Event{
-		{ID: "event-1", Title: "Event 1"},
-		{ID: "event-2", Title: "Event 2"},
+		{ID: "event-1", Title: "Event 1", CreatedByID: "creator-1"},
+		{ID: "event-2", Title: "Event 2", CreatedByID: "creator-2"},
 	}
 
 	req := &model.GetEventsRequest{
@@ -218,15 +261,28 @@ func TestGetEvents(t *testing.T) {
 		Category: "music",
 	}
 
+	creator1 := &model.EventCreator{ID: "creator-1", DisplayName: "Creator 1"}
+	creator2 := &model.EventCreator{ID: "creator-2", DisplayName: "Creator 2"}
+	participants := []model.ParticipantWithUser{}
+
 	eventRepo.On("GetAll", ctx, req).Return(events, 2, nil)
+	// Enrichment for event-1
+	participantRepo.On("GetParticipantCount", ctx, "event-1").Return(5, nil)
+	eventRepo.On("GetCreatorByEventID", ctx, "event-1").Return(creator1, nil)
+	participantRepo.On("GetParticipants", ctx, "event-1", 1, 5).Return(participants, 0, nil)
+	// Enrichment for event-2
+	participantRepo.On("GetParticipantCount", ctx, "event-2").Return(3, nil)
+	eventRepo.On("GetCreatorByEventID", ctx, "event-2").Return(creator2, nil)
+	participantRepo.On("GetParticipants", ctx, "event-2", 1, 5).Return(participants, 0, nil)
 
 	response, err := svc.GetEvents(ctx, req)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
 	assert.Len(t, response.Events, 2)
-	assert.Equal(t, 2, response.Total)
+	assert.Equal(t, 2, response.Pagination.Total)
 	eventRepo.AssertExpectations(t)
+	participantRepo.AssertExpectations(t)
 }
 
 func TestGetUserEvents(t *testing.T) {
@@ -239,7 +295,14 @@ func TestGetUserEvents(t *testing.T) {
 		{ID: "event-1", Title: "Event 1", CreatedByID: "user-123"},
 	}
 
+	creator := &model.EventCreator{ID: "user-123", DisplayName: "User 123"}
+	participants := []model.ParticipantWithUser{}
+
 	eventRepo.On("GetByUserID", ctx, "user-123", 1, 20).Return(events, 1, nil)
+	// Enrichment for event-1
+	participantRepo.On("GetParticipantCount", ctx, "event-1").Return(3, nil)
+	eventRepo.On("GetCreatorByEventID", ctx, "event-1").Return(creator, nil)
+	participantRepo.On("GetParticipants", ctx, "event-1", 1, 5).Return(participants, 0, nil)
 
 	response, err := svc.GetUserEvents(ctx, "user-123", 1, 20)
 
@@ -247,6 +310,7 @@ func TestGetUserEvents(t *testing.T) {
 	assert.NotNil(t, response)
 	assert.Len(t, response.Events, 1)
 	eventRepo.AssertExpectations(t)
+	participantRepo.AssertExpectations(t)
 }
 
 func TestUpdateEvent(t *testing.T) {
@@ -357,44 +421,48 @@ func TestJoinEvent(t *testing.T) {
 	svc := NewEventService(eventRepo, participantRepo)
 
 	event := &model.Event{
-		ID:    "event-123",
-		Title: "Test Event",
+		ID:     "event-123",
+		Title:  "Test Event",
+		Status: model.EventStatusApproved,
 	}
 
 	eventRepo.On("GetByID", ctx, "event-123").Return(event, nil)
 	participantRepo.On("GetParticipation", ctx, "event-123", "user-123").Return(nil, nil)
 	participantRepo.On("AddParticipant", ctx, mock.AnythingOfType("*model.Participant")).Return(nil)
 
-	err := svc.JoinEvent(ctx, "user-123", "event-123")
+	err := svc.JoinEvent(ctx, "user-123", "event-123", model.ParticipantStatusGoing)
 
 	assert.NoError(t, err)
 	eventRepo.AssertExpectations(t)
 	participantRepo.AssertExpectations(t)
 }
 
-func TestJoinEvent_AlreadyParticipant(t *testing.T) {
+func TestJoinEvent_UpdateStatus(t *testing.T) {
 	ctx := context.Background()
 	eventRepo := new(MockEventRepository)
 	participantRepo := new(MockParticipantRepository)
 	svc := NewEventService(eventRepo, participantRepo)
 
 	event := &model.Event{
-		ID:    "event-123",
-		Title: "Test Event",
+		ID:     "event-123",
+		Title:  "Test Event",
+		Status: model.EventStatusApproved,
 	}
 
 	existingParticipant := &model.Participant{
 		EventID: "event-123",
 		UserID:  "user-123",
+		Status:  model.ParticipantStatusInterested,
 	}
 
 	eventRepo.On("GetByID", ctx, "event-123").Return(event, nil)
 	participantRepo.On("GetParticipation", ctx, "event-123", "user-123").Return(existingParticipant, nil)
+	// Upsert uses AddParticipant with ON CONFLICT DO UPDATE
+	participantRepo.On("AddParticipant", ctx, mock.AnythingOfType("*model.Participant")).Return(nil)
 
-	err := svc.JoinEvent(ctx, "user-123", "event-123")
+	err := svc.JoinEvent(ctx, "user-123", "event-123", model.ParticipantStatusGoing)
 
-	assert.Error(t, err)
-	assert.Equal(t, ErrAlreadyParticipant, err)
+	assert.NoError(t, err)
 	eventRepo.AssertExpectations(t)
 	participantRepo.AssertExpectations(t)
 }
@@ -409,6 +477,7 @@ func TestJoinEvent_EventFull(t *testing.T) {
 	event := &model.Event{
 		ID:              "event-123",
 		Title:           "Test Event",
+		Status:          model.EventStatusApproved,
 		MaxParticipants: &maxParticipants,
 	}
 
@@ -416,7 +485,7 @@ func TestJoinEvent_EventFull(t *testing.T) {
 	participantRepo.On("GetParticipation", ctx, "event-123", "user-123").Return(nil, nil)
 	participantRepo.On("GetParticipantCount", ctx, "event-123").Return(10, nil)
 
-	err := svc.JoinEvent(ctx, "user-123", "event-123")
+	err := svc.JoinEvent(ctx, "user-123", "event-123", model.ParticipantStatusGoing)
 
 	assert.Error(t, err)
 	assert.Equal(t, ErrEventFull, err)
@@ -518,16 +587,23 @@ func TestGetNearbyEvents(t *testing.T) {
 
 	distance := 1500.0
 	events := []model.Event{
-		{ID: "event-1", Title: "Nearby Event", Distance: &distance},
+		{ID: "event-1", Title: "Nearby Event", Distance: &distance, CreatedByID: "creator-1"},
 	}
 
-	eventRepo.On("GetNearby", ctx, 55.75, 37.61, 10000.0, 1, 20).Return(events, 1, nil)
+	creator := &model.EventCreator{ID: "creator-1", DisplayName: "Creator"}
+	participants := []model.ParticipantWithUser{}
 
-	response, err := svc.GetNearbyEvents(ctx, 55.75, 37.61, 10000.0, 1, 20)
+	eventRepo.On("GetNearby", ctx, 55.75, 37.61, 10000.0, 1, 20).Return(events, 1, nil)
+	participantRepo.On("GetParticipantCount", ctx, "event-1").Return(5, nil)
+	eventRepo.On("GetCreatorByEventID", ctx, "event-1").Return(creator, nil)
+	participantRepo.On("GetParticipants", ctx, "event-1", 1, 5).Return(participants, 0, nil)
+
+	response, err := svc.GetNearbyEvents(ctx, 55.75, 37.61, 10000.0, 1, 20, "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
 	assert.Len(t, response.Events, 1)
 	assert.Equal(t, 1500.0, *response.Events[0].Distance)
 	eventRepo.AssertExpectations(t)
+	participantRepo.AssertExpectations(t)
 }

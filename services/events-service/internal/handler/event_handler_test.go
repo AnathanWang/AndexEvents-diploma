@@ -30,36 +30,36 @@ func (m *MockEventService) CreateEvent(ctx context.Context, userID string, req *
 	return args.Get(0).(*model.Event), args.Error(1)
 }
 
-func (m *MockEventService) GetEventByID(ctx context.Context, id string) (*model.EventResponse, error) {
-	args := m.Called(ctx, id)
+func (m *MockEventService) GetEventByID(ctx context.Context, id string, userID string) (*model.EventResponse, error) {
+	args := m.Called(ctx, id, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*model.EventResponse), args.Error(1)
 }
 
-func (m *MockEventService) GetEvents(ctx context.Context, req *model.GetEventsRequest) (*model.PaginatedEventsResponse, error) {
+func (m *MockEventService) GetEvents(ctx context.Context, req *model.GetEventsRequest) (*model.PaginatedEventsWithDetailsResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*model.PaginatedEventsResponse), args.Error(1)
+	return args.Get(0).(*model.PaginatedEventsWithDetailsResponse), args.Error(1)
 }
 
-func (m *MockEventService) GetUserEvents(ctx context.Context, userID string, page, pageSize int) (*model.PaginatedEventsResponse, error) {
+func (m *MockEventService) GetUserEvents(ctx context.Context, userID string, page, pageSize int) (*model.PaginatedEventsWithDetailsResponse, error) {
 	args := m.Called(ctx, userID, page, pageSize)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*model.PaginatedEventsResponse), args.Error(1)
+	return args.Get(0).(*model.PaginatedEventsWithDetailsResponse), args.Error(1)
 }
 
-func (m *MockEventService) GetNearbyEvents(ctx context.Context, lat, lon, radius float64, page, pageSize int) (*model.PaginatedEventsResponse, error) {
-	args := m.Called(ctx, lat, lon, radius, page, pageSize)
+func (m *MockEventService) GetNearbyEvents(ctx context.Context, lat, lon, radius float64, page, pageSize int, userID string) (*model.PaginatedEventsWithDetailsResponse, error) {
+	args := m.Called(ctx, lat, lon, radius, page, pageSize, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*model.PaginatedEventsResponse), args.Error(1)
+	return args.Get(0).(*model.PaginatedEventsWithDetailsResponse), args.Error(1)
 }
 
 func (m *MockEventService) UpdateEvent(ctx context.Context, userID, eventID string, req *model.UpdateEventRequest) (*model.Event, error) {
@@ -75,8 +75,8 @@ func (m *MockEventService) DeleteEvent(ctx context.Context, userID, eventID stri
 	return args.Error(0)
 }
 
-func (m *MockEventService) JoinEvent(ctx context.Context, userID, eventID string) error {
-	args := m.Called(ctx, userID, eventID)
+func (m *MockEventService) JoinEvent(ctx context.Context, userID, eventID string, status model.ParticipantStatus) error {
+	args := m.Called(ctx, userID, eventID, status)
 	return args.Error(0)
 }
 
@@ -188,15 +188,17 @@ func TestGetEvents_Handler(t *testing.T) {
 	mockService := new(MockEventService)
 	router := setupRouter(mockService)
 
-	expectedResponse := &model.PaginatedEventsResponse{
-		Events: []model.Event{
-			{ID: "event-1", Title: "Event 1"},
-			{ID: "event-2", Title: "Event 2"},
+	expectedResponse := &model.PaginatedEventsWithDetailsResponse{
+		Events: []model.EventWithDetails{
+			{Event: model.Event{ID: "event-1", Title: "Event 1"}},
+			{Event: model.Event{ID: "event-2", Title: "Event 2"}},
 		},
-		Total:      2,
-		Page:       1,
-		PageSize:   20,
-		TotalPages: 1,
+		Pagination: model.PaginationInfo{
+			Total:   2,
+			Page:    1,
+			Limit: 20,
+			TotalPages:   1,
+		},
 	}
 
 	mockService.On("GetEvents", mock.Anything, mock.AnythingOfType("*model.GetEventsRequest")).Return(expectedResponse, nil)
@@ -207,7 +209,7 @@ func TestGetEvents_Handler(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response model.PaginatedEventsResponse
+	var response model.PaginatedEventsWithDetailsResponse
 	json.Unmarshal(w.Body.Bytes(), &response)
 	assert.Len(t, response.Events, 2)
 	mockService.AssertExpectations(t)
@@ -222,10 +224,10 @@ func TestGetEventByID_Handler(t *testing.T) {
 			ID:    "event-123",
 			Title: "Test Event",
 		},
-		ParticipantCount: 5,
+		Count: model.CountWrapper{Participants: 5},
 	}
 
-	mockService.On("GetEventByID", mock.Anything, "event-123").Return(expectedResponse, nil)
+	mockService.On("GetEventByID", mock.Anything, "event-123", "").Return(expectedResponse, nil)
 
 	req, _ := http.NewRequest("GET", "/api/events/event-123", nil)
 	w := httptest.NewRecorder()
@@ -236,7 +238,7 @@ func TestGetEventByID_Handler(t *testing.T) {
 	var response model.EventResponse
 	json.Unmarshal(w.Body.Bytes(), &response)
 	assert.Equal(t, "event-123", response.Event.ID)
-	assert.Equal(t, 5, response.ParticipantCount)
+	assert.Equal(t, 5, response.Count.Participants)
 	mockService.AssertExpectations(t)
 }
 
@@ -244,7 +246,7 @@ func TestGetEventByID_Handler_NotFound(t *testing.T) {
 	mockService := new(MockEventService)
 	router := setupRouter(mockService)
 
-	mockService.On("GetEventByID", mock.Anything, "nonexistent").Return(nil, service.ErrEventNotFound)
+	mockService.On("GetEventByID", mock.Anything, "nonexistent", "").Return(nil, service.ErrEventNotFound)
 
 	req, _ := http.NewRequest("GET", "/api/events/nonexistent", nil)
 	w := httptest.NewRecorder()
@@ -258,14 +260,16 @@ func TestGetUserEvents_Handler(t *testing.T) {
 	mockService := new(MockEventService)
 	router := setupRouter(mockService)
 
-	expectedResponse := &model.PaginatedEventsResponse{
-		Events: []model.Event{
-			{ID: "event-1", Title: "User Event", CreatedByID: "user-456"},
+	expectedResponse := &model.PaginatedEventsWithDetailsResponse{
+		Events: []model.EventWithDetails{
+			{Event: model.Event{ID: "event-1", Title: "User Event", CreatedByID: "user-456"}},
 		},
-		Total:      1,
-		Page:       1,
-		PageSize:   20,
-		TotalPages: 1,
+		Pagination: model.PaginationInfo{
+			Total:   1,
+			Page:    1,
+			Limit: 20,
+			TotalPages:   1,
+		},
 	}
 
 	mockService.On("GetUserEvents", mock.Anything, "user-456", 1, 20).Return(expectedResponse, nil)
@@ -276,7 +280,7 @@ func TestGetUserEvents_Handler(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response model.PaginatedEventsResponse
+	var response model.PaginatedEventsWithDetailsResponse
 	json.Unmarshal(w.Body.Bytes(), &response)
 	assert.Len(t, response.Events, 1)
 	mockService.AssertExpectations(t)
@@ -354,9 +358,11 @@ func TestJoinEvent_Handler(t *testing.T) {
 	mockService := new(MockEventService)
 	router := setupRouter(mockService)
 
-	mockService.On("JoinEvent", mock.Anything, "user-123", "event-123").Return(nil)
+	mockService.On("JoinEvent", mock.Anything, "user-123", "event-123", model.ParticipantStatusGoing).Return(nil)
 
-	req, _ := http.NewRequest("POST", "/api/events/event-123/participate", nil)
+	reqBody := `{"status": "GOING"}`
+	req, _ := http.NewRequest("POST", "/api/events/event-123/participate", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -364,13 +370,15 @@ func TestJoinEvent_Handler(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestJoinEvent_Handler_AlreadyParticipant(t *testing.T) {
+func TestJoinEvent_Handler_EventFull(t *testing.T) {
 	mockService := new(MockEventService)
 	router := setupRouter(mockService)
 
-	mockService.On("JoinEvent", mock.Anything, "user-123", "event-123").Return(service.ErrAlreadyParticipant)
+	mockService.On("JoinEvent", mock.Anything, "user-123", "event-123", model.ParticipantStatusGoing).Return(service.ErrEventFull)
 
-	req, _ := http.NewRequest("POST", "/api/events/event-123/participate", nil)
+	reqBody := `{"status": "GOING"}`
+	req, _ := http.NewRequest("POST", "/api/events/event-123/participate", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -429,17 +437,19 @@ func TestGetEvents_Handler_Nearby(t *testing.T) {
 	router := setupRouter(mockService)
 
 	distance := 1500.0
-	expectedResponse := &model.PaginatedEventsResponse{
-		Events: []model.Event{
-			{ID: "event-1", Title: "Nearby Event", Distance: &distance},
+	expectedResponse := &model.PaginatedEventsWithDetailsResponse{
+		Events: []model.EventWithDetails{
+			{Event: model.Event{ID: "event-1", Title: "Nearby Event", Distance: &distance}},
 		},
-		Total:      1,
-		Page:       1,
-		PageSize:   20,
-		TotalPages: 1,
+		Pagination: model.PaginationInfo{
+			Total:   1,
+			Page:    1,
+			Limit: 20,
+			TotalPages:   1,
+		},
 	}
 
-	mockService.On("GetNearbyEvents", mock.Anything, 55.75, 37.61, 10000.0, 1, 20).Return(expectedResponse, nil)
+	mockService.On("GetNearbyEvents", mock.Anything, 55.75, 37.61, 10000.0, 1, 20, "").Return(expectedResponse, nil)
 
 	req, _ := http.NewRequest("GET", "/api/events?lat=55.75&lon=37.61&radius=10000&page=1&pageSize=20", nil)
 	w := httptest.NewRecorder()
@@ -447,7 +457,7 @@ func TestGetEvents_Handler_Nearby(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response model.PaginatedEventsResponse
+	var response model.PaginatedEventsWithDetailsResponse
 	json.Unmarshal(w.Body.Bytes(), &response)
 	assert.Len(t, response.Events, 1)
 	mockService.AssertExpectations(t)

@@ -6,8 +6,9 @@
 
 1. [Общая информация](#общая-информация)
 2. [Auth Service API](#auth-service-api)
-3. [Events Service API](#events-service-api-planned)
-4. [Коды ошибок](#коды-ошибок)
+3. [Upload Service API](#upload-service-api)
+4. [Events Service API](#events-service-api-planned)
+5. [Коды ошибок](#коды-ошибок)
 
 ---
 
@@ -19,8 +20,8 @@
 |--------|-----|--------|
 | Auth Service | `http://localhost:8001` | ✅ Ready |
 | Events Service | `http://localhost:8002` | 📋 Planned |
-| Match Service | `http://localhost:8003` | 📋 Planned |
-| Upload Service | `http://localhost:8004` | 📋 Planned |
+| Match Service | `http://localhost:8005` | ✅ Ready |
+| Upload Service | `http://localhost:8006` | ✅ Ready |
 
 ### Формат ответов
 
@@ -55,6 +56,10 @@
   ]
 }
 ```
+
+Исключение:
+
+- Upload Service сохраняет legacy-совместимый формат ответа: `{"success":true,"fileUrl":"...","file":{...}}` и `{"success":false,"message":"..."}`.
 
 ### Аутентификация
 
@@ -364,6 +369,65 @@ GET /api/users/:id
 | Код | Описание |
 |-----|----------|
 | 404 | Пользователь не найден |
+
+---
+
+## 📤 Upload Service API
+
+### Health Check
+
+```http
+GET /health
+```
+
+### Upload File
+
+Legacy-совместимая загрузка файла (multipart/form-data) с полем `file`.
+
+```http
+POST /api/upload?bucket=avatars|events
+Authorization: Bearer <firebase-id-token>
+```
+
+#### Response 200
+
+```json
+{
+  "success": true,
+  "fileUrl": "http://localhost/uploads/avatars/<userId>/<filename>",
+  "file": {
+    "name": "1700000000000-ab12cd34.jpg",
+    "size": 12345,
+    "bucket": "avatars"
+  }
+}
+```
+
+#### Errors
+
+```json
+{ "success": false, "message": "Unauthorized" }
+```
+
+```json
+{ "success": false, "message": "No file uploaded" }
+```
+
+```json
+{ "success": false, "message": "Invalid bucket name" }
+```
+
+```json
+{ "success": false, "message": "Upload failed" }
+```
+
+### Public File Access
+
+Публичная раздача файлов (аналог legacy `/public/uploads`).
+
+```http
+GET /uploads/:bucket/:userId/:filename
+```
 
 ---
 

@@ -9,17 +9,15 @@ import (
 	"syscall"
 	"time"
 
-	firebase "firebase.google.com/go/v4"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
-	"google.golang.org/api/option"
 
-	"github.com/AnathanWang/andexevents/services/events-service/internal/config"
-	"github.com/AnathanWang/andexevents/services/events-service/internal/handler"
-	"github.com/AnathanWang/andexevents/services/events-service/internal/middleware"
-	"github.com/AnathanWang/andexevents/services/events-service/internal/repository"
-	"github.com/AnathanWang/andexevents/services/events-service/internal/service"
+	"github.com/AnathanWang/andexevents/services/users-service/internal/config"
+	"github.com/AnathanWang/andexevents/services/users-service/internal/handler"
+	"github.com/AnathanWang/andexevents/services/users-service/internal/middleware"
+	"github.com/AnathanWang/andexevents/services/users-service/internal/repository"
+	"github.com/AnathanWang/andexevents/services/users-service/internal/service"
 )
 
 func main() {
@@ -34,6 +32,11 @@ func main() {
 		logger, _ = zap.NewDevelopment()
 	}
 	defer logger.Sync()
+
+	// Проверяем обязательные настройки
+	if cfg.SupabaseJWTSecret == "" {
+		logger.Fatal("SUPABASE_JWT_SECRET is required")
+	}
 
 	// Подключаемся к базе данных
 	dbURL := fmt.Sprintf(
@@ -53,23 +56,10 @@ func main() {
 	}
 	logger.Info("Connected to database")
 
-	// Инициализируем Firebase
-	opt := option.WithCredentialsFile(cfg.FirebaseCredentialsFile)
-	app, err := firebase.NewApp(context.Background(), nil, opt)
-	if err != nil {
-		logger.Fatal("Failed to initialize Firebase", zap.Error(err))
-	}
-
-	authClient, err := app.Auth(context.Background())
-	if err != nil {
-		logger.Fatal("Failed to get Firebase auth client", zap.Error(err))
-	}
-
 	// Инициализируем слои приложения
-	eventRepo := repository.NewEventRepository(pool)
-	participantRepo := repository.NewParticipantRepository(pool)
-	eventService := service.NewEventService(eventRepo, participantRepo)
-	eventHandler := handler.NewEventHandler(eventService)
+	userRepo := repository.NewUserRepository(pool)
+	userService := service.NewUserService(userRepo, logger)
+	userHandler := handler.NewUserHandler(userService)
 
 	// Настраиваем Gin
 	if cfg.Environment == "production" {
@@ -85,29 +75,30 @@ func main() {
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "healthy",
-			"service": "events-service",
+			"service": "users-service",
 		})
 	})
 
 	// API routes
-	api := router.Group("/api/events")
+	api := router.Group("/api/users")
 	{
-		// Public routes with optional auth (to get isParticipating field)
-		api.GET("", middleware.OptionalAuthMiddleware(authClient), eventHandler.GetEvents)
-		api.GET("/:id", middleware.OptionalAuthMiddleware(authClient), eventHandler.GetEventByID)
-		api.GET("/user/:userId", eventHandler.GetUserEvents)
-		api.GET("/:id/participants", eventHandler.GetParticipants)
+		// Все маршруты защищены авторизацией
+		api.Use(middleware.AuthMiddleware(cfg.SupabaseJWTSecret, pool))
 
-		// Protected routes
-		protected := api.Group("")
-		protected.Use(middleware.AuthMiddleware(authClient))
-		{
-			protected.POST("", eventHandler.CreateEvent)
-			protected.PUT("/:id", eventHandler.UpdateEvent)
-			protected.DELETE("/:id", eventHandler.DeleteEvent)
-			protected.POST("/:id/participate", eventHandler.JoinEvent)
-			protected.DELETE("/:id/participate", eventHandler.LeaveEvent)
-		}
+		// POST /api/users - создание пользователя
+		api.POST("", userHandler.CreateUser)
+
+		// GET /api/users/me - получить текущего пользователя
+		api.GET("/me", userHandler.GetCurrentUser)
+
+		// PUT /api/users/me - обновить профиль
+		api.PUT("/me", userHandler.UpdateProfile)
+
+		// PUT /api/users/me/location - обновить локацию
+		api.PUT("/me/location", userHandler.UpdateLocation)
+
+		// GET /api/users/matches - получить матчи
+		api.GET("/matches", userHandler.GetMatches)
 	}
 
 	// Запускаем сервер
@@ -117,7 +108,7 @@ func main() {
 	}
 
 	go func() {
-		logger.Info("Starting events-service", zap.Int("port", cfg.Port))
+		logger.Info("Starting users-service", zap.Int("port", cfg.Port))
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Fatal("Failed to start server", zap.Error(err))
 		}
