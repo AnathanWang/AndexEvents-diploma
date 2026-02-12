@@ -1,100 +1,60 @@
 # План разработки функционала Модерации и Админ-панели
 
-## 1. База данных (Prisma)
+## 1. База данных (PostgreSQL)
 
-Необходимо расширить схему базы данных для поддержки системы жалоб и аудита действий администраторов.
+Поскольку в проекте используется микросервисная архитектура (Java/Spring для сервисов пользователей, событий и аутентификации), изменения в базе данных должны быть отражены через **Flyway миграции** в соответствующих сервисах, а не через Prisma.
 
-### 1.1. Новая модель `Report`
-Создать модель для хранения жалоб пользователей на события или других пользователей.
+### 1.1. Таблица `reports` (Сервис модерации или Users Service)
+Необходимо создать новую таблицу для хранения жалоб. Рекомендуется создать отдельный микросервис `moderation-service` или добавить это в `users-service`.
 
-```prisma
-enum ReportReason {
-  SPAM
-  INAPPROPRIATE_CONTENT
-  HARASSMENT
-  FAKE_EVENT
-  OTHER
-}
+```sql
+CREATE TABLE reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reporter_id UUID NOT NULL REFERENCES users(id),
+    target_user_id UUID REFERENCES users(id),
+    target_event_id UUID REFERENCES events(id), -- Если таблица events в той же БД
+    reason VARCHAR(50) NOT NULL, -- SPAM, INAPPROPRIATE_CONTENT, etc.
+    details TEXT,
+    status VARCHAR(20) DEFAULT 'PENDING', -- PENDING, RESOLVED, DISMISSED
+    resolver_id UUID REFERENCES users(id),
+    resolved_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
-enum ReportStatus {
-  PENDING
-  RESOLVED
-  DISMISSED
-}
-
-model Report {
-  id          String       @id @default(uuid())
-  
-  reporterId  String
-  reporter    User         @relation("ReportReporter", fields: [reporterId], references: [id])
-  
-  // Объект жалобы (либо пользователь, либо событие)
-  targetUserId String?
-  targetUser   User?       @relation("ReportTargetUser", fields: [targetUserId], references: [id])
-  
-  targetEventId String?
-  targetEvent   Event?     @relation(fields: [targetEventId], references: [id])
-  
-  reason      ReportReason
-  details     String?      @db.Text
-  status      ReportStatus @default(PENDING)
-  
-  // Кто и когда решил проблему
-  resolverId  String?
-  resolver    User?        @relation("ReportResolver", fields: [resolverId], references: [id])
-  resolvedAt  DateTime?
-  
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-
-  @@index([status])
-  @@index([reporterId])
-}
+CREATE INDEX idx_reports_status ON reports(status);
+CREATE INDEX idx_reports_reporter_id ON reports(reporter_id);
 ```
 
-### 1.2. Обновление модели `User`
-Добавить обратные отношения для репортов.
+### 1.2. Обновление таблицы `users`
+Добавить поле роли, если оно еще не существует (или использовать отдельную таблицу ролей/пермиссий).
 
-```prisma
-model User {
-  // ... существующие поля
-  
-  // Отношения для модерации
-  sentReports      Report[] @relation("ReportReporter")
-  receivedReports  Report[] @relation("ReportTargetUser") // Жалобы НА этого пользователя
-  resolvedReports  Report[] @relation("ReportResolver")   // Жалобы, обработанные этим админом
-}
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'USER';
+-- Roles: USER, MODERATOR, ADMIN
 ```
 
-## 2. Backend (Node.js/Express)
+## 2. Backend (Java/Spring + Go)
 
-### 2.1. Middleware авторизации
-Добавить middleware для проверки прав доступа.
+### 2.1. Authorization
+В Java-сервисах (`auth-service-java`) необходимо обновить логику валидации токенов, чтобы включать роль пользователя в Claims или проверять её в БД при каждом запросе к админским эндпоинтам.
 
-- `requireRole(roles: UserRole[])`: Проверяет, есть ли у пользователя нужная роль (`ADMIN` или `MODERATOR`).
+### 2.2. API Эндпоинты
 
-### 2.2. Admin API Endpoints
-Создать новый роут `src/routes/admin.routes.ts`.
+#### В `users-service-java` (или новом `moderation-service`):
+- `POST /api/reports` - Создать жалобу (доступно всем).
+- `GET /api/admin/reports` - Список жалоб (только ADMIN/MODERATOR).
+- `POST /api/admin/reports/{id}/resolve` - Решить жалобу.
+- `GET /api/admin/users` - Список пользователей.
+- `POST /api/admin/users/{id}/ban` - Забанить пользователя.
 
-#### Управление пользователями
-- `GET /admin/users` - список пользователей с пагинацией и фильтрами.
-- `GET /admin/users/:id` - детальная инфо о пользователе (включая скрытые данные).
-- `POST /admin/users/:id/ban` - заблокировать пользователя (можно добавить поле `bannedAt` в User).
-- `POST /admin/users/:id/role` - изменить роль пользователя.
+#### В `events-service-java`:
+- `GET /api/admin/events/pending` - Очередь модерации событий.
+- `POST /api/admin/events/{id}/approve` - Одобрить.
+- `POST /api/admin/events/{id}/reject` - Отклонить.
 
-#### Модерация событий
-- `GET /admin/events/pending` - список событий, требующих модерации.
-- `POST /admin/events/:id/approve` - одобрить событие.
-- `POST /admin/events/:id/reject` - отклонить событие (с указанием причины).
-
-#### Система жалоб
-- `GET /admin/reports` - список жалоб.
-- `POST /admin/reports/:id/resolve` - закрыть жалобу (принять меры или отклонить).
-
-### 2.3. User Reporting API
-Создать роут `src/routes/report.routes.ts` для обычных пользователей.
-
-- `POST /api/reports` - создать жалобу (тело: `{ targetUserId?, targetEventId?, reason, details }`).
+## 3. Frontend (Flutter)
+... (без изменений)
 
 ## 3. Frontend (Flutter)
 
