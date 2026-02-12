@@ -39,4 +39,33 @@ class ReportService {
     // For now, assume success
     log('Report submitted successfully');
   }
+
+  // Admin methods
+  Future<List<ReportModel>> getReports() async {
+    // Simulate API call
+    await Future.delayed(const Duration(seconds: 1));
+    
+    return [
+      ReportModel(
+        id: '1',
+        reporterId: 'user_1',
+        targetUserId: 'user_bad',
+        reason: ReportReason.spam,
+        details: 'Sending spam messages',
+        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+      ),
+      ReportModel(
+        id: '2',
+        reporterId: 'user_2',
+        targetUserId: 'user_fake',
+        reason: ReportReason.fakeProfile,
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      ),
+    ];
+  }
+
+  Future<void> resolveReport(String reportId, String resolution) async {
+     log('Resolving report $reportId with $resolution');
+     await Future.delayed(const Duration(seconds: 1));
+  }
 }

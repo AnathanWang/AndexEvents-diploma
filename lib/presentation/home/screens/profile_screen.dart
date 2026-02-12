@@ -16,6 +16,7 @@ import '../../widgets/match_card.dart';
 import '../../widgets/section_header.dart';
 import '../../../data/services/user_service.dart';
 import '../../profile/screens/user_profile_screen.dart';
+import '../../admin/screens/admin_dashboard_screen.dart';
 
 enum _ProfileMatchFilter {
   mutual,
@@ -319,6 +320,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 12),
               const AdminPanelSnippet(),
+              
+              // Временная кнопка для перехода в Admin Dashboard
+              // В реальном приложении это должно быть скрыто за проверкой роли
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.admin_panel_settings),
+                  label: const Text('Admin Dashboard'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueGrey[900],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 100), // Bottom padding
             ],
           ),
         );
