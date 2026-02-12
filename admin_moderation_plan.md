@@ -84,19 +84,24 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'USER';
 
 ## 4. План внедрения
 
-1.  **Backend: Schema & Migrations**
-    - Изменить `schema.prisma`.
-    - Выполнить `prisma migrate dev`.
-2.  **Backend: Logic**
-    - Реализовать `requireRole` middleware.
-    - Реализовать `AdminController`.
-    - Подключить роуты.
+1.  **Backend: SQL Migrations (Flyway)**
+    - Создать файл миграции `V2__add_roles_and_reports.sql` в `users-service/src/main/resources/db/migration`.
+    - Добавить создание таблицы `reports` и колонки `role` в таблицу `users`.
+2.  **Backend: Logic Implementation**
+    - В `users-service` (Java):
+        - Добавить сущность `Report` (JPA Entity).
+        - Добавить `ReportRepository`.
+        - Реализовать `AdminController` для работы с пользователями и репортами.
+        - Добавить проверку ролей (например, через Spring Security `@PreAuthorize("hasRole('ADMIN')")`).
+    - В `events-service` (Java):
+        - Добавить эндпоинты для модерации событий.
 3.  **Frontend: Logic**
-    - Обновить модель пользователя (добавить поле `role`).
+    - Обновить модель `User` (добавить поле `role`).
     - Создать сервис `AdminService` для общения с новым API.
+    - Создать сервис `ReportService` для отправки жалоб пользователями.
 4.  **Frontend: UI**
-    - Сверстать экран списка жалоб.
-    - Сверстать экран модерации событий.
+    - Реализовать `ReportDialog` для отправки жалоб.
+    - Реализовать экраны админ-панели (`AdminDashboard`, `ReportsList`, `UsersList`).
 5.  **Тестирование**
-    - Создать тестового админа через БД.
-    - Проверить весь флоу: Пользователь создает репорт -> Админ видит репорт -> Админ принимает меры.
+    - Создать тестового админа через SQL (`UPDATE users SET role = 'ADMIN' ...`).
+    - Проверить флоу отправки и обработки жалобы.
