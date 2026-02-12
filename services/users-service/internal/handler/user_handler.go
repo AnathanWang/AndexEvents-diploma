@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -22,10 +23,32 @@ func NewUserHandler(userService service.UserService) *UserHandler {
 	}
 }
 
+// GetUser получает публичный профиль пользователя по ID
+// GET /api/users/:id
+func (h *UserHandler) GetUser(c *gin.Context) {
+	userID := c.Param("id")
+	if strings.TrimSpace(userID) == "" {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse{Success: false, Message: "Invalid user id"})
+		return
+	}
+
+	user, err := h.userService.GetCurrentUser(c.Request.Context(), userID)
+	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, model.ErrorResponse{Success: false, Message: "User not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Success: false, Message: "Failed to get user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, model.UserResponse{Success: true, Data: user})
+}
+
 // CreateUser создаёт нового пользователя
 // POST /api/users
 func (h *UserHandler) CreateUser(c *gin.Context) {
-	// Получаем данные из middleware auth (supabaseUID и email из токена)
+	// Получаем данные из middleware auth (Firebase UID и email из токена)
 	supabaseUID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, model.ErrorResponse{
@@ -77,6 +100,36 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		Success: true,
 		Data:    user,
 	})
+}
+
+// CompleteOnboarding завершает онбординг (помечает isOnboardingCompleted=true)
+// POST /api/users/me/onboarding
+func (h *UserHandler) CompleteOnboarding(c *gin.Context) {
+	userID, exists := c.Get("dbUserID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, model.ErrorResponse{Success: false, Message: "Unauthorized: User ID not found"})
+		return
+	}
+
+	var req model.UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// allow empty body
+	}
+
+	completed := true
+	req.IsOnboardingCompleted = &completed
+
+	user, err := h.userService.UpdateProfile(c.Request.Context(), userID.(string), &req)
+	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, model.ErrorResponse{Success: false, Message: "User not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Success: false, Message: "Failed to complete onboarding"})
+		return
+	}
+
+	c.JSON(http.StatusOK, model.UserResponse{Success: true, Data: user})
 }
 
 // GetCurrentUser получает профиль текущего пользователя

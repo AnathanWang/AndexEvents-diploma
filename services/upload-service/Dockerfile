@@ -1,18 +1,17 @@
 # Build stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
-WORKDIR /app
+WORKDIR /src
 
-# Cache deps
-COPY services/upload-service/go.mod ./
-COPY services/upload-service/go.sum ./
-COPY shared/go.mod ./shared/go.mod
-COPY shared/go.sum ./shared/go.sum
+# Cache deps (need shared present because go.mod uses `replace ../../shared`)
+COPY services/upload-service/go.mod services/upload-service/go.sum ./services/upload-service/
+COPY shared/go.mod shared/go.sum ./shared/
+WORKDIR /src/services/upload-service
 RUN go mod download
 
 # Copy source
 COPY services/upload-service ./
-COPY shared ./shared
+COPY shared /src/shared
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/upload-service ./cmd/main.go
 

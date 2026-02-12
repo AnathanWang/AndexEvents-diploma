@@ -115,6 +115,7 @@ sh ./scripts/store_yandex_key.sh <YANDEX_MAPKIT_KEY>
 ```
 docs/
 ├── README.md                                    # Этот файл
+├── java-migration-plan-users-auth-events.md      # План миграции Go→Java (users/auth/events)
 ├── architecture-analysis.md                     # Полный анализ (ГЛАВНЫЙ)
 ├── architecture-diagrams.md                     # Визуальные диаграммы
 ├── quick-reference.md                           # Шпаргалка разработчика

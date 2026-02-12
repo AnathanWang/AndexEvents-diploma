@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/auth/id_token_provider.dart';
 
 enum FriendshipStatus {
   none,
@@ -29,10 +29,10 @@ FriendshipStatus friendshipStatusFromApi(String? value) {
 }
 
 class FriendService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final IdTokenProvider _idTokenProvider = const IdTokenProvider();
 
   Future<String?> _getIdToken() async {
-    return _supabase.auth.currentSession?.accessToken;
+    return _idTokenProvider.getIdToken();
   }
 
   Future<Map<String, String>> _headers() async {
