@@ -81,7 +81,7 @@
 
 ### 2. Документация для учебных заведений 🎓
 
-#### [`internship-report.md`](./internship-report.md) 📝 ДЛЯ КОЛЛЕДЖА
+#### [`internship-report.md`](./legacy/internship-report.md) 📝 ДЛЯ КОЛЛЕДЖА
 **Объем:** 1,363 строки
 
 **Содержание:**

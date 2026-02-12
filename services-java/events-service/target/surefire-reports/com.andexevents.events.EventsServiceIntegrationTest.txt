@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.andexevents.events.EventsServiceIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.686 s -- in com.andexevents.events.EventsServiceIntegrationTest

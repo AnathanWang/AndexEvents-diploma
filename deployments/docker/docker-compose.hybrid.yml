@@ -17,6 +17,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U andexevents -d andexevents"]
       interval: 10s
@@ -125,7 +126,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/andexevents
       SPRING_DATASOURCE_USERNAME: andexevents
       SPRING_DATASOURCE_PASSWORD: andexevents_dev_password
-      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-andexevents}
       FIREBASE_JWKS_URL: ${FIREBASE_JWKS_URL:-}
       FLYWAY_ENABLED: ${FLYWAY_ENABLED:-true}
     ports:
@@ -151,7 +152,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/andexevents
       SPRING_DATASOURCE_USERNAME: andexevents
       SPRING_DATASOURCE_PASSWORD: andexevents_dev_password
-      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-andexevents}
       FIREBASE_JWKS_URL: ${FIREBASE_JWKS_URL:-}
       FLYWAY_ENABLED: ${FLYWAY_ENABLED:-true}
     ports:
@@ -177,7 +178,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/andexevents
       SPRING_DATASOURCE_USERNAME: andexevents
       SPRING_DATASOURCE_PASSWORD: andexevents_dev_password
-      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-andexevents}
       FIREBASE_JWKS_URL: ${FIREBASE_JWKS_URL:-}
     ports:
       - "8083:8083"

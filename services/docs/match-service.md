@@ -12,13 +12,13 @@
 
 ## 🔐 Аутентификация
 
-Все endpoints защищены **Supabase JWT**.
+Все endpoints защищены **Firebase ID token** (из Firebase Auth).
 
 ```http
-Authorization: Bearer <supabase-jwt>
+Authorization: Bearer <firebase-id-token>
 ```
 
-Важно: middleware пытается найти пользователя в БД по `"User"."supabaseUid"`. Если пользователь не найден, handlers вернут `401` с сообщением `"Unauthorized: User ID not found"` (как в Node-контроллере, где `req.user.userId` может быть пустым).
+Важно: middleware пытается найти пользователя в БД по `"User"."supabaseUid"` (временно используем это поле для хранения Firebase UID). Если пользователь не найден, handlers вернут `401` с сообщением `"Unauthorized: User ID not found"` (как в Node-контроллере, где `req.user.userId` может быть пустым).
 
 ## 🌍 Base URL
 
@@ -153,7 +153,8 @@ DB_USER=andexevents
 DB_PASSWORD=andexevents_dev_password
 DB_NAME=andexevents
 
-SUPABASE_JWT_SECRET=...
+FIREBASE_PROJECT_ID=...
+FIREBASE_CREDENTIALS_FILE=/secrets/firebase-service-account.json
 ```
 
 ## 🧪 Тестирование

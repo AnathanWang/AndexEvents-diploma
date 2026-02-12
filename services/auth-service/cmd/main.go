@@ -1,10 +1,8 @@
-// Auth Service - микросервис авторизации и управления пользователями
+// Auth Service - микросервис аутентификации (Firebase token verification).
 //
 // Отвечает за:
-// - Регистрацию и авторизацию через Firebase Auth
-// - CRUD операции с профилями пользователей
-// - Обновление геолокации
-// - Поиск потенциальных мэтчей
+// - Проверку Firebase ID token
+// - Health/ready endpoints для мониторинга
 package main
 
 import (
@@ -22,8 +20,6 @@ import (
 	"github.com/AnathanWang/andexevents/services/auth-service/internal/config"
 	"github.com/AnathanWang/andexevents/services/auth-service/internal/handler"
 	"github.com/AnathanWang/andexevents/services/auth-service/internal/middleware"
-	"github.com/AnathanWang/andexevents/services/auth-service/internal/repository"
-	"github.com/AnathanWang/andexevents/services/auth-service/internal/service"
 	"github.com/AnathanWang/andexevents/shared/pkg/database"
 	"github.com/AnathanWang/andexevents/shared/pkg/firebase"
 	"github.com/AnathanWang/andexevents/shared/pkg/logger"
@@ -92,11 +88,7 @@ func main() {
 		logger.Warn("Firebase credentials not configured, running without auth verification")
 	}
 
-	// Инициализируем слои приложения
-	userRepo := repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepo)
 	healthHandler := handler.NewHealthHandler(serviceName, version)
-	userHandler := handler.NewUserHandler(userService)
 
 	// Настраиваем Gin
 	if cfg.Environment == "production" {
@@ -128,27 +120,6 @@ func main() {
 					})
 				})
 			}
-		}
-
-		// Users routes
-		users := api.Group("/users")
-		{
-			// Protected routes
-			if firebaseClient != nil {
-				protected := users.Group("")
-				protected.Use(middleware.AuthMiddleware(firebaseClient))
-				{
-					protected.POST("", userHandler.CreateUser)
-					protected.GET("/me", userHandler.GetMe)
-					protected.PUT("/me", userHandler.UpdateMe)
-					protected.PUT("/me/location", userHandler.UpdateLocation)
-					protected.POST("/me/onboarding", userHandler.CompleteOnboarding)
-					protected.GET("/matches", userHandler.GetMatches)
-				}
-			}
-
-			// Public routes
-			users.GET("/:id", userHandler.GetUser)
 		}
 	}
 

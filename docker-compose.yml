@@ -74,6 +74,62 @@ services:
       timeout: 5s
       retries: 5
 
+  users-service-java:
+    build:
+      context: ./services-java/users-service
+    container_name: andexevents-users-service-java
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/andexevents
+      SPRING_DATASOURCE_USERNAME: andexevents
+      SPRING_DATASOURCE_PASSWORD: andexevents_dev_password
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_JWKS_URL: ${FIREBASE_JWKS_URL:-}
+      FLYWAY_ENABLED: ${FLYWAY_ENABLED:-true}
+    ports:
+      - "8081:8081"
+
+  events-service-java:
+    build:
+      context: ./services-java/events-service
+    container_name: andexevents-events-service-java
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/andexevents
+      SPRING_DATASOURCE_USERNAME: andexevents
+      SPRING_DATASOURCE_PASSWORD: andexevents_dev_password
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_JWKS_URL: ${FIREBASE_JWKS_URL:-}
+      FLYWAY_ENABLED: ${FLYWAY_ENABLED:-true}
+    ports:
+      - "8082:8082"
+
+  auth-service-java:
+    build:
+      context: ./services-java/auth-service
+    container_name: andexevents-auth-service-java
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8083
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/andexevents
+      SPRING_DATASOURCE_USERNAME: andexevents
+      SPRING_DATASOURCE_PASSWORD: andexevents_dev_password
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_JWKS_URL: ${FIREBASE_JWKS_URL:-}
+    ports:
+      - "8083:8083"
+
 volumes:
   postgres_data:
   minio_data:

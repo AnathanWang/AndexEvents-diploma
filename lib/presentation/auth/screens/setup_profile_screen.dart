@@ -79,19 +79,18 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
           gender: _selectedGender,
         );
 
-        if (mounted) {
-          setState(() => _isLoading = false);
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (BuildContext context) => const SetupInterestsScreen(),
-            ),
-          );
-        }
+        if (!mounted) return;
+
+        setState(() => _isLoading = false);
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (BuildContext context) => const SetupInterestsScreen(),
+          ),
+        );
       } catch (e) {
-        if (mounted) {
-          setState(() => _isLoading = false);
-          CustomNotification.show(context, 'Ошибка: $e', isError: true);
-        }
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        CustomNotification.show(context, 'Ошибка: $e', isError: true);
       }
     }
   }

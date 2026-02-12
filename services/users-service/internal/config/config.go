@@ -16,7 +16,6 @@ type Config struct {
 	DBName                  string
 	FirebaseProjectID       string
 	FirebaseCredentialsFile string
-	SupabaseJWTSecret       string
 }
 
 // Load загружает конфигурацию из переменных окружения
@@ -31,7 +30,6 @@ func Load() *Config {
 		DBName:                  getEnv("DB_NAME", "andexevents"),
 		FirebaseProjectID:       getEnv("FIREBASE_PROJECT_ID", ""),
 		FirebaseCredentialsFile: getEnv("FIREBASE_CREDENTIALS_FILE", ""),
-		SupabaseJWTSecret:       getEnv("SUPABASE_JWT_SECRET", ""),
 	}
 }
 

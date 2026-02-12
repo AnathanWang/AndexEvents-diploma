@@ -35,6 +35,12 @@
           │    :8001        │    │    :8002        │    │    :8004        │
           └────────┬────────┘    └────────┬────────┘    └────────┬────────┘
                    │                      │                      │
+                   ├──────────────────────┼──────────────────────┤
+                   ▼                      ▼                      ▼
+          ┌─────────────────┐    ┌─────────────────┐
+          │  Users Service  │    │  Match Service  │
+          │    :8003        │    │    :8005        │
+          └────────┬────────┘    └────────┬────────┘
                    └──────────────────────┼──────────────────────┘
                                           │
                                           ▼
@@ -68,12 +74,13 @@
 ```
 andexevents/
 ├── services/                    # Go микросервисы
-│   ├── auth-service/           # Аутентификация и пользователи
+│   ├── auth-service/           # Аутентификация (verify Firebase tokens)
 │   │   ├── cmd/main.go
 │   │   └── internal/
-│   ├── events-service/         # События (planned)
-│   ├── match-service/          # Мэтчи (planned)
-│   ├── upload-service/         # Загрузка файлов (planned)
+│   ├── users-service/          # Профили пользователей
+│   ├── events-service/         # События
+│   ├── match-service/          # Мэтчи
+│   ├── upload-service/         # Загрузка файлов
 │   └── docs/                   # Документация сервисов
 │
 ├── shared/                      # Общие Go пакеты
@@ -97,10 +104,22 @@ andexevents/
 ### Auth Service (порт 8001) ✅ Готов
 
 **Ответственность:**
-- Регистрация/аутентификация через Firebase
+- Проверка Firebase ID token
+- Health/ready endpoints
+
+**Эндпоинты:**
+```
+POST   /api/auth/verify
+GET    /health
+GET    /ready
+```
+
+### Users Service (порт 8003) ✅ Готов
+
+**Ответственность:**
 - Управление профилями пользователей
 - Геолокация пользователей
-- Поиск мэтчей
+- Подбор пользователей (matches)
 
 **Эндпоинты:**
 ```
@@ -113,7 +132,7 @@ GET    /api/users/matches
 GET    /api/users/:id
 ```
 
-### Events Service (порт 8002) 📋 Planned
+### Events Service (порт 8002) ✅ Готов
 
 **Ответственность:**
 - CRUD операции для событий
@@ -134,14 +153,14 @@ DELETE /api/events/:id/leave
 GET    /api/events/:id/participants
 ```
 
-### Match Service (порт 8003) 📋 Planned
+### Match Service (порт 8005) ✅ Готов
 
 **Ответственность:**
 - Лайки/дизлайки
 - Определение мэтчей
 - История мэтчей
 
-### Upload Service (порт 8004) 📋 Planned
+### Upload Service (порт 8004) ✅ Готов
 
 **Ответственность:**
 - Загрузка изображений в MinIO
