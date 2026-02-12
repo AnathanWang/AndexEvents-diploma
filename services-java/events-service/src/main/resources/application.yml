@@ -1,0 +1,52 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+spring:
+  application:
+    name: events-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/andexevents}
+    username: ${SPRING_DATASOURCE_USERNAME:andexevents}
+    password: ${SPRING_DATASOURCE_PASSWORD:andexevents_dev_password}
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    default-schema: events
+    schemas: events
+    create-schemas: true
+  jpa:
+    properties:
+      hibernate:
+        default_schema: events
+
+app:
+  auth:
+    firebaseProjectId: ${FIREBASE_PROJECT_ID:}
+    firebaseJwksUrl: ${FIREBASE_JWKS_URL:}
+    requiredPaths:
+      - method: POST
+        pattern: /api/events
+      - method: PUT
+        pattern: /api/events/*
+      - method: DELETE
+        pattern: /api/events/*
+      - method: POST
+        pattern: /api/events/*/participate
+      - method: DELETE
+        pattern: /api/events/*/participate
+    optionalPaths:
+      - method: GET
+        pattern: /api/events
+      - method: GET
+        pattern: /api/events/*
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui

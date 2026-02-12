@@ -18,6 +18,7 @@ import (
 	"github.com/AnathanWang/andexevents/services/users-service/internal/middleware"
 	"github.com/AnathanWang/andexevents/services/users-service/internal/repository"
 	"github.com/AnathanWang/andexevents/services/users-service/internal/service"
+	"github.com/AnathanWang/andexevents/shared/pkg/firebase"
 )
 
 func main() {
@@ -32,11 +33,6 @@ func main() {
 		logger, _ = zap.NewDevelopment()
 	}
 	defer logger.Sync()
-
-	// Проверяем обязательные настройки
-	if cfg.SupabaseJWTSecret == "" {
-		logger.Fatal("SUPABASE_JWT_SECRET is required")
-	}
 
 	// Подключаемся к базе данных
 	dbURL := fmt.Sprintf(
@@ -55,6 +51,18 @@ func main() {
 		logger.Fatal("Failed to ping database", zap.Error(err))
 	}
 	logger.Info("Connected to database")
+
+	if cfg.FirebaseCredentialsFile == "" {
+		logger.Fatal("FIREBASE_CREDENTIALS_FILE is required")
+	}
+
+	firebaseClient, err := firebase.NewClient(context.Background(), firebase.Config{
+		CredentialsFile: cfg.FirebaseCredentialsFile,
+		ProjectID:       cfg.FirebaseProjectID,
+	})
+	if err != nil {
+		logger.Fatal("Failed to initialize Firebase", zap.Error(err))
+	}
 
 	// Инициализируем слои приложения
 	userRepo := repository.NewUserRepository(pool)
@@ -80,32 +88,29 @@ func main() {
 	})
 
 	// API routes
-	api := router.Group("/api/users")
+	api := router.Group("/api")
 	{
-		// Все маршруты защищены авторизацией
-		api.Use(middleware.AuthMiddleware(cfg.SupabaseJWTSecret, pool))
+		users := api.Group("/users")
+		{
+			// Public route
+			users.GET("/:id", userHandler.GetUser)
 
-		// POST /api/users - создание пользователя
-		api.POST("", userHandler.CreateUser)
-
-		// GET /api/users/me - получить текущего пользователя
-		api.GET("/me", userHandler.GetCurrentUser)
-
-		// PUT /api/users/me - обновить профиль
-		api.PUT("/me", userHandler.UpdateProfile)
-
-		// PUT /api/users/me/location - обновить локацию
-		api.PUT("/me/location", userHandler.UpdateLocation)
-
-		// GET /api/users/matches - получить матчи
-		api.GET("/matches", userHandler.GetMatches)
+			// Protected routes
+			protected := users.Group("")
+			protected.Use(middleware.AuthMiddleware(firebaseClient, pool))
+			{
+				protected.POST("", userHandler.CreateUser)
+				protected.GET("/me", userHandler.GetCurrentUser)
+				protected.PUT("/me", userHandler.UpdateProfile)
+				protected.PUT("/me/location", userHandler.UpdateLocation)
+				protected.POST("/me/onboarding", userHandler.CompleteOnboarding)
+				protected.GET("/matches", userHandler.GetMatches)
+			}
+		}
 	}
 
 	// Запускаем сервер
-	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Port),
-		Handler: router,
-	}
+	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: router}
 
 	go func() {
 		logger.Info("Starting users-service", zap.Int("port", cfg.Port))

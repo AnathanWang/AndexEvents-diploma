@@ -57,7 +57,7 @@
 
 ### 📝 Документация для учебных заведений
 
-7. **[Отчет по практике](./internship-report.md)** 🎓 **ДЛЯ КОЛЛЕДЖА**
+7. **[Отчет по практике](./legacy/internship-report.md)** 🎓 **ДЛЯ КОЛЛЕДЖА**
    - Полный отчет по практике на тему "Проектирование модели данных"
    - Все разделы для защиты практики
    - Анализ предметной области
@@ -115,6 +115,7 @@ sh ./scripts/store_yandex_key.sh <YANDEX_MAPKIT_KEY>
 ```
 docs/
 ├── README.md                                    # Этот файл
+├── java-migration-plan-users-auth-events.md      # План миграции Go→Java (users/auth/events)
 ├── architecture-analysis.md                     # Полный анализ (ГЛАВНЫЙ)
 ├── architecture-diagrams.md                     # Визуальные диаграммы
 ├── quick-reference.md                           # Шпаргалка разработчика
@@ -146,7 +147,7 @@ docs/
 👉 Читайте [Conclusions and Recommendations](./conclusions-and-recommendations.md) для понимания состояния проекта
 
 ### Студенты и учащиеся
-👉 Используйте [Internship Report](./internship-report.md) как основу для отчета по практике
+👉 Используйте [Internship Report](./legacy/internship-report.md) как основу для отчета по практике
 👉 Изучите [Detailed Database and Storage](./detailed-database-and-storage.md) для глубокого понимания БД
 
 ### Database Administrators

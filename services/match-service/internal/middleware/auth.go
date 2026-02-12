@@ -1,21 +1,31 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/AnathanWang/andexevents/shared/pkg/firebase"
 )
 
-// AuthMiddleware создаёт middleware для проверки Supabase JWT токена.
-// Устанавливает в context:
-// - userID (supabase uid) из claim sub
-// - email (если есть)
-// - dbUserID (uuid пользователя из таблицы "User"), если найден
-func AuthMiddleware(jwtSecret string, pool *pgxpool.Pool) gin.HandlerFunc {
+var errTokenNotConfigured = errors.New("firebase not configured")
+
+// AuthMiddleware verifies Firebase ID token.
+// It sets in context:
+// - userID: Firebase UID (stored in DB column "User"."supabaseUid" for now)
+// - email: token email (if present)
+// - dbUserID: UUID from table "User" if found
+func AuthMiddleware(firebaseClient *firebase.Client, pool *pgxpool.Pool) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if firebaseClient == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": errTokenNotConfigured.Error()})
+			c.Abort()
+			return
+		}
+
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -36,52 +46,29 @@ func AuthMiddleware(jwtSecret string, pool *pgxpool.Pool) gin.HandlerFunc {
 			return
 		}
 
-		tokenString := parts[1]
-
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
-			}
-			return []byte(jwtSecret), nil
-		})
-
-		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"message": "Unauthorized: Invalid token",
-			})
+		idToken := parts[1]
+		token, err := firebaseClient.VerifyToken(c.Request.Context(), idToken)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "Unauthorized: Invalid token"})
 			c.Abort()
 			return
 		}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"message": "Unauthorized: Invalid token claims",
-			})
+		uid := token.UID
+		if uid == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "Unauthorized: Token missing uid"})
 			c.Abort()
 			return
 		}
 
-		sub, ok := claims["sub"].(string)
-		if !ok || sub == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"message": "Unauthorized: Token missing sub claim",
-			})
-			c.Abort()
-			return
+		c.Set("userID", uid)
+		if email, ok := token.Claims["email"].(string); ok && email != "" {
+			c.Set("email", email)
 		}
-
-		email, _ := claims["email"].(string)
-
-		c.Set("userID", sub)
-		c.Set("email", email)
 
 		var dbUserID string
 		err = pool.QueryRow(c.Request.Context(),
-			`SELECT id FROM "User" WHERE "supabaseUid" = $1`, sub,
+			`SELECT id FROM "User" WHERE "supabaseUid" = $1`, uid,
 		).Scan(&dbUserID)
 
 		if err == nil {

@@ -3,16 +3,16 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../core/config/app_config.dart';
+import '../../core/auth/id_token_provider.dart';
 import '../models/user_model.dart';
 import 'local_storage_service.dart';
 import '../../presentation/home/sample_data.dart';
 
 /// Сервис для работы с профилем пользователя
 class UserService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final IdTokenProvider _idTokenProvider = const IdTokenProvider();
   late final LocalStorageService _storageService;
 
   Future<http.Response> _with429Retry(
@@ -56,18 +56,17 @@ class UserService {
     _storageService = LocalStorageService();
   }
 
-  /// Получить Supabase Access Token для авторизованных запросов
+  /// Получить Firebase ID Token для авторизованных запросов
   Future<String?> _getIdToken() async {
-    // Ждём инициализации сессии с повторными попытками
     for (int attempt = 0; attempt < 10; attempt++) {
-      final session = _supabase.auth.currentSession;
-      if (session?.accessToken != null) {
-        return session!.accessToken;
+      final token = await _idTokenProvider.getIdToken(maxAttempts: 1);
+      if (token != null && token.isNotEmpty) {
+        return token;
       }
-      print('🟡 [UserService] Ожидание токена, попытка ${attempt + 1}/10...');
+      print('🟡 [UserService] Ожидание Firebase токена, попытка ${attempt + 1}/10...');
       await Future.delayed(const Duration(milliseconds: 300));
     }
-    return _supabase.auth.currentSession?.accessToken;
+    return _idTokenProvider.getIdToken();
   }
 
   /// Загрузить фото в локальное хранилище

@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/utils/image_utils.dart';
+import '../../core/config/app_config.dart';
+import '../../core/auth/id_token_provider.dart';
 
 /// Сервис загрузки фото на бэкенд
 class LocalStorageService {
@@ -25,8 +27,7 @@ class LocalStorageService {
     }
   }
   static final LocalStorageService _instance = LocalStorageService._internal();
-  final SupabaseClient _supabase = Supabase.instance.client;
-  final String _backendUrl = 'http://localhost:3000'; // или AppConfig.backendUrl
+  final IdTokenProvider _idTokenProvider = const IdTokenProvider();
 
   factory LocalStorageService() {
     return _instance;
@@ -54,7 +55,7 @@ class LocalStorageService {
       }
 
       // Получаем токен доступа
-      final token = _supabase.auth.currentSession?.accessToken;
+      final token = await _idTokenProvider.getIdToken();
       if (token == null) {
         throw Exception('Пользователь не авторизован');
       }
@@ -62,7 +63,7 @@ class LocalStorageService {
       // Создаем multipart request с указанием бакета
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('$_backendUrl/api/upload?bucket=events'),
+        Uri.parse('${AppConfig.baseUrl}/upload?bucket=events'),
       );
 
       // Добавляем токен авторизации
@@ -73,7 +74,7 @@ class LocalStorageService {
         await http.MultipartFile.fromPath(
           'file',
           compressedFile.path,
-          contentType: http.MediaType.parse(_getMimeType(compressedFile.path)),
+          contentType: MediaType.parse(_getMimeType(compressedFile.path)),
         ),
       );
 
@@ -128,7 +129,7 @@ class LocalStorageService {
       }
 
       // Получаем токен доступа
-      final token = _supabase.auth.currentSession?.accessToken;
+      final token = await _idTokenProvider.getIdToken();
       if (token == null) {
         throw Exception('Пользователь не авторизован');
       }
@@ -136,7 +137,7 @@ class LocalStorageService {
       // Создаем multipart request с указанием бакета
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('$_backendUrl/api/upload?bucket=avatars'),
+        Uri.parse('${AppConfig.baseUrl}/upload?bucket=avatars'),
       );
 
       // Добавляем токен авторизации
@@ -147,7 +148,7 @@ class LocalStorageService {
         await http.MultipartFile.fromPath(
           'file',
           compressedFile.path,
-          contentType: http.MediaType.parse(_getMimeType(compressedFile.path)),
+          contentType: MediaType.parse(_getMimeType(compressedFile.path)),
         ),
       );
 

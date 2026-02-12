@@ -13,7 +13,8 @@ type Config struct {
 	DBUser            string
 	DBPassword        string
 	DBName            string
-	SupabaseJWTSecret string
+	FirebaseProjectID       string
+	FirebaseCredentialsFile string
 }
 
 func Load() *Config {
@@ -25,7 +26,8 @@ func Load() *Config {
 		DBUser:            getEnv("DB_USER", "andexadmin"),
 		DBPassword:        getEnv("DB_PASSWORD", "andexevents"),
 		DBName:            getEnv("DB_NAME", "andexevents"),
-		SupabaseJWTSecret: getEnv("SUPABASE_JWT_SECRET", ""),
+		FirebaseProjectID:       getEnv("FIREBASE_PROJECT_ID", ""),
+		FirebaseCredentialsFile: getEnv("FIREBASE_CREDENTIALS_FILE", ""),
 	}
 }
 

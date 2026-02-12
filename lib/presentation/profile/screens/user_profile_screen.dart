@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../widgets/common/custom_notification.dart';
 import '../../../data/models/user_model.dart';
-import '../../../data/services/friend_service.dart';
+// import '../../../data/services/friend_service.dart'; // Removed FriendService
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({
@@ -55,219 +55,45 @@ class UserProfileScreen extends StatefulWidget {
 }
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
-  final FriendService _friendService = FriendService();
-
-  FriendshipStatus _friendshipStatus = FriendshipStatus.none;
-  bool _isFriendshipLoading = true;
-  bool _isFriendshipActionLoading = false;
-
   @override
   void initState() {
     super.initState();
-    _loadFriendshipStatus();
   }
 
-  Future<void> _loadFriendshipStatus() async {
-    final otherUserId = widget.user?.id;
-    if (otherUserId == null) {
-      setState(() {
-        _isFriendshipLoading = false;
-        _friendshipStatus = FriendshipStatus.none;
-      });
-      return;
-    }
 
-    try {
-      final status = await _friendService.getStatus(otherUserId);
-      if (!mounted) return;
-      setState(() {
-        _friendshipStatus = status;
-        _isFriendshipLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _friendshipStatus = FriendshipStatus.none;
-        _isFriendshipLoading = false;
-      });
-    }
-  }
 
-  Future<void> _sendFriendRequest() async {
-    final otherUserId = widget.user?.id;
-    if (otherUserId == null) return;
-    if (_isFriendshipActionLoading) return;
 
-    setState(() {
-      _isFriendshipActionLoading = true;
-    });
 
-    try {
-      final status = await _friendService.sendRequest(otherUserId);
-      if (!mounted) return;
-      setState(() {
-        _friendshipStatus = status;
-      });
-      if (status == FriendshipStatus.friends) {
-        CustomNotification.success(
-          context,
-          'Вы друзья',
-          duration: const Duration(seconds: 1),
-        );
-      } else {
-        CustomNotification.show(
-          context,
-          'Запрос отправлен',
-          duration: const Duration(seconds: 1),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      CustomNotification.error(
-        context,
-        'Не удалось отправить запрос: $e',
-        duration: const Duration(seconds: 2),
-      );
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isFriendshipActionLoading = false;
-      });
-    }
-  }
 
-  Future<void> _cancelFriendRequest() async {
-    final otherUserId = widget.user?.id;
-    if (otherUserId == null) return;
-    if (_isFriendshipActionLoading) return;
 
-    setState(() {
-      _isFriendshipActionLoading = true;
-    });
 
-    try {
-      final status = await _friendService.cancelRequest(otherUserId);
-      if (!mounted) return;
-      setState(() {
-        _friendshipStatus = status;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      CustomNotification.error(
-        context,
-        'Не удалось отменить запрос: $e',
-        duration: const Duration(seconds: 2),
-      );
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isFriendshipActionLoading = false;
-      });
-    }
-  }
 
-  Future<void> _acceptFriendRequest() async {
-    final otherUserId = widget.user?.id;
-    if (otherUserId == null) return;
-    if (_isFriendshipActionLoading) return;
-
-    setState(() {
-      _isFriendshipActionLoading = true;
-    });
-
-    try {
-      final status = await _friendService.acceptRequest(otherUserId);
-      if (!mounted) return;
-      setState(() {
-        _friendshipStatus = status;
-      });
-      CustomNotification.success(
-        context,
-        'Вы друзья',
-        duration: const Duration(seconds: 1),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      CustomNotification.error(
-        context,
-        'Не удалось принять запрос: $e',
-        duration: const Duration(seconds: 2),
-      );
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isFriendshipActionLoading = false;
-      });
-    }
-  }
-
-  Future<void> _declineFriendRequest() async {
-    final otherUserId = widget.user?.id;
-    if (otherUserId == null) return;
-    if (_isFriendshipActionLoading) return;
-
-    setState(() {
-      _isFriendshipActionLoading = true;
-    });
-
-    try {
-      final status = await _friendService.declineRequest(otherUserId);
-      if (!mounted) return;
-      setState(() {
-        _friendshipStatus = status;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      CustomNotification.error(
-        context,
-        'Не удалось отклонить запрос: $e',
-        duration: const Duration(seconds: 2),
-      );
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isFriendshipActionLoading = false;
-      });
-    }
-  }
-
-  void _openChat() {
-    // TODO: Открыть чат
-    CustomNotification.show(
-      context,
-      'Открыть чат',
-      duration: const Duration(seconds: 1),
-    );
-  }
 
   Map<String, String> _normalizedSocialLinks() {
-    final raw = widget.user?.socialLinks;
-    if (raw == null || raw.isEmpty) return <String, String>{};
+    final links = widget.user?.socialLinks ?? <String, dynamic>{};
+    final normalized = <String, String>{};
 
-    final Map<String, String> result = <String, String>{};
-    for (final entry in raw.entries) {
-      final key = entry.key.toString().trim();
-      final value = entry.value;
-      if (key.isEmpty || value == null) continue;
-      final stringValue = value.toString().trim();
-      if (stringValue.isEmpty) continue;
-      result[key] = stringValue;
-    }
-    return result;
+    links.forEach((key, value) {
+      if (value != null && value.toString().isNotEmpty) {
+        normalized[key.toString()] = value.toString();
+      }
+    });
+
+    return normalized;
   }
 
   List<MapEntry<String, String>> _sortedSocialLinks(Map<String, String> links) {
-    const priority = <String, int>{
+    final priority = <String, int>{
+      'tg': 1,
       'telegram': 1,
-      'tg': 2,
-      'instagram': 3,
-      'inst': 4,
-      'vk': 5,
-      'vkontakte': 6,
-      'tiktok': 7,
-      'whatsapp': 8,
-      'phone': 9,
-      'website': 10,
+      'instagram': 2,
+      'inst': 2,
+      'vk': 3,
+      'vkontakte': 3,
+      'whatsapp': 4,
+      'tiktok': 5,
+      'website': 9,
+      'phone': 10,
     };
 
     final entries = links.entries.toList();
@@ -284,15 +110,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     switch (key.toLowerCase()) {
       case 'tg':
       case 'telegram':
-        return 'Telegram';
+        return 'Телеграм';
       case 'instagram':
       case 'inst':
-        return 'Instagram';
+        return 'Инстаграм';
       case 'vk':
       case 'vkontakte':
-        return 'VK';
+        return 'ВКонтакте';
       case 'tiktok':
-        return 'TikTok';
+        return 'ТикТок';
       case 'whatsapp':
         return 'WhatsApp';
       case 'website':
@@ -664,9 +490,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         child: _buildStatCard('24', 'Событий', Icons.event),
                       ),
                       const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildStatCard('156', 'Друзей', Icons.people),
-                      ),
+                      // Removed Friends stat card
                       const SizedBox(width: 12),
                       Expanded(
                         child: _buildStatCard('4.8', 'Рейтинг', Icons.star),
@@ -836,154 +660,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
           ),
         ],
-      ),
-      
-      // Нижняя панель с кнопками
-      bottomSheet: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Row(
-            children: <Widget>[
-              if (_isFriendshipLoading) ...[
-                const Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: Center(
-                      child: SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                  ),
-                ),
-              ] else if (_friendshipStatus == FriendshipStatus.friends) ...[
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _openChat,
-                    icon: const Icon(Icons.message),
-                    label: const Text('Написать'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF5E60CE),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 0,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFF5E60CE)),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: IconButton(
-                    onPressed: null,
-                    icon: const Icon(
-                      Icons.check,
-                      color: Color(0xFF5E60CE),
-                    ),
-                    padding: const EdgeInsets.all(12),
-                  ),
-                ),
-              ] else if (_friendshipStatus == FriendshipStatus.outgoingRequest) ...[
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: null,
-                    icon: const Icon(Icons.hourglass_top),
-                    label: const Text('Запрос отправлен'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF5E60CE),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: const BorderSide(color: Color(0xFF5E60CE)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFF5E60CE)),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: IconButton(
-                    onPressed: _isFriendshipActionLoading ? null : _cancelFriendRequest,
-                    icon: const Icon(
-                      Icons.close,
-                      color: Color(0xFF5E60CE),
-                    ),
-                    padding: const EdgeInsets.all(12),
-                    tooltip: 'Отменить запрос',
-                  ),
-                ),
-              ] else if (_friendshipStatus == FriendshipStatus.incomingRequest) ...[
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isFriendshipActionLoading ? null : _acceptFriendRequest,
-                    icon: const Icon(Icons.person_add_alt_1),
-                    label: const Text('Принять'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF5E60CE),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 0,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFF5E60CE)),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: IconButton(
-                    onPressed: _isFriendshipActionLoading ? null : _declineFriendRequest,
-                    icon: const Icon(
-                      Icons.close,
-                      color: Color(0xFF5E60CE),
-                    ),
-                    padding: const EdgeInsets.all(12),
-                    tooltip: 'Отклонить',
-                  ),
-                ),
-              ] else ...[
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isFriendshipActionLoading ? null : _sendFriendRequest,
-                    icon: const Icon(Icons.person_add),
-                    label: const Text('Добавить в друзья'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF5E60CE),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: const BorderSide(color: Color(0xFF5E60CE)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
       ),
     );
   }

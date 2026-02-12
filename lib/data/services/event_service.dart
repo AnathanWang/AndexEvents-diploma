@@ -2,15 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
 import 'package:http/http.dart' as http;
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/config/app_config.dart';
+import '../../core/auth/id_token_provider.dart';
 import '../models/event_model.dart';
 import '../models/participant_model.dart';
 import 'local_storage_service.dart';
 
 /// Сервис для работы с событиями
 class EventService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final IdTokenProvider _idTokenProvider = const IdTokenProvider();
   late final LocalStorageService _storageService;
 
   EventService() {
@@ -35,7 +35,7 @@ class EventService {
 
   /// Получить Supabase Access Token для авторизованных запросов
   Future<String?> _getIdToken() async {
-    return _supabase.auth.currentSession?.accessToken;
+    return _idTokenProvider.getIdToken();
   }
 
   /// Создать событие
@@ -353,30 +353,6 @@ class EventService {
       }
     } catch (e) {
       throw Exception('Ошибка удаления события: $e');
-    }
-  }
-
-  /// Загрузить изображение в Supabase Storage
-  Future<String?> uploadImage(
-    File imageFile,
-    String bucketName,
-    String fileName,
-  ) async {
-    try {
-      final response = await _supabase.storage
-          .from(bucketName)
-          .upload(fileName, imageFile);
-      if (response.isEmpty) {
-        throw Exception('Ошибка загрузки: пустой ответ от сервера');
-      }
-      // Получение публичного URL файла
-      final publicUrl = _supabase.storage
-          .from(bucketName)
-          .getPublicUrl(fileName);
-      return publicUrl;
-    } catch (e) {
-      print('Ошибка загрузки изображения: $e');
-      return null;
     }
   }
 }

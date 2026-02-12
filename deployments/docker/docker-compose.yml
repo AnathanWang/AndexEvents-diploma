@@ -124,16 +124,71 @@ services:
       - andexevents-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.auth.rule=PathPrefix(`/api/auth`) || PathPrefix(`/api/users`)"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/api/auth`)"
       - "traefik.http.services.auth.loadbalancer.server.port=8001"
 
-  # Events Service (TODO: implement)
-  # events-service:
-  #   build:
-  #     context: .
-  #     dockerfile: services/events-service/Dockerfile
-  #   container_name: andexevents-events-service
-  #   ...
+  # Users Service (profiles)
+  users-service:
+    build:
+      context: .
+      dockerfile: services/users-service/Dockerfile
+    container_name: andexevents-users-service
+    restart: unless-stopped
+    environment:
+      PORT: "8003"
+      ENVIRONMENT: development
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: andexevents
+      DB_PASSWORD: andexevents_dev_password
+      DB_NAME: andexevents
+      FIREBASE_CREDENTIALS_FILE: /app/firebase-credentials.json
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./secrets/firebase-credentials.json:/app/firebase-credentials.json:ro
+    networks:
+      - andexevents-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.users.rule=PathPrefix(`/api/users`)"
+      - "traefik.http.services.users.loadbalancer.server.port=8003"
+
+  # Events Service
+  events-service:
+    build:
+      context: .
+      dockerfile: services/events-service/Dockerfile
+    container_name: andexevents-events-service
+    restart: unless-stopped
+    environment:
+      PORT: "8002"
+      ENVIRONMENT: development
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: andexevents
+      DB_PASSWORD: andexevents_dev_password
+      DB_NAME: andexevents
+      DB_SSL_MODE: disable
+      FIREBASE_CREDENTIALS_FILE: /app/firebase-credentials.json
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./secrets/firebase-credentials.json:/app/firebase-credentials.json:ro
+    networks:
+      - andexevents-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.events.rule=PathPrefix(`/api/events`)"
+      - "traefik.http.services.events.loadbalancer.server.port=8002"
 
   # Match Service (TODO: implement)
   match-service:
@@ -150,12 +205,15 @@ services:
       DB_USER: andexevents
       DB_PASSWORD: andexevents_dev_password
       DB_NAME: andexevents
-      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
+      FIREBASE_CREDENTIALS_FILE: /app/firebase-credentials.json
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
     ports:
       - "8005:8005"
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - ./secrets/firebase-credentials.json:/app/firebase-credentials.json:ro
     networks:
       - andexevents-network
     labels:

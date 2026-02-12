@@ -1,12 +1,14 @@
-FROM golang:1.23-alpine AS build
+FROM golang:1.24-alpine AS build
 
 WORKDIR /src
 
 COPY services/match-service/go.mod services/match-service/go.sum ./services/match-service/
+COPY shared/go.mod shared/go.sum ./shared/
 WORKDIR /src/services/match-service
 RUN go mod download
 
 COPY services/match-service ./
+COPY shared /src/shared
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/match-service ./cmd
 

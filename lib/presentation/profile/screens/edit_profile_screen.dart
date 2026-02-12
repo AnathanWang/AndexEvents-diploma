@@ -192,6 +192,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           uploadedPhotoUrls.add(url);
         }
 
+        if (!mounted) return;
+
         // Обновляем профиль со всеми данными
         context.read<ProfileBloc>().add(
           ProfileUpdateRequested(
@@ -204,10 +206,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         );
       } catch (e) {
+        if (!mounted) return;
         setState(() => _isLoading = false);
-        if (mounted) {
-          CustomNotification.error(context, 'Ошибка загрузки фото: $e');
-        }
+        CustomNotification.error(context, 'Ошибка загрузки фото: $e');
       }
     }
   }

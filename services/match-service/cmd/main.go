@@ -18,6 +18,7 @@ import (
 	"github.com/AnathanWang/andexevents/services/match-service/internal/middleware"
 	"github.com/AnathanWang/andexevents/services/match-service/internal/repository"
 	"github.com/AnathanWang/andexevents/services/match-service/internal/service"
+	"github.com/AnathanWang/andexevents/shared/pkg/firebase"
 )
 
 func main() {
@@ -30,10 +31,6 @@ func main() {
 		logger, _ = zap.NewDevelopment()
 	}
 	defer logger.Sync()
-
-	if cfg.SupabaseJWTSecret == "" {
-		logger.Fatal("SUPABASE_JWT_SECRET is required")
-	}
 
 	dbURL := fmt.Sprintf(
 		"postgres://%s:%s@%s:%d/%s?sslmode=disable",
@@ -50,6 +47,18 @@ func main() {
 		logger.Fatal("Failed to ping database", zap.Error(err))
 	}
 	logger.Info("Connected to database")
+
+	if cfg.FirebaseCredentialsFile == "" {
+		logger.Fatal("FIREBASE_CREDENTIALS_FILE is required")
+	}
+
+	firebaseClient, err := firebase.NewClient(context.Background(), firebase.Config{
+		CredentialsFile: cfg.FirebaseCredentialsFile,
+		ProjectID:       cfg.FirebaseProjectID,
+	})
+	if err != nil {
+		logger.Fatal("Failed to initialize Firebase", zap.Error(err))
+	}
 
 	matchRepo := repository.NewMatchRepository(pool)
 	matchService := service.NewMatchService(matchRepo)
@@ -73,7 +82,7 @@ func main() {
 
 	api := router.Group("/api/matches")
 	{
-		api.Use(middleware.AuthMiddleware(cfg.SupabaseJWTSecret, pool))
+		api.Use(middleware.AuthMiddleware(firebaseClient, pool))
 
 		api.GET("", matchHandler.GetMyMutualMatches)
 		api.GET("/actions", matchHandler.GetMyActions)

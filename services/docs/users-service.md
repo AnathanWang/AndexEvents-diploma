@@ -4,7 +4,9 @@ Users-service — микросервис для управления польз�
 
 ## Обзор
 
-Сервис предоставляет функционал создания и управления профилями пользователей, обновление геолокации, а также поиск потенциальных матчей на основе местоположения и возрастных предпочтений. Использует Supabase JWT для аутентификации.
+Сервис предоставляет функционал создания и управления профилями пользователей, обновление геолокации, а также поиск потенциальных мэтчей на основе местоположения и возрастных предпочтений. Использует **Firebase ID token** для аутентификации.
+
+Примечание по БД: сейчас Firebase UID хранится в колонке `"User"."supabaseUid"` (legacy naming).
 
 ## Технологии
 
@@ -13,7 +15,7 @@ Users-service — микросервис для управления польз�
 | **Go** | 1.23+ | Язык программирования |
 | **Gin** | v1.10+ | HTTP фреймворк |
 | **pgx/v5** | v5.7+ | PostgreSQL драйвер |
-| **golang-jwt/jwt** | v5 | JWT токены (Supabase) |
+| **Firebase Admin SDK** | — | Верификация Firebase ID token |
 | **Zap** | v1.27+ | Структурированное логирование |
 | **Testify** | v1.11+ | Тестирование и моки |
 | **UUID** | google/uuid | Генерация идентификаторов |
@@ -30,7 +32,7 @@ users-service/
 │   ├── handler/
 │   │   └── user_handler.go        # HTTP handlers для пользователей
 │   ├── middleware/
-│   │   ├── auth.go                # Supabase JWT аутентификация
+│   │   ├── auth.go                # Firebase ID token аутентификация
 │   │   ├── cors.go                # CORS политики
 │   │   └── logger.go              # Zap логирование запросов
 │   ├── model/
@@ -54,7 +56,9 @@ users-service/
 | `GET` | `/api/users/me` | ✅ | Получить профиль текущего пользователя |
 | `PUT` | `/api/users/me` | ✅ | Обновить профиль пользователя |
 | `PUT` | `/api/users/me/location` | ✅ | Обновить геолокацию |
+| `POST` | `/api/users/me/onboarding` | ✅ | Завершить онбординг |
 | `GET` | `/api/users/matches` | ✅ | Найти потенциальные матчи |
+| `GET` | `/api/users/:id` | ❌ | Публичный профиль пользователя |
 
 ### Служебные
 
@@ -109,10 +113,10 @@ const (
 
 ### POST /api/users — Создание пользователя
 
-Создаёт профиль пользователя на основе данных из Supabase JWT токена.
+Создаёт профиль пользователя на основе данных из Firebase ID token.
 
 **Логика:**
-1. Извлекает `sub` (supabaseUID) и `email` из JWT токена
+1. Извлекает `uid` (Firebase UID, сохраняем в `supabaseUid`) и `email` из Firebase ID token
 2. Проверяет существование пользователя по email
 3. Если пользователь существует и `supabaseUid` пустой — обновляет его
 4. Если пользователь существует с таким же `supabaseUid` — возвращает его
@@ -122,7 +126,7 @@ const (
 **Request:**
 ```http
 POST /api/users
-Authorization: Bearer <supabase_jwt_token>
+Authorization: Bearer <firebase-id-token>
 Content-Type: application/json
 
 {
@@ -162,7 +166,7 @@ Content-Type: application/json
 **Request:**
 ```http
 GET /api/users/me
-Authorization: Bearer <supabase_jwt_token>
+Authorization: Bearer <firebase-id-token>
 ```
 
 **Response (200 OK):**
@@ -201,7 +205,7 @@ Authorization: Bearer <supabase_jwt_token>
 **Request:**
 ```http
 PUT /api/users/me
-Authorization: Bearer <supabase_jwt_token>
+Authorization: Bearer <firebase-id-token>
 Content-Type: application/json
 
 {
@@ -246,7 +250,7 @@ Content-Type: application/json
 **Request:**
 ```http
 PUT /api/users/me/location
-Authorization: Bearer <supabase_jwt_token>
+Authorization: Bearer <firebase-id-token>
 Content-Type: application/json
 
 {
@@ -288,7 +292,7 @@ Content-Type: application/json
 **Request:**
 ```http
 GET /api/users/matches?latitude=55.7558&longitude=37.6173&radiusKm=30&limit=10
-Authorization: Bearer <supabase_jwt_token>
+Authorization: Bearer <firebase-id-token>
 ```
 
 **Response (200 OK):**
@@ -341,17 +345,20 @@ Authorization: Bearer <supabase_jwt_token>
 | `DB_USER` | ❌ | andexadmin | Пользователь БД |
 | `DB_PASSWORD` | ❌ | andexevents | Пароль БД |
 | `DB_NAME` | ❌ | andexevents | Имя базы данных |
-| `SUPABASE_JWT_SECRET` | ✅ | — | Секрет для верификации Supabase JWT |
+| `FIREBASE_PROJECT_ID` | ✅ | — | Firebase Project ID |
+| `FIREBASE_CREDENTIALS_FILE` | ✅ | — | Путь к service account JSON (в контейнере/на хосте) |
 
 ## Аутентификация
 
-Сервис использует **Supabase JWT** токены для аутентификации.
+Сервис использует **Firebase ID token** (из Firebase Auth) для аутентификации.
+
+Важно: после верификации токена middleware ищет пользователя в БД по `"User"."supabaseUid"` (временно используем это поле для хранения Firebase UID).
 
 ### Middleware Auth
 
 ```go
 // Извлекает из токена:
-// - sub (supabaseUID) → c.Set("userID", sub)
+// - uid (Firebase UID) → c.Set("userID", uid)
 // - email → c.Set("email", email)
 // 
 // Также ищет пользователя в БД и устанавливает:
@@ -411,9 +418,10 @@ cd services/users-service
 go mod download
 
 # Экспортировать переменные окружения
-export SUPABASE_JWT_SECRET="your-jwt-secret"
 export DB_HOST="localhost"
 export DB_PASSWORD="your-password"
+export FIREBASE_PROJECT_ID="your-project-id"
+export FIREBASE_CREDENTIALS_FILE="/path/to/firebase-service-account.json"
 
 # Запустить сервис
 go run cmd/main.go
@@ -427,8 +435,10 @@ docker build -t users-service .
 
 # Запуск контейнера
 docker run -p 8003:8003 \
-  -e SUPABASE_JWT_SECRET="your-jwt-secret" \
   -e DB_HOST="host.docker.internal" \
+    -e FIREBASE_PROJECT_ID="your-project-id" \
+    -e FIREBASE_CREDENTIALS_FILE="/secrets/firebase-service-account.json" \
+    -v "$PWD/../../secrets/firebase-service-account.json:/secrets/firebase-service-account.json:ro" \
   users-service
 ```
 
@@ -464,7 +474,7 @@ go test ./internal/service/... -v
 ┌─────────────────────────────────────────────────────────────┐
 │                      Middleware Layer                        │
 │  ┌──────────┐  ┌──────────┐  ┌──────────────────────────┐  │
-│  │  Logger  │  │   CORS   │  │   Auth (Supabase JWT)    │  │
+│  │  Logger  │  │   CORS   │  │  Auth (Firebase ID token)│  │
 │  └──────────┘  └──────────┘  └──────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -474,7 +484,8 @@ go test ./internal/service/... -v
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │              UserHandler (user_handler.go)           │   │
 │  │  • CreateUser    • GetCurrentUser    • UpdateProfile │   │
-│  │  • UpdateLocation    • GetMatches                    │   │
+│  │  • UpdateLocation    • CompleteOnboarding            │   │
+│  │  • GetMatches                                          │   │
 │  └─────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
                               │
