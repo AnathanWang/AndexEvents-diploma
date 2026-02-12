@@ -54,9 +54,6 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'USER';
 - `POST /api/admin/events/{id}/reject` - Отклонить.
 
 ## 3. Frontend (Flutter)
-... (без изменений)
-
-## 3. Frontend (Flutter)
 
 Поскольку проект уже поддерживает Web (`web/` директория существует), админ-панель будет реализована как часть основного приложения, но доступная только пользователям с ролью `ADMIN` или `MODERATOR`.
 
