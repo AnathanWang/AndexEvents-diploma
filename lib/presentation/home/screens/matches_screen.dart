@@ -7,6 +7,9 @@ import '../../../data/services/match_seen_service.dart';
 import '../../models/match_preview.dart';
 import '../../profile/screens/edit_profile_screen.dart';
 import '../../profile/screens/user_profile_screen.dart';
+import '../../widgets/report_dialog.dart';
+import '../../widgets/common/custom_notification.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class MatchesScreen extends StatefulWidget {
   const MatchesScreen({super.key, this.matches = const []});
@@ -482,6 +485,24 @@ class _MatchesScreenState extends State<MatchesScreen>
       return 'ПОДРОБНЕЕ';
     }
     return '';
+  }
+
+  void _showReportDialog(MatchPreview match) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId == null) {
+      CustomNotification.show(context, 'Ошибка авторизации', isError: true);
+      return;
+    }
+
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return ReportDialog(
+          reporterId: currentUserId,
+          targetUserId: match.userModel.id,
+        );
+      },
+    );
   }
 
   @override
@@ -999,7 +1020,11 @@ class _MatchesScreenState extends State<MatchesScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const SizedBox(width: 48),
+                          IconButton(
+                            icon: const Icon(Icons.flag_outlined, color: Colors.grey),
+                            onPressed: () => _showReportDialog(match),
+                            tooltip: 'Пожаловаться',
+                          ),
                           Text(
                             match.name,
                             style: const TextStyle(

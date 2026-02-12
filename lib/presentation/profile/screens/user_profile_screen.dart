@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../widgets/common/custom_notification.dart';
+import '../../widgets/report_dialog.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../data/models/user_model.dart';
 // import '../../../data/services/friend_service.dart'; // Removed FriendService
 
@@ -741,36 +743,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   void _showReportDialog() {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId == null) {
+      CustomNotification.show(context, 'Ошибка авторизации', isError: true);
+      return;
+    }
+
     showDialog<void>(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Пожаловаться'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <String>[
-              'Спам',
-              'Неприемлемое поведение',
-              'Фейковый профиль',
-              'Другое',
-            ].map((String reason) {
-              return ListTile(
-                title: Text(reason),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  CustomNotification.success(
-                    context,
-                    'Жалоба отправлена. Спасибо!',
-                    duration: const Duration(seconds: 2),
-                  );
-                },
-              );
-            }).toList(),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+        return ReportDialog(
+          reporterId: currentUserId,
+          targetUserId: widget.user?.id,
         );
       },
     );
