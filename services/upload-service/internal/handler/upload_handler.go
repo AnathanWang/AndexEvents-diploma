@@ -43,11 +43,18 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetDBUserID(c)
+	dbUserID, ok := middleware.GetDBUserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, UploadResponse{Success: false, Message: "Unauthorized"})
 		return
 	}
+	firebaseUID, ok := middleware.GetFirebaseUID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, UploadResponse{Success: false, Message: "Unauthorized"})
+		return
+	}
+	// Use Firebase UID for storage path
+	storageUserID := firebaseUID
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
@@ -76,7 +83,7 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 	}
 
 	filename := generateFilename(ext)
-	objectName := fmt.Sprintf("%s/%s", userID, filename)
+	objectName := fmt.Sprintf("%s/%s", storageUserID, filename)
 
 	file, err := fileHeader.Open()
 	if err != nil {
@@ -104,11 +111,11 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 		return
 	}
 
-	fileURL := h.buildPublicURL(c, bucket, userID, filename)
+	fileURL := h.buildPublicURL(c, bucket, storageUserID, filename)
 
 	if bucket == "avatars" {
-		if err := h.userRepo.UpdateUserPhotoURL(c.Request.Context(), userID, fileURL); err != nil {
-			h.logger.Warn("Failed to update user photoUrl", zap.String("userID", userID), zap.Error(err))
+		if err := h.userRepo.UpdateUserPhotoURL(c.Request.Context(), dbUserID, fileURL); err != nil {
+			h.logger.Warn("Failed to update user photoUrl", zap.String("userID", dbUserID), zap.Error(err))
 			// Keep upload successful even if DB update fails (matches Node spirit).
 		}
 	}

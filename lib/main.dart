@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-// import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core/firebase_core.dart';
 // import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'app/andex_app.dart';
 // import 'core/config/firebase_config.dart';
@@ -20,16 +19,14 @@ void main() async {
   // Initialize date formatting for Russian locale
   await initializeDateFormatting('ru', null);
   
-  // Initialize Supabase
-  await Supabase.initialize(
-    url: AppConfig.supabaseUrl,
-    anonKey: AppConfig.supabaseAnonKey,
-  );
-  
-  // Initialize Firebase (Removed)
-  // await Firebase.initializeApp(
-  //   options: FirebaseConfig.currentPlatform,
+  // Initialize Supabase (Disabled - Moved to MinIO)
+  // await Supabase.initialize(
+  //   url: AppConfig.supabaseUrl,
+  //   anonKey: AppConfig.supabaseAnonKey,
   // );
+  
+  // Initialize Firebase (uses android/app/google-services.json and ios/Runner/GoogleService-Info.plist)
+  await Firebase.initializeApp();
 
   // Setup background messaging handler
   // FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);

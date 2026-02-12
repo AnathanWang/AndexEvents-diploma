@@ -74,3 +74,12 @@ func GetDBUserID(c *gin.Context) (string, bool) {
 	id, ok := value.(string)
 	return id, ok && id != ""
 }
+
+func GetFirebaseUID(c *gin.Context) (string, bool) {
+	value, ok := c.Get(string(ctxFirebaseUIDKey))
+	if !ok {
+		return "", false
+	}
+	id, ok := value.(string)
+	return id, ok && id != ""
+}

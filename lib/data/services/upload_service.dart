@@ -1,72 +1,30 @@
 import 'dart:io';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:mime/mime.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/config/app_config.dart';
 import '../../core/utils/image_utils.dart';
 
-/// Сервис для загрузки файлов
+/// Сервис для загрузки файлов через Go upload-service
 class ProgressUploadService {
-  final SupabaseClient _supabase;
+  final FirebaseAuth _auth;
 
-  ProgressUploadService({SupabaseClient? supabase})
-      : _supabase = supabase ?? Supabase.instance.client;
+  ProgressUploadService({FirebaseAuth? auth})
+      : _auth = auth ?? FirebaseAuth.instance;
 
   /// Загрузить фото события
   Future<String> uploadEventPhoto(
     String filePath, {
     Function(double)? onProgress,
   }) async {
-    try {
-      print('🔵 [ProgressUploadService] Начинаем загрузку фото события...');
-
-      final user = _supabase.auth.currentUser;
-      if (user == null) {
-        throw Exception('Пользователь не авторизован');
-      }
-
-      // Сжимаем изображение перед загрузкой
-      print('🔵 [ProgressUploadService] Сжимаем изображение...');
-      final originalFile = File(filePath);
-      final compressedFile = await ImageUtils.compressImage(originalFile);
-
-      // Проверяем размер файла
-      final fileSize = await compressedFile.length();
-      if (fileSize > 10 * 1024 * 1024) {
-        throw Exception(
-          'Файл слишком большой (макс. 10MB, ваш файл ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB)',
-        );
-      }
-
-      // Генерируем уникальный путь
-      final fileName = DateTime.now().millisecondsSinceEpoch.toString();
-      final path = 'events/$fileName';
-
-      print('🔵 [ProgressUploadService] Загружаем на Supabase: $path');
-
-      // Читаем файл в bytes
-      final fileBytes = await compressedFile.readAsBytes();
-
-      // Загружаем на Supabase Storage
-      await _supabase.storage.from('events').uploadBinary(
-        path,
-        fileBytes,
-        fileOptions: const FileOptions(
-          cacheControl: '3600',
-          contentType: 'image/jpeg',
-          upsert: true,
-        ),
-      );
-
-      print('🟢 [ProgressUploadService] Файл загружен успешно');
-
-      // Получаем публичный URL
-      final url = _supabase.storage.from('events').getPublicUrl(path);
-      print('🟢 [ProgressUploadService] Фото события загружено: $url');
-      onProgress?.call(1.0);
-
-      return url;
-    } catch (e) {
-      print('🔴 [ProgressUploadService] Ошибка при загрузке фото события: $e');
-      rethrow;
-    }
+    return _uploadFile(
+      filePath: filePath,
+      bucket: 'events',
+      maxSizeMB: 10,
+      onProgress: onProgress,
+    );
   }
 
   /// Загрузить фото профиля
@@ -74,57 +32,92 @@ class ProgressUploadService {
     String filePath, {
     Function(double)? onProgress,
   }) async {
-    try {
-      print('🔵 [ProgressUploadService] Начинаем загрузку фото профиля...');
+     return _uploadFile(
+      filePath: filePath,
+      bucket: 'avatars',
+      maxSizeMB: 5,
+      onProgress: onProgress,
+    );
+  }
 
-      final user = _supabase.auth.currentUser;
+  Future<String> _uploadFile({
+    required String filePath,
+    required String bucket,
+    required double maxSizeMB,
+    Function(double)? onProgress,
+  }) async {
+    try {
+      print('🔵 [ProgressUploadService] Начинаем загрузку ($bucket)...');
+
+      final user = _auth.currentUser;
       if (user == null) {
         throw Exception('Пользователь не авторизован');
       }
 
-      // Сжимаем изображение перед загрузкой
+      // Сжимаем изображение
       print('🔵 [ProgressUploadService] Сжимаем изображение...');
       final originalFile = File(filePath);
       final compressedFile = await ImageUtils.compressImage(originalFile);
 
-      // Проверяем размер файла
+      // Проверяем размер
       final fileSize = await compressedFile.length();
-      if (fileSize > 5 * 1024 * 1024) {
+      if (fileSize > maxSizeMB * 1024 * 1024) {
         throw Exception(
-          'Файл слишком большой (макс. 5MB, ваш файл ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB)',
+          'Файл слишком большой (макс. ${maxSizeMB}MB, ваш файл ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB)',
         );
       }
 
-      // Генерируем уникальный путь
-      final fileName = DateTime.now().millisecondsSinceEpoch.toString();
-      final path = 'avatars/$fileName';
+      // Получаем ID token
+      final token = await user.getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
 
-      print('🔵 [ProgressUploadService] Загружаем на Supabase: $path');
+      // URL
+      final url = Uri.parse('${AppConfig.baseUrl}/upload?bucket=$bucket');
+      print('🔵 [ProgressUploadService] Uploading to $url');
 
-      // Читаем файл в bytes
-      final fileBytes = await compressedFile.readAsBytes();
+      final request = http.MultipartRequest('POST', url);
+      request.headers['Authorization'] = 'Bearer $token';
 
-      // Загружаем на Supabase Storage
-      await _supabase.storage.from('avatars').uploadBinary(
-        path,
-        fileBytes,
-        fileOptions: const FileOptions(
-          cacheControl: '3600',
-          contentType: 'image/jpeg',
-          upsert: true,
+      // Определение MIME типа
+      final mimeType = lookupMimeType(compressedFile.path) ?? 'image/jpeg';
+      final mimeTypeData = mimeType.split('/');
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          compressedFile.path,
+          contentType: MediaType(mimeTypeData[0], mimeTypeData[1]),
         ),
       );
 
-      print('🟢 [ProgressUploadService] Файл загружен успешно');
+      // Если нужна поддержка прогресса, можно использовать StreamedRequest или специальный клиент,
+      // но стандартный http.MultipartRequest не дает прогресс отправки из коробки.
+      // Для упрощения пока имитируем прогресс 0 -> 1.
+      onProgress?.call(0.1);
 
-      // Получаем публичный URL
-      final url = _supabase.storage.from('avatars').getPublicUrl(path);
-      print('🟢 [ProgressUploadService] Фото профиля загружено: $url');
-      onProgress?.call(1.0);
+      final streamedResponse = await request.send();
+      onProgress?.call(0.8);
 
-      return url;
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        onProgress?.call(1.0);
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['fileUrl'] != null) {
+          final fileUrl = data['fileUrl'];
+          print('🟢 [ProgressUploadService] Файл загружен: $fileUrl');
+          return fileUrl;
+        } else {
+          throw Exception(data['message'] ?? 'Неизвестная ошибка сервера');
+        }
+      } else {
+        print('🔴 Server Error: ${response.statusCode} ${response.body}');
+        throw Exception('Ошибка загрузки: ${response.statusCode}');
+      }
     } catch (e) {
-      print('🔴 [ProgressUploadService] Ошибка при загрузке фото профиля: $e');
+      print('🔴 [ProgressUploadService] Ошибка: $e');
       rethrow;
     }
   }

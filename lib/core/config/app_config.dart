@@ -20,21 +20,17 @@ class AppConfig {
 
     if (Platform.isAndroid) {
       // Для Android эмулятора
-      return 'http://10.0.2.2:3000/api';
+      return 'http://10.0.2.2/api';
     }
 
     // Для iOS симулятора и macOS
     // Если вы используете физическое устройство, замените localhost на IP вашего компьютера
     // Например: return 'http://192.168.1.147:3000/api';
-    return 'http://localhost:3000/api';
+    return 'http://localhost/api';
   }
 
   static const String apiVersion = 'v1';
 
-  // Supabase Configuration
-  static const String supabaseUrl = 'https://rykbewslbfxltmipyseg.supabase.co';
-  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5a2Jld3NsYmZ4bHRtaXB5c2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NTM5NTUsImV4cCI6MjA3OTAyOTk1NX0.ps3cL3a1fOSG-JN8UQ1z0-WGA9nRTy8LI16nPFuQeJE';
-  
   // Yandex Maps
   // Do NOT hardcode API keys. Provide at build time via --dart-define or CI env:
   //   flutter run/build ... --dart-define=YANDEX_MAPS_API_KEY=<your_key>
