@@ -85,8 +85,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'USER';
 ## 4. План внедрения
 
 1.  **Backend: SQL Migrations (Flyway)**
-    - Создать файл миграции `V2__add_roles_and_reports.sql` в `users-service/src/main/resources/db/migration`.
-    - Добавить создание таблицы `reports` и колонки `role` в таблицу `users`.
+    - [x] Создать файл миграции `V3__add_reports.sql` в `users-service/src/main/resources/db/migration`.
+    - [x] Таблица `reports` создана. Колонка `role` в таблице `users` уже существует в V1.
 2.  **Backend: Logic Implementation**
     - В `users-service` (Java):
         - Добавить сущность `Report` (JPA Entity).
