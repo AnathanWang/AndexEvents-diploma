@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../core/services/logger_service.dart';
 import '../data/services/auth_service.dart';
 import '../presentation/auth/bloc/auth_bloc.dart';
 import '../presentation/auth/bloc/auth_event.dart';
@@ -18,7 +19,7 @@ class AndexApp extends StatelessWidget {
         ..add(const AuthCheckRequested()),
       child: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, authState) {
-          print('🟢 [AndexApp] BlocBuilder state: ${authState.runtimeType}');
+          LoggerService.debug('🟢 [AndexApp] BlocBuilder state: ${authState.runtimeType}');
           
           // Генерируем уникальный ключ для MaterialApp на основе состояния
           final key = ValueKey('MaterialApp_${authState.runtimeType}_${authState is AuthAuthenticated ? authState.isOnboardingCompleted : "unknown"}');
@@ -120,23 +121,23 @@ class AndexApp extends StatelessWidget {
 
   Widget _buildHome(AuthState state) {
     if (state is AuthLoading || state is AuthInitial) {
-      print('🟢 [AndexApp] Показываем загрузчик');
+      LoggerService.debug('🟢 [AndexApp] Показываем загрузчик');
       return const Scaffold(
         body: Center(
           child: CircularProgressIndicator(),
         ),
       );
     } else if (state is AuthAuthenticated) {
-      print('🟢 [AndexApp] AuthAuthenticated, isOnboardingCompleted: ${state.isOnboardingCompleted}');
+      LoggerService.debug('🟢 [AndexApp] AuthAuthenticated, isOnboardingCompleted: ${state.isOnboardingCompleted}');
       if (state.isOnboardingCompleted) {
-        print('🟢 [AndexApp] Показываем HomeShell');
+        LoggerService.debug('🟢 [AndexApp] Показываем HomeShell');
         return const HomeShell();
       }
-      print('🟢 [AndexApp] Показываем SetupProfileScreen');
+      LoggerService.debug('🟢 [AndexApp] Показываем SetupProfileScreen');
       return const SetupProfileScreen();
     }
 
-    print('🟢 [AndexApp] Показываем OnboardingScreen');
+    LoggerService.debug('🟢 [AndexApp] Показываем OnboardingScreen');
     return const OnboardingScreen();
   }
 }
