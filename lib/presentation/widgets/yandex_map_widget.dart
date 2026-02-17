@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../core/services/logger_service.dart';
 import '../../data/models/event_model.dart';
 import './common/custom_notification.dart';
 
@@ -80,7 +81,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
         );
       }
     } catch (e) {
-      debugPrint('Error getting user location: $e');
+      LoggerService.error('Error getting user location: $e');
     }
   }
 
@@ -158,10 +159,10 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
 
   Future<Uint8List> _loadUserMarkerIcon() async {
     try {
-      debugPrint('🔄 Рисуем точку...');
+      LoggerService.debug('🔄 Рисуем точку...');
       return await _createDotIcon();
     } catch (e) {
-      debugPrint('❌ Error drawing dot: $e');
+      LoggerService.error('❌ Error drawing dot: $e');
       return await _createDotIcon();
     }
   }
@@ -188,7 +189,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
     final image = await picture.toImage(size.toInt(), size.toInt());
     final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
 
-    debugPrint('✅ Точка успешно нарисована');
+    LoggerService.debug('✅ Точка успешно нарисована');
     return byteData!.buffer.asUint8List();
   }
 
@@ -346,7 +347,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
                   end: Alignment.bottomCenter,
                   colors: <Color>[
                     Colors.transparent,
-                    Colors.black.withOpacity(0.7),
+                    Colors.black.withValues(alpha: 0.7),
                   ],
                 ),
               ),

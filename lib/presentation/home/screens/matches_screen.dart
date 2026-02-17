@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
 import 'dart:math' as math;
+import '../../../core/services/logger_service.dart';
 import '../../../data/services/user_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/match_seen_service.dart';
@@ -54,14 +55,14 @@ class _MatchesScreenState extends State<MatchesScreen>
   Future<void> _loadMatches() async {
     try {
       if (_currentUser == null) {
-        debugPrint(
+        LoggerService.warning(
           '🟡 [MatchesScreen] _currentUser is null, cannot load matches',
         );
         return;
       }
 
-      debugPrint('🔵 [MatchesScreen] Starting to load matches...');
-      debugPrint(
+      LoggerService.debug('🔵 [MatchesScreen] Starting to load matches...');
+      LoggerService.debug(
         '🔵 [MatchesScreen] Current user location: lat=${_currentUser!.lastLatitude}, lon=${_currentUser!.lastLongitude}',
       );
 
@@ -71,7 +72,7 @@ class _MatchesScreenState extends State<MatchesScreen>
         longitude: _currentUser!.lastLongitude,
       );
 
-      debugPrint(
+      LoggerService.debug(
         '🔵 [MatchesScreen] Received ${otherUsers.length} users from service',
       );
 
@@ -87,7 +88,7 @@ class _MatchesScreenState extends State<MatchesScreen>
       final filteredUsers = uniqueUsers.values.toList();
 
       if (otherUsers.isNotEmpty) {
-        debugPrint(
+        LoggerService.debug(
           '🔵 [MatchesScreen] First user: name=${otherUsers.first.displayName}, photoUrl=${otherUsers.first.photoUrl}',
         );
       }
@@ -100,19 +101,19 @@ class _MatchesScreenState extends State<MatchesScreen>
               user,
               currentUserInterests: _currentUser?.interests ?? const <String>[],
             );
-            debugPrint(
+            LoggerService.info(
               '🟢 [MatchesScreen] Created match: name=${match.name}, age=${match.age}, photoUrl=${match.photoUrl}',
             );
             return match;
           }).toList();
           _currentIndex = 0;
-          debugPrint(
+          LoggerService.info(
             '🟢 [MatchesScreen] Loaded ${_matches.length} matches into state',
           );
         });
       }
     } catch (e) {
-      debugPrint('🔴 [MatchesScreen] Error loading matches: $e');
+      LoggerService.error('🔴 [MatchesScreen] Error loading matches: $e');
     }
   }
 
@@ -152,10 +153,10 @@ class _MatchesScreenState extends State<MatchesScreen>
     });
 
     try {
-      debugPrint('🔵 [MatchesScreen] Loading current user...');
+      LoggerService.debug('🔵 [MatchesScreen] Loading current user...');
       final user = await _userService.getCurrentUser();
 
-      debugPrint(
+      LoggerService.info(
         '🟢 [MatchesScreen] User loaded: name=${user.displayName}, onboardingCompleted=${user.isOnboardingCompleted}',
       );
 
@@ -167,18 +168,18 @@ class _MatchesScreenState extends State<MatchesScreen>
 
         // После загрузки текущего пользователя, загружаем матчи
         if (user.isOnboardingCompleted) {
-          debugPrint(
+          LoggerService.debug(
             '🔵 [MatchesScreen] Onboarding completed, loading matches...',
           );
           await _loadMatches();
         } else {
-          debugPrint(
+          LoggerService.warning(
             '🟡 [MatchesScreen] Onboarding not completed, showing incomplete screen',
           );
         }
       }
     } catch (e) {
-      debugPrint('🔴 [MatchesScreen] Error loading user data: $e');
+      LoggerService.error('🔴 [MatchesScreen] Error loading user data: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -198,10 +199,13 @@ class _MatchesScreenState extends State<MatchesScreen>
   }
 
   Future<void> _openEditProfile() async {
-    await Navigator.push(
+    final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => const EditProfileScreen()),
     );
+    if (result == true && mounted) {
+      CustomNotification.success(context, 'Профиль успешно обновлен!');
+    }
     await _loadUserData();
   }
 
@@ -384,7 +388,7 @@ class _MatchesScreenState extends State<MatchesScreen>
 
   void _handleLike() {
     final match = _matches[_currentIndex];
-    debugPrint('🟢 [_handleLike] Like: ${match.name}');
+    LoggerService.info('🟢 [_handleLike] Like: ${match.name}');
 
     final currentUserId = _currentUser?.id;
     if (currentUserId != null) {
@@ -394,18 +398,18 @@ class _MatchesScreenState extends State<MatchesScreen>
     _userService
         .sendLike(match.id)
         .then((_) {
-          debugPrint(
+          LoggerService.info(
             '🟢 [_handleLike] Successfully sent like for ${match.name}',
           );
         })
         .catchError((e) {
-          debugPrint('🔴 [_handleLike] Error sending like: $e');
+          LoggerService.error('🔴 [_handleLike] Error sending like: $e');
         });
   }
 
   void _handleDislike() {
     final match = _matches[_currentIndex];
-    debugPrint('🔴 [_handleDislike] Dislike: ${match.name}');
+    LoggerService.debug('🔴 [_handleDislike] Dislike: ${match.name}');
 
     final currentUserId = _currentUser?.id;
     if (currentUserId != null) {
@@ -415,18 +419,18 @@ class _MatchesScreenState extends State<MatchesScreen>
     _userService
         .sendDislike(match.id)
         .then((_) {
-          debugPrint(
+          LoggerService.info(
             '🟢 [_handleDislike] Successfully sent dislike for ${match.name}',
           );
         })
         .catchError((e) {
-          debugPrint('🔴 [_handleDislike] Error sending dislike: $e');
+          LoggerService.error('🔴 [_handleDislike] Error sending dislike: $e');
         });
   }
 
   void _handleSuperLike() {
     final match = _matches[_currentIndex];
-    debugPrint('🔵 [_handleSuperLike] Super Like: ${match.name}');
+    LoggerService.debug('🔵 [_handleSuperLike] Super Like: ${match.name}');
 
     final currentUserId = _currentUser?.id;
     if (currentUserId != null) {
@@ -436,12 +440,12 @@ class _MatchesScreenState extends State<MatchesScreen>
     _userService
         .sendSuperLike(match.id)
         .then((_) {
-          debugPrint(
+          LoggerService.info(
             '🟢 [_handleSuperLike] Successfully sent super like for ${match.name}',
           );
         })
         .catchError((e) {
-          debugPrint('🔴 [_handleSuperLike] Error sending super like: $e');
+          LoggerService.error('🔴 [_handleSuperLike] Error sending super like: $e');
         });
   }
 
@@ -542,7 +546,7 @@ class _MatchesScreenState extends State<MatchesScreen>
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: const Color(0xFF5E60CE).withOpacity(0.1),
+                color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -601,7 +605,7 @@ class _MatchesScreenState extends State<MatchesScreen>
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: const Color(0xFFE8E8E8).withOpacity(0.5),
+                color: const Color(0xFFE8E8E8).withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -651,7 +655,7 @@ class _MatchesScreenState extends State<MatchesScreen>
 
   Widget _buildMainContent() {
     if (_currentIndex >= _matches.length) {
-      debugPrint(
+      LoggerService.error(
         '🔴 [_buildMainContent] ERROR: _currentIndex($_currentIndex) >= _matches.length(${_matches.length})',
       );
       return _buildNoMatchesScreen();
@@ -697,10 +701,10 @@ class _MatchesScreenState extends State<MatchesScreen>
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.4),
+                      color: Colors.black.withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
+                        color: Colors.white.withValues(alpha: 0.3),
                         width: 1,
                       ),
                     ),
@@ -768,7 +772,7 @@ class _MatchesScreenState extends State<MatchesScreen>
           borderRadius: BorderRadius.circular(48),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -815,7 +819,7 @@ class _MatchesScreenState extends State<MatchesScreen>
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                    colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     stops: const [0.5, 1.0],
@@ -951,7 +955,7 @@ class _MatchesScreenState extends State<MatchesScreen>
     if (text.isEmpty) return const SizedBox.shrink();
 
     return Container(
-      color: color.withOpacity(0.1 * opacity),
+      color: color.withValues(alpha: 0.1 * opacity),
       child: Center(
         child: Transform.rotate(
           angle: _dragPosition.dx > 0 ? -0.2 : 0.2,
@@ -1062,7 +1066,7 @@ class _MatchesScreenState extends State<MatchesScreen>
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
+                                        color: Colors.black.withValues(alpha: 0.1),
                                         blurRadius: 12,
                                         offset: const Offset(0, 4),
                                       ),
@@ -1156,12 +1160,12 @@ class _MatchesScreenState extends State<MatchesScreen>
                                       decoration: BoxDecoration(
                                         color: const Color(
                                           0xFF5E60CE,
-                                        ).withOpacity(0.1),
+                                        ).withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(20),
                                         border: Border.all(
                                           color: const Color(
                                             0xFF5E60CE,
-                                          ).withOpacity(0.3),
+                                          ).withValues(alpha: 0.3),
                                         ),
                                       ),
                                       child: Row(

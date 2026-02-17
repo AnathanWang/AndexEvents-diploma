@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/logger_service.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
@@ -28,10 +29,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() {
-    print('DEBUG: _handleLogin called, _isLoading: $_isLoading');
+    LoggerService.debug('DEBUG: _handleLogin called, _isLoading: $_isLoading');
     
     if (_formKey.currentState?.validate() ?? false) {
-      print('DEBUG: Form validated, sending AuthLoginRequested');
+      LoggerService.debug('DEBUG: Form validated, sending AuthLoginRequested');
       
       // Отправляем событие входа в AuthBloc
       context.read<AuthBloc>().add(
@@ -41,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } else {
-      print('DEBUG: Form validation failed');
+      LoggerService.debug('DEBUG: Form validation failed');
     }
   }
 
@@ -67,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
     
     return BlocListener<AuthBloc, AuthState>(
       listener: (BuildContext context, AuthState state) {
-        print('DEBUG: AuthState changed to: ${state.runtimeType}');
+        LoggerService.debug('DEBUG: AuthState changed to: ${state.runtimeType}');
         
         if (state is AuthLoading) {
           setState(() => _isLoading = true);
@@ -81,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
         
         // При успешной аутентификации навигация через andex_app.dart
         if (state is AuthAuthenticated) {
-          print('DEBUG: AuthAuthenticated received');
+          LoggerService.debug('DEBUG: AuthAuthenticated received');
           // Навигация через andex_app.dart - ничего не делаем здесь
         }
       },
@@ -280,22 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     side: const BorderSide(color: Color(0xFFE0E0E0)),
                   ),
                 ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: Вход через Apple
-                  },
-                  icon: const Icon(Icons.apple, size: 24),
-                  label: const Text('Войти через Apple'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF4A4D6A),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    side: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                ),
+
                 const SizedBox(height: 32),
                 
                 // Ссылка на регистрацию

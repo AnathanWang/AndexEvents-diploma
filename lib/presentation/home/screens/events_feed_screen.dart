@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../../core/services/logger_service.dart';
 import '../../events/bloc/event_bloc.dart';
 import '../../events/bloc/event_event.dart';
 import '../../events/bloc/event_state.dart';
@@ -151,7 +152,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
     setState(() {
       _currentFilters = filters;
     });
-    print('Filters changed: $filters');
+    LoggerService.debug('Filters changed: $filters');
   }
 
   void _filterEvents(List<EventModel> events, String query) {
@@ -523,7 +524,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                     child: const Center(child: CircularProgressIndicator()),
                   ),
                   errorWidget: (context, url, error) {
-                    print(
+                    LoggerService.error(
                       'Error loading feed event image: $url, error: $error',
                     );
                     return Container(
@@ -531,8 +532,8 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            categoryColor.withOpacity(0.3),
-                            categoryColor.withOpacity(0.1),
+                            categoryColor.withValues(alpha: 0.3),
+                            categoryColor.withValues(alpha: 0.1),
                           ],
                         ),
                       ),
@@ -560,7 +561,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: categoryColor.withOpacity(0.14),
+                      color: categoryColor.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(
@@ -626,18 +627,18 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                   // Debug: временное логирование
                   Builder(
                     builder: (context) {
-                      print('🔍 [EventCard] Событие: ${event.title}');
-                      print(
+                      LoggerService.debug('🔍 [EventCard] Событие: ${event.title}');
+                      LoggerService.debug(
                         '🔍 [EventCard] participantsCount: ${event.participantsCount}',
                       );
-                      print(
+                      LoggerService.debug(
                         '🔍 [EventCard] previewParticipants.length: ${event.previewParticipants.length}',
                       );
                       if (event.previewParticipants.isNotEmpty) {
-                        print(
+                        LoggerService.debug(
                           '🔍 [EventCard] Первый участник: ${event.previewParticipants[0].user.displayName}',
                         );
-                        print(
+                        LoggerService.debug(
                           '🔍 [EventCard] Первый участник photoUrl: ${event.previewParticipants[0].user.photoUrl}',
                         );
                       }
@@ -681,7 +682,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                                                 CircleAvatar(
                                                   radius: 14,
                                                   backgroundColor: categoryColor
-                                                      .withOpacity(0.3),
+                                                      .withValues(alpha: 0.3),
                                                   child: const SizedBox(
                                                     width: 12,
                                                     height: 12,
@@ -700,8 +701,8 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                                                 ) => CircleAvatar(
                                                   radius: 14,
                                                   backgroundColor: categoryColor
-                                                      .withOpacity(
-                                                        0.7 - index * 0.1,
+                                                      .withValues(
+                                                        alpha: 0.7 - index * 0.1,
                                                       ),
                                                   child: Text(
                                                     participant
@@ -720,7 +721,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                                         : CircleAvatar(
                                             radius: 14,
                                             backgroundColor: categoryColor
-                                                .withOpacity(0.7 - index * 0.1),
+                                                .withValues(alpha: 0.7 - index * 0.1),
                                             child: Text(
                                               participant.user.displayName[0]
                                                   .toUpperCase(),
@@ -742,7 +743,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                             width: 28,
                             height: 28,
                             decoration: BoxDecoration(
-                              color: categoryColor.withOpacity(0.2),
+                              color: categoryColor.withValues(alpha: 0.2),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(

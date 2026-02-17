@@ -66,7 +66,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 shape: BoxShape.circle,
                 boxShadow: <BoxShadow>[
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 8,
                   ),
                 ],
@@ -84,7 +84,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   shape: BoxShape.circle,
                   boxShadow: <BoxShadow>[
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 8,
                     ),
                   ],
@@ -104,7 +104,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   shape: BoxShape.circle,
                   boxShadow: <BoxShadow>[
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 8,
                     ),
                   ],
@@ -125,8 +125,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: <Color>[
-                          const Color(0xFF5E60CE).withOpacity(0.7),
-                          const Color(0xFF9370DB).withOpacity(0.7),
+                          const Color(0xFF5E60CE).withValues(alpha: 0.7),
+                          const Color(0xFF9370DB).withValues(alpha: 0.7),
                         ],
                       ),
                     ),
@@ -143,7 +143,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         end: Alignment.bottomCenter,
                         colors: <Color>[
                           Colors.transparent,
-                          Colors.black.withOpacity(0.7),
+                          Colors.black.withValues(alpha: 0.7),
                         ],
                       ),
                     ),
@@ -166,7 +166,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF5E60CE).withOpacity(0.1),
+                          color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -182,8 +182,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: widget.event.isFree
-                              ? Colors.green.withOpacity(0.1)
-                              : Colors.orange.withOpacity(0.1),
+                              ? Colors.green.withValues(alpha: 0.1)
+                              : Colors.orange.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -462,8 +462,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                     colors: <Color>[
-                                      Colors.blue.withOpacity(0.3),
-                                      Colors.purple.withOpacity(0.3),
+                                      Colors.blue.withValues(alpha: 0.3),
+                                      Colors.purple.withValues(alpha: 0.3),
                                     ],
                                   ),
                                 ),
@@ -514,7 +514,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           color: Colors.white,
           boxShadow: <BoxShadow>[
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 20,
               offset: const Offset(0, -4),
             ),
@@ -556,7 +556,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF5E60CE).withOpacity(0.1),
+                color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(

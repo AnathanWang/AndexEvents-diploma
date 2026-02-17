@@ -41,7 +41,7 @@ class EventCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: event.badgeColor.withOpacity(0.14),
+              color: event.badgeColor.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Text(
@@ -92,7 +92,7 @@ class EventCard extends StatelessWidget {
                       left: index * 18,
                       child: CircleAvatar(
                         radius: 14,
-                        backgroundColor: event.badgeColor.withOpacity(0.7 - index * 0.2),
+                        backgroundColor: event.badgeColor.withValues(alpha: 0.7 - index * 0.2),
                         child: const Icon(Icons.person, size: 16, color: Colors.white),
                       ),
                     );

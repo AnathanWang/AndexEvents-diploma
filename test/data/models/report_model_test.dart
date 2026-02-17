@@ -40,5 +40,49 @@ void main() {
       expect(ReportReason.fakeProfile.displayName, 'Fake Profile');
       expect(ReportReason.other.displayName, 'Other');
     });
+
+    test('all enum values have non-empty displayName and toBackendValue', () {
+      for (final reason in ReportReason.values) {
+        expect(reason.displayName, isNotEmpty);
+        expect(reason.toBackendValue, isNotEmpty);
+      }
+    });
+
+    test('default status is PENDING', () {
+      final report = ReportModel(
+        id: 'r-1',
+        reporterId: 'u-1',
+        reason: ReportReason.other,
+        createdAt: DateTime.now(),
+      );
+      expect(report.status, 'PENDING');
+    });
+
+    test('toJson with event report (no target user)', () {
+      final now = DateTime.now();
+      final report = ReportModel(
+        id: 'r-2',
+        reporterId: 'u-1',
+        targetEventId: 'event-5',
+        reason: ReportReason.inappropriateContent,
+        createdAt: now,
+      );
+
+      final json = report.toJson();
+      expect(json['target_user_id'], isNull);
+      expect(json['target_event_id'], 'event-5');
+      expect(json['reason'], 'INAPPROPRIATE_CONTENT');
+    });
+
+    test('custom status is preserved in toJson', () {
+      final report = ReportModel(
+        id: 'r-3',
+        reporterId: 'u-1',
+        reason: ReportReason.spam,
+        status: 'RESOLVED',
+        createdAt: DateTime.now(),
+      );
+      expect(report.toJson()['status'], 'RESOLVED');
+    });
   });
 }

@@ -6,6 +6,7 @@ import 'package:mime/mime.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/config/app_config.dart';
 import '../../core/utils/image_utils.dart';
+import '../../core/services/logger_service.dart';
 
 /// Сервис для загрузки файлов через Go upload-service
 class ProgressUploadService {
@@ -47,7 +48,7 @@ class ProgressUploadService {
     Function(double)? onProgress,
   }) async {
     try {
-      print('🔵 [ProgressUploadService] Начинаем загрузку ($bucket)...');
+      LoggerService.info('[ProgressUploadService] Начинаем загрузку ($bucket)...');
 
       final user = _auth.currentUser;
       if (user == null) {
@@ -55,7 +56,7 @@ class ProgressUploadService {
       }
 
       // Сжимаем изображение
-      print('🔵 [ProgressUploadService] Сжимаем изображение...');
+      LoggerService.info('[ProgressUploadService] Сжимаем изображение...');
       final originalFile = File(filePath);
       final compressedFile = await ImageUtils.compressImage(originalFile);
 
@@ -75,7 +76,7 @@ class ProgressUploadService {
 
       // URL
       final url = Uri.parse('${AppConfig.baseUrl}/upload?bucket=$bucket');
-      print('🔵 [ProgressUploadService] Uploading to $url');
+      LoggerService.info('[ProgressUploadService] Uploading to $url');
 
       final request = http.MultipartRequest('POST', url);
       request.headers['Authorization'] = 'Bearer $token';
@@ -107,17 +108,17 @@ class ProgressUploadService {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['fileUrl'] != null) {
           final fileUrl = data['fileUrl'];
-          print('🟢 [ProgressUploadService] Файл загружен: $fileUrl');
+          LoggerService.info('[ProgressUploadService] Файл загружен: $fileUrl');
           return fileUrl;
         } else {
           throw Exception(data['message'] ?? 'Неизвестная ошибка сервера');
         }
       } else {
-        print('🔴 Server Error: ${response.statusCode} ${response.body}');
+        LoggerService.error('[ProgressUploadService] Server Error: ${response.statusCode} ${response.body}');
         throw Exception('Ошибка загрузки: ${response.statusCode}');
       }
     } catch (e) {
-      print('🔴 [ProgressUploadService] Ошибка: $e');
+      LoggerService.error('[ProgressUploadService] Ошибка', e);
       rethrow;
     }
   }

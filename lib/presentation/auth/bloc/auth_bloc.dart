@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../core/services/logger_service.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -9,6 +10,10 @@ import 'auth_state.dart';
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthService _authService;
   StreamSubscription<User?>? _authStateSubscription;
+
+  /// Prevents the authStateChanges listener from re-triggering AuthCheckRequested
+  /// while a login/register/logout handler is already running.
+  bool _handlingAuthAction = false;
 
   AuthBloc({required AuthService authService})
       : _authService = authService,
@@ -22,7 +27,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthPasswordResetRequested>(_onAuthPasswordResetRequested);
 
     _authStateSubscription = _authService.authStateChanges.listen((_) {
-      add(const AuthCheckRequested());
+      // Skip if a login/register/logout handler triggered this change
+      if (!_handlingAuthAction) {
+        add(const AuthCheckRequested());
+      }
     });
   }
 
@@ -52,6 +60,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLoginRequested event,
     Emitter<AuthState> emit,
   ) async {
+    _handlingAuthAction = true;
     emit(const AuthLoading());
     try {
       final userCredential = await _authService.signInWithEmail(
@@ -80,9 +89,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         ));
       }
     } catch (e) {
-      print('🔴 [AuthBloc] Login error: $e');
+      LoggerService.error('🔴 [AuthBloc] Login error: $e');
       emit(AuthFailure(message: e.toString()));
-      // emit(const AuthUnauthenticated());
+    } finally {
+      _handlingAuthAction = false;
     }
   }
 
@@ -91,7 +101,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthRegisterRequested event,
     Emitter<AuthState> emit,
   ) async {
-    print('🔵 [AuthBloc] Регистрация началась');
+    LoggerService.debug('🔵 [AuthBloc] Регистрация началась');
+    _handlingAuthAction = true;
     emit(const AuthLoading());
     try {
       final userCredential = await _authService.signUpWithEmail(
@@ -110,11 +121,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         user: user,
         isOnboardingCompleted: false,
       ));
-      print('🔵 [AuthBloc] AuthAuthenticated эмитен');
+      LoggerService.debug('🔵 [AuthBloc] AuthAuthenticated эмитен');
     } catch (e) {
-      print('🔴 [AuthBloc] Register error: $e');
+      LoggerService.error('🔴 [AuthBloc] Register error: $e');
       emit(AuthFailure(message: e.toString()));
-      // emit(const AuthUnauthenticated());
+    } finally {
+      _handlingAuthAction = false;
     }
   }
 
@@ -123,10 +135,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthGoogleSignInRequested event,
     Emitter<AuthState> emit,
   ) async {
-    print('🔵 [AuthBloc] Google Sign-In requested');
+    LoggerService.debug('🔵 [AuthBloc] Google Sign-In requested');
+    _handlingAuthAction = true;
     emit(const AuthLoading());
     try {
-      print('🔵 [AuthBloc] Вызываем authService.signInWithGoogleAndGetStatus()');
+      LoggerService.debug('🔵 [AuthBloc] Вызываем authService.signInWithGoogleAndGetStatus()');
       final result = await _authService.signInWithGoogleAndGetStatus();
       
       final UserCredential response = result['userCredential'] as UserCredential;
@@ -135,17 +148,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final user = response.user;
       if (user == null) throw Exception('Ошибка Google Sign-In: пользователь не найден');
 
-      print('🔵 [AuthBloc] Google Sign-In успешен, isOnboardingCompleted: $isOnboardingCompleted');
+      LoggerService.debug('🔵 [AuthBloc] Google Sign-In успешен, isOnboardingCompleted: $isOnboardingCompleted');
       
       emit(AuthAuthenticated(
         user: user,
         isOnboardingCompleted: isOnboardingCompleted,
       ));
     } catch (e) {
-      print('🔴 [AuthBloc] Google Sign-In ошибка: $e');
+      LoggerService.error('🔴 [AuthBloc] Google Sign-In ошибка: $e');
       emit(AuthFailure(message: e.toString()));
-      // Не сбрасываем в Unauthenticated сразу, чтобы UI успел показать ошибку
-      // emit(const AuthUnauthenticated()); 
+    } finally {
+      _handlingAuthAction = false;
     }
   }
 
@@ -154,12 +167,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
+    _handlingAuthAction = true;
     emit(const AuthLoading());
     try {
       await _authService.signOut();
       emit(const AuthUnauthenticated());
     } catch (e) {
       emit(AuthFailure(message: e.toString()));
+    } finally {
+      _handlingAuthAction = false;
     }
   }
 

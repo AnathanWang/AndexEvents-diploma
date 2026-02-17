@@ -195,7 +195,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                           height: 120,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFF5E60CE).withOpacity(0.1),
+                            color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
                             image: _profileImage != null
                                 ? DecorationImage(
                                     image: FileImage(_profileImage!),

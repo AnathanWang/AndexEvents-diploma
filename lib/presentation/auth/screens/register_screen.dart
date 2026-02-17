@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/logger_service.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
@@ -73,7 +74,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
         if (state is AuthAuthenticated) {
           // Навигация через andex_app.dart - ничего не делаем здесь
-          print('🟡 [RegisterScreen] AuthAuthenticated получен');
+          LoggerService.warning('🟡 [RegisterScreen] AuthAuthenticated получен');
         } else if (state is AuthFailure) {
           // Показываем ошибку
           CustomNotification.error(context, state.message);
@@ -403,22 +404,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     side: const BorderSide(color: Color(0xFFE0E0E0)),
                   ),
                 ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: Регистрация через Apple
-                  },
-                  icon: const Icon(Icons.apple, size: 24),
-                  label: const Text('Регистрация через Apple'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF4A4D6A),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    side: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                ),
+
               ],
             ),
           ),

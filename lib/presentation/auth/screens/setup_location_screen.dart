@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/logger_service.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../data/services/user_service.dart';
@@ -80,33 +81,33 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
       // Пытаемся получить текущую позицию если ещё не получили
       if (_currentPosition == null) {
         try {
-          print('DEBUG: Получаем текущую позицию...');
+          LoggerService.debug('DEBUG: Получаем текущую позицию...');
           final Position position = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.high,
             timeLimit: const Duration(seconds: 10),
           );
           _currentPosition = position;
-          print('DEBUG: Позиция получена: ${position.latitude}, ${position.longitude}');
+          LoggerService.debug('DEBUG: Позиция получена: ${position.latitude}, ${position.longitude}');
         } catch (e) {
-          print('DEBUG: Не удалось получить позицию: $e');
+          LoggerService.debug('DEBUG: Не удалось получить позицию: $e');
           // Продолжаем без геолокации
         }
       }
       
       // Отправляем координаты если получили
       if (_currentPosition != null) {
-        print('DEBUG: Отправляем координаты на backend...');
+        LoggerService.debug('DEBUG: Отправляем координаты на backend...');
         await _userService.updateLocation(
           latitude: _currentPosition!.latitude,
           longitude: _currentPosition!.longitude,
         );
-        print('DEBUG: Координаты отправлены успешно');
+        LoggerService.debug('DEBUG: Координаты отправлены успешно');
       } else {
-        print('DEBUG: Координаты не получены, пропускаем отправку');
+        LoggerService.debug('DEBUG: Координаты не получены, пропускаем отправку');
       }
 
       // Устанавливаем флаг завершения онбординга
-      print('DEBUG: Устанавливаем isOnboardingCompleted = true');
+      LoggerService.debug('DEBUG: Устанавливаем isOnboardingCompleted = true');
       await _userService.updateProfile(
         isOnboardingCompleted: true,
       );
@@ -122,7 +123,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
         );
       }
     } catch (e) {
-      print('DEBUG: Ошибка в _completeOnboarding: $e');
+      LoggerService.error('DEBUG: Ошибка в _completeOnboarding: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         CustomNotification.error(context, 'Ошибка завершения настройки: $e');
@@ -228,7 +229,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
                 width: 140,
                 height: 140,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF5E60CE).withOpacity(0.1),
+                  color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -269,7 +270,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF5E60CE).withOpacity(0.1),
+                    color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
@@ -367,7 +368,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: const Color(0xFF5E60CE).withOpacity(0.1),
+            color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(

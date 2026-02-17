@@ -6,9 +6,9 @@ import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import '../../core/config/app_config.dart';
 import '../../core/auth/id_token_provider.dart';
+import '../../core/services/logger_service.dart';
 import '../models/user_model.dart';
 import 'local_storage_service.dart';
-import '../../presentation/home/sample_data.dart';
 
 /// Сервис для работы с профилем пользователя
 class UserService {
@@ -43,8 +43,8 @@ class UserService {
               ? Duration(seconds: retryAfterSeconds)
               : Duration(milliseconds: baseDelayMs + jitterMs);
 
-      print(
-        '🟠 [UserService] 429 Too Many Requests. Retry in ${delay.inMilliseconds}ms (attempt $attempt/$maxAttempts)',
+      LoggerService.warning(
+        '[UserService] 429 Too Many Requests. Retry in ${delay.inMilliseconds}ms (attempt $attempt/$maxAttempts)',
       );
       await Future.delayed(delay);
     }
@@ -63,7 +63,7 @@ class UserService {
       if (token != null && token.isNotEmpty) {
         return token;
       }
-      print('🟡 [UserService] Ожидание Firebase токена, попытка ${attempt + 1}/10...');
+      LoggerService.warning('[UserService] Ожидание Firebase токена, попытка ${attempt + 1}/10...');
       await Future.delayed(const Duration(milliseconds: 300));
     }
     return _idTokenProvider.getIdToken();
@@ -72,21 +72,21 @@ class UserService {
   /// Загрузить фото в локальное хранилище
   Future<String> uploadProfilePhoto(File photoFile) async {
     try {
-      print('🔵 [UserService] Начинаем загрузку фото профиля...');
+      LoggerService.info('[UserService] Начинаем загрузку фото профиля...');
 
       final url = await _storageService.uploadProfilePhoto(
         photoFile.path,
         onProgress: (progress) {
-          print(
-            '🔵 [UserService] Upload progress: ${(progress * 100).toStringAsFixed(1)}%',
+          LoggerService.debug(
+            '[UserService] Upload progress: ${(progress * 100).toStringAsFixed(1)}%',
           );
         },
       );
 
-      print('🟢 [UserService] Фото профиля успешно загружено: $url');
+      LoggerService.info('[UserService] Фото профиля успешно загружено: $url');
       return url;
     } catch (e) {
-      print('🔴 [UserService] Ошибка при загрузке фото профиля: $e');
+      LoggerService.error('[UserService] Ошибка при загрузке фото профиля', e);
       rethrow;
     }
   }
@@ -109,8 +109,7 @@ class UserService {
         throw Exception('Не удалось получить токен авторизации');
       }
 
-      print('DEBUG: Token получен, длина: ${token.length}');
-      print('DEBUG: Token начинается с: ${token.substring(0, 20)}...');
+      LoggerService.debug('[UserService] Token получен, длина: ${token.length}');
 
       final Map<String, dynamic> body = {};
       if (displayName != null) body['displayName'] = displayName;
@@ -126,8 +125,7 @@ class UserService {
       }
 
       final url = '${AppConfig.baseUrl}/users/me';
-      print('DEBUG: Отправка PUT запроса на: $url');
-      print('DEBUG: Body: ${json.encode(body)}');
+      LoggerService.debug('[UserService] PUT $url');
 
       final response = await http
           .put(
@@ -140,8 +138,7 @@ class UserService {
           )
           .timeout(AppConfig.receiveTimeout);
 
-      print('DEBUG: Ответ статус: ${response.statusCode}');
-      print('DEBUG: Ответ body: ${response.body}');
+      LoggerService.debug('[UserService] Ответ статус: ${response.statusCode}');
 
       if (response.statusCode != 200) {
         final errorData = json.decode(response.body);
@@ -284,7 +281,7 @@ class UserService {
               try {
                 return UserModel.fromJson(user as Map<String, dynamic>);
               } catch (e) {
-                print('🔴 [UserService] Ошибка при парсинге пользователя: $e');
+                LoggerService.error('[UserService] Ошибка при парсинге пользователя', e);
                 rethrow;
               }
             }).toList() ??
@@ -294,8 +291,8 @@ class UserService {
       } else if (response.statusCode == 401) {
         throw Exception('Истекла сессия авторизации');
       } else if (response.statusCode == 404) {
-        // Fallback на sample data для тестирования
-        return SampleData.matches.map((m) => m.userModel).toList();
+        LoggerService.warning('[UserService] Endpoint вернул 404 — пользователи не найдены');
+        return [];
       } else if (response.statusCode == 429) {
         throw Exception('Слишком много запросов. Попробуйте чуть позже.');
       } else {
@@ -313,7 +310,7 @@ class UserService {
         'Не удалось подключиться к API (${AppConfig.baseUrl}): ${e.message}',
       );
     } catch (e) {
-      print('🔴 [UserService] Ошибка при получении пользователей: $e');
+      LoggerService.error('[UserService] Ошибка при получении пользователей', e);
       throw Exception('Ошибка получения пользователей: $e');
     }
   }
@@ -363,7 +360,7 @@ class UserService {
     } on SocketException catch (e) {
       throw Exception('Не удалось подключиться к API: ${e.message}');
     } catch (e) {
-      print('🔴 [UserService] Error loading mutual matches: $e');
+      LoggerService.error('[UserService] Error loading mutual matches', e);
       rethrow;
     }
   }
@@ -416,7 +413,7 @@ class UserService {
     } on SocketException catch (e) {
       throw Exception('Не удалось подключиться к API: ${e.message}');
     } catch (e) {
-      print('🔴 [UserService] Error loading match action list ($action): $e');
+      LoggerService.error('[UserService] Error loading match action list ($action)', e);
       rethrow;
     }
   }
@@ -452,11 +449,11 @@ class UserService {
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('🟢 [UserService] Like sent successfully to $targetUserId');
+        LoggerService.info('[UserService] Like sent to $targetUserId');
       } else if (response.statusCode == 401) {
         throw Exception('Истекла сессия авторизации');
       } else {
-        print('🔴 [UserService] Error sending like: ${response.statusCode}');
+        LoggerService.error('[UserService] Error sending like: ${response.statusCode}');
         throw Exception('Ошибка при отправке лайка');
       }
     } on TimeoutException {
@@ -464,7 +461,7 @@ class UserService {
     } on SocketException catch (e) {
       throw Exception('Не удалось подключиться к API: ${e.message}');
     } catch (e) {
-      print('🔴 [UserService] Error sending like: $e');
+      LoggerService.error('[UserService] Error sending like', e);
       rethrow;
     }
   }
@@ -489,11 +486,11 @@ class UserService {
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('🟢 [UserService] Dislike sent successfully to $targetUserId');
+        LoggerService.info('[UserService] Dislike sent to $targetUserId');
       } else if (response.statusCode == 401) {
         throw Exception('Истекла сессия авторизации');
       } else {
-        print('🔴 [UserService] Error sending dislike: ${response.statusCode}');
+        LoggerService.error('[UserService] Error sending dislike: ${response.statusCode}');
         throw Exception('Ошибка при отправке дизлайка');
       }
     } on TimeoutException {
@@ -501,7 +498,7 @@ class UserService {
     } on SocketException catch (e) {
       throw Exception('Не удалось подключиться к API: ${e.message}');
     } catch (e) {
-      print('🔴 [UserService] Error sending dislike: $e');
+      LoggerService.error('[UserService] Error sending dislike', e);
       rethrow;
     }
   }
@@ -526,13 +523,11 @@ class UserService {
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('🟢 [UserService] Super like sent successfully to $targetUserId');
+        LoggerService.info('[UserService] Super like sent to $targetUserId');
       } else if (response.statusCode == 401) {
         throw Exception('Истекла сессия авторизации');
       } else {
-        print(
-          '🔴 [UserService] Error sending super like: ${response.statusCode}',
-        );
+        LoggerService.error('[UserService] Error sending super like: ${response.statusCode}');
         throw Exception('Ошибка при отправке супер-лайка');
       }
     } on TimeoutException {
@@ -540,7 +535,7 @@ class UserService {
     } on SocketException catch (e) {
       throw Exception('Не удалось подключиться к API: ${e.message}');
     } catch (e) {
-      print('🔴 [UserService] Error sending super like: $e');
+      LoggerService.error('[UserService] Error sending super like', e);
       rethrow;
     }
   }

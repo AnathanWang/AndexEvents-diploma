@@ -40,7 +40,7 @@ class MatchCard extends StatelessWidget {
             children: <Widget>[
               CircleAvatar(
                 radius: 28,
-                backgroundColor: const Color(0xFF5E60CE).withOpacity(0.14),
+                backgroundColor: const Color(0xFF5E60CE).withValues(alpha: 0.14),
                 child: const Icon(
                   Icons.favorite,
                   color: Color(0xFF5E60CE),

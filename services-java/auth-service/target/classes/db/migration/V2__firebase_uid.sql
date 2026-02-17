@@ -1,20 +1,21 @@
--- Ensure Firebase UID and Supabase UID columns exist (shared DB safety)
+-- Ensure Firebase UID and Supabase UID columns exist on users."User"
+-- (The "User" table is managed by users-service in the 'users' schema.)
 
-ALTER TABLE IF EXISTS "User" ADD COLUMN IF NOT EXISTS "firebaseUid" TEXT;
-ALTER TABLE IF EXISTS "User" ADD COLUMN IF NOT EXISTS "supabaseUid" TEXT;
+ALTER TABLE IF EXISTS users."User" ADD COLUMN IF NOT EXISTS "firebaseUid" TEXT;
+ALTER TABLE IF EXISTS users."User" ADD COLUMN IF NOT EXISTS "supabaseUid" TEXT;
 
 -- Backfill whichever is missing
-UPDATE "User"
+UPDATE users."User"
 SET "firebaseUid" = COALESCE("firebaseUid", "supabaseUid")
 WHERE "firebaseUid" IS NULL AND "supabaseUid" IS NOT NULL;
 
-UPDATE "User"
+UPDATE users."User"
 SET "supabaseUid" = COALESCE("supabaseUid", "firebaseUid")
 WHERE "supabaseUid" IS NULL AND "firebaseUid" IS NOT NULL;
 
 -- Indexes
-CREATE UNIQUE INDEX IF NOT EXISTS "User_firebaseUid_key" ON "User"("firebaseUid");
-CREATE INDEX IF NOT EXISTS "User_firebaseUid_idx" ON "User"("firebaseUid");
+CREATE UNIQUE INDEX IF NOT EXISTS "User_firebaseUid_key" ON users."User"("firebaseUid");
+CREATE INDEX IF NOT EXISTS "User_firebaseUid_idx" ON users."User"("firebaseUid");
 
-CREATE UNIQUE INDEX IF NOT EXISTS "User_supabaseUid_key" ON "User"("supabaseUid");
-CREATE INDEX IF NOT EXISTS "User_supabaseUid_idx" ON "User"("supabaseUid");
+CREATE UNIQUE INDEX IF NOT EXISTS "User_supabaseUid_key" ON users."User"("supabaseUid");
+CREATE INDEX IF NOT EXISTS "User_supabaseUid_idx" ON users."User"("supabaseUid");

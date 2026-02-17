@@ -332,7 +332,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 shape: BoxShape.circle,
                 boxShadow: <BoxShadow>[
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 8,
                   ),
                 ],
@@ -350,7 +350,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   shape: BoxShape.circle,
                   boxShadow: <BoxShadow>[
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 8,
                     ),
                   ],
@@ -399,8 +399,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: <Color>[
-                      const Color(0xFF5E60CE).withOpacity(0.7),
-                      const Color(0xFF9370DB).withOpacity(0.7),
+                      const Color(0xFF5E60CE).withValues(alpha: 0.7),
+                      const Color(0xFF9370DB).withValues(alpha: 0.7),
                     ],
                   ),
                 ),
@@ -448,7 +448,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: Colors.green.withOpacity(0.1),
+                              color: Colors.green.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Row(
@@ -530,10 +530,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF5E60CE).withOpacity(0.1),
+                          color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: const Color(0xFF5E60CE).withOpacity(0.3),
+                            color: const Color(0xFF5E60CE).withValues(alpha: 0.3),
                           ),
                         ),
                         child: Text(
@@ -555,10 +555,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF5E60CE).withOpacity(0.05),
+                      color: const Color(0xFF5E60CE).withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: const Color(0xFF5E60CE).withOpacity(0.2),
+                        color: const Color(0xFF5E60CE).withValues(alpha: 0.2),
                       ),
                     ),
                     child: Row(
@@ -566,7 +566,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF5E60CE).withOpacity(0.1),
+                            color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
@@ -633,8 +633,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: <Color>[
-                              const Color(0xFF5E60CE).withOpacity(0.7),
-                              const Color(0xFF9370DB).withOpacity(0.7),
+                              const Color(0xFF5E60CE).withValues(alpha: 0.7),
+                              const Color(0xFF9370DB).withValues(alpha: 0.7),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(16),

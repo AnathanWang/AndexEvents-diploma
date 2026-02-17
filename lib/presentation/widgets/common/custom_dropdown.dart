@@ -120,7 +120,7 @@ class CustomDropdown<T> extends StatelessWidget {
                           separatorBuilder: (_, __) => Divider(
                             height: 1,
                             thickness: 1,
-                            color: colorScheme.outlineVariant.withOpacity(0.35),
+                            color: colorScheme.outlineVariant.withValues(alpha: 0.35),
                           ),
                           itemBuilder: (ctx, index) {
                             final item = items[index];

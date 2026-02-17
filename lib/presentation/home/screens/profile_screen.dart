@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/logger_service.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -373,16 +374,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // Аватар
           Builder(
             builder: (context) => GestureDetector(
-              onTap: () {
+              onTap: () async {
                 final profileBloc = context.read<ProfileBloc>();
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
+                final result = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute<bool>(
                     builder: (context) => BlocProvider.value(
                       value: profileBloc,
                       child: const EditProfileScreen(),
                     ),
                   ),
                 );
+                if (result == true && context.mounted) {
+                  CustomNotification.success(context, 'Профиль успешно обновлен!');
+                }
               },
               child: (user.photoUrl != null && user.photoUrl!.isNotEmpty)
                   ? Container(
@@ -403,7 +407,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           errorWidget: (context, url, error) {
-                            print(
+                            LoggerService.error(
                               '🔴 [ProfileScreen] Ошибка загрузки аватара: $error',
                             );
                             return CircleAvatar(
@@ -488,7 +492,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF5E60CE).withOpacity(0.1),
+                            color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -633,7 +637,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: const Center(child: CircularProgressIndicator()),
                   ),
                   errorWidget: (context, url, error) {
-                    print(
+                    LoggerService.error(
                       'Error loading profile event image: $url, error: $error',
                     );
                     return Container(
@@ -643,8 +647,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            const Color(0xFF5E60CE).withOpacity(0.7),
-                            const Color(0xFF9370DB).withOpacity(0.7),
+                            const Color(0xFF5E60CE).withValues(alpha: 0.7),
+                            const Color(0xFF9370DB).withValues(alpha: 0.7),
                           ],
                         ),
                       ),

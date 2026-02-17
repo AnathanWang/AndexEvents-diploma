@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
@@ -140,15 +141,11 @@ class LocalStorageService {
     }
   }
 
-  /// Простой парсер JSON
+  /// Парсинг JSON ответа сервера
   Map<String, dynamic> _parseJson(String jsonString) {
     try {
-      // Пытаемся вытянуть URL из ответа
-      final urlMatch = RegExp(r'"fileUrl"\s*:\s*"([^"]+)"').firstMatch(jsonString);
-      if (urlMatch != null) {
-        return {'fileUrl': urlMatch.group(1)};
-      }
-      throw Exception('Ошибка парсинга ответа сервера');
+      final decoded = jsonDecode(jsonString) as Map<String, dynamic>;
+      return decoded;
     } catch (e) {
       LoggerService.error('[UploadService] Ошибка парсинга', e);
       throw Exception('Ошибка парсинга ответа сервера: $e');

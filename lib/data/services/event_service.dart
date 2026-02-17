@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 import '../../core/config/app_config.dart';
 import '../../core/auth/id_token_provider.dart';
+import '../../core/services/logger_service.dart';
 import '../models/event_model.dart';
 import '../models/participant_model.dart';
 import 'local_storage_service.dart';
@@ -88,7 +89,7 @@ class EventService {
           'Authorization': 'Bearer $token',
         },
         body: json.encode(body),
-      );
+      ).timeout(AppConfig.receiveTimeout);
 
       if (response.statusCode != 201) {
         final errorData = json.decode(response.body);
@@ -133,7 +134,7 @@ class EventService {
       final headers = <String, String>{'Content-Type': 'application/json'};
       if (token != null) headers['Authorization'] = 'Bearer $token';
 
-      final response = await http.get(uri, headers: headers);
+      final response = await http.get(uri, headers: headers).timeout(AppConfig.receiveTimeout);
 
       if (response.statusCode != 200) {
         final errorData = json.decode(response.body);
@@ -145,6 +146,7 @@ class EventService {
 
       return eventsJson.map((json) => EventModel.fromJson(json)).toList();
     } catch (e) {
+      LoggerService.error('[EventService] Ошибка загрузки событий', e);
       throw Exception('Ошибка загрузки событий: $e');
     }
   }
@@ -257,9 +259,15 @@ class EventService {
   /// Получить список участников события
   Future<List<ParticipantModel>> getEventParticipants(String eventId) async {
     try {
+      final String? token = await _getIdToken();
+
+      final headers = <String, String>{'Content-Type': 'application/json'};
+      if (token != null) headers['Authorization'] = 'Bearer $token';
+
       final response = await http.get(
         Uri.parse('${AppConfig.baseUrl}/events/$eventId/participants'),
-      );
+        headers: headers,
+      ).timeout(AppConfig.receiveTimeout);
 
       if (response.statusCode != 200) {
         throw Exception('Ошибка загрузки участников события');

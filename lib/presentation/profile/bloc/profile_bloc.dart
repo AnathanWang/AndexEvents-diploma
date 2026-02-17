@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/services/logger_service.dart';
 import '../../../data/services/user_service.dart';
 import '../../../data/services/event_service.dart';
 import 'profile_event.dart';
@@ -82,23 +83,23 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
     try {
       // Загружаем фото
-      print('🔵 [ProfileBloc] Начинаем загрузку фото...');
+      LoggerService.debug('🔵 [ProfileBloc] Начинаем загрузку фото...');
       final photoUrl = await _userService.uploadProfilePhoto(
         File(event.photoPath),
       );
 
       // Обновляем профиль с новым URL фото
-      print('🔵 [ProfileBloc] Обновляем профиль с photoUrl: $photoUrl');
+      LoggerService.debug('🔵 [ProfileBloc] Обновляем профиль с photoUrl: $photoUrl');
       await _userService.updateProfile(photoUrl: photoUrl);
 
       // Перезагружаем профиль
       final updatedUser = await _userService.getCurrentUser();
       final userEvents = await _eventService.getUserEvents(updatedUser.id);
-      print('🟢 [ProfileBloc] Фото обновлено успешно');
+      LoggerService.info('🟢 [ProfileBloc] Фото обновлено успешно');
       emit(ProfileLoaded(updatedUser, userEvents: userEvents));
     } catch (e) {
-      print('🔴 [ProfileBloc] Ошибка обновления фото: $e');
-      print('⚠️ [ProfileBloc] Это может быть проблема VPN или симулятора iOS');
+      LoggerService.error('🔴 [ProfileBloc] Ошибка обновления фото: $e');
+      LoggerService.warning('⚠️ [ProfileBloc] Это может быть проблема VPN или симулятора iOS');
 
       // Возвращаемся в ProfileLoaded без ошибки
       emit(

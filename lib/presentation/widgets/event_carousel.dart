@@ -124,8 +124,8 @@ class _EventCarouselState extends State<EventCarousel> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            categoryColor.withOpacity(0.3),
-                            categoryColor.withOpacity(0.1),
+                            categoryColor.withValues(alpha: 0.3),
+                            categoryColor.withValues(alpha: 0.1),
                           ],
                         ),
                       ),
@@ -145,8 +145,8 @@ class _EventCarouselState extends State<EventCarousel> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      categoryColor.withOpacity(0.5),
-                      categoryColor.withOpacity(0.2),
+                      categoryColor.withValues(alpha: 0.5),
+                      categoryColor.withValues(alpha: 0.2),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(20),
@@ -160,7 +160,7 @@ class _EventCarouselState extends State<EventCarousel> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
                 ),
               ),
             ),

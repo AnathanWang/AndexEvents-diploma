@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
+import '../../../core/services/logger_service.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../bloc/profile_bloc.dart';
@@ -107,11 +108,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           isError: true,
         );
       }
-      print('Image picker error: $e');
+      LoggerService.error('Image picker error: $e');
     }
   }
 
-  Future<void> _pickPhotos() async {
+  Future<void> _pickAdditionalPhotos() async {
     try {
       final ImagePicker picker = ImagePicker();
       final List<XFile> images = await picker.pickMultiImage(
@@ -151,7 +152,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           isError: true,
         );
       }
-      print('Image picker error: $e');
+      LoggerService.error('Image picker error: $e');
     }
   }
 
@@ -330,18 +331,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               _isInitialLoad = false;
             });
           }
-          // Если было реальное обновление - закрываем экран и показываем сообщение
+          // Если было реальное обновление - закрываем экран с success result
           else if (_isLoading) {
             setState(() => _isLoading = false);
-            final navigatorContext = Navigator.of(context).context;
-            Navigator.of(context).pop();
-            // Показываем уведомление на предыдущем экране
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              CustomNotification.success(
-                navigatorContext,
-                'Профиль успешно обновлен!',
-              );
-            });
+            // Pop with result=true so the parent screen can show the notification
+            Navigator.of(context).pop(true);
           } else {
             setState(() => _isLoading = false);
           }
@@ -413,7 +407,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                             ),
                                           ),
                                           errorWidget: (context, url, error) {
-                                            print(
+                                            LoggerService.error(
                                               '🔴 [EditProfile] Не удалось загрузить аватар: $error',
                                             );
                                             return CircleAvatar(
@@ -644,7 +638,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 _toggleInterest(interest),
                             selectedColor: const Color(
                               0xFF5E60CE,
-                            ).withOpacity(0.2),
+                            ).withValues(alpha: 0.2),
                             checkmarkColor: const Color(0xFF5E60CE),
                             backgroundColor: const Color(0xFFF5F5F5),
                             labelStyle: TextStyle(

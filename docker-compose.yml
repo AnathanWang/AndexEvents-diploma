@@ -74,10 +74,11 @@ services:
       timeout: 5s
       retries: 5
 
-  users-service-java:
+  users-service:
     build:
-      context: ./services-java/users-service
-    container_name: andexevents-users-service-java
+      context: ./services-java
+      dockerfile: users-service/Dockerfile
+    container_name: andexevents-users-service
     restart: unless-stopped
     depends_on:
       postgres:
@@ -87,16 +88,17 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/andexevents
       SPRING_DATASOURCE_USERNAME: andexevents
       SPRING_DATASOURCE_PASSWORD: andexevents_dev_password
-      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-andexevents}
       FIREBASE_JWKS_URL: ${FIREBASE_JWKS_URL:-}
       FLYWAY_ENABLED: ${FLYWAY_ENABLED:-true}
     ports:
       - "8081:8081"
 
-  events-service-java:
+  events-service:
     build:
-      context: ./services-java/events-service
-    container_name: andexevents-events-service-java
+      context: ./services-java
+      dockerfile: events-service/Dockerfile
+    container_name: andexevents-events-service
     restart: unless-stopped
     depends_on:
       postgres:
@@ -106,16 +108,17 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/andexevents
       SPRING_DATASOURCE_USERNAME: andexevents
       SPRING_DATASOURCE_PASSWORD: andexevents_dev_password
-      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-andexevents}
       FIREBASE_JWKS_URL: ${FIREBASE_JWKS_URL:-}
       FLYWAY_ENABLED: ${FLYWAY_ENABLED:-true}
     ports:
       - "8082:8082"
 
-  auth-service-java:
+  auth-service:
     build:
-      context: ./services-java/auth-service
-    container_name: andexevents-auth-service-java
+      context: ./services-java
+      dockerfile: auth-service/Dockerfile
+    container_name: andexevents-auth-service
     restart: unless-stopped
     depends_on:
       postgres:
@@ -125,7 +128,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/andexevents
       SPRING_DATASOURCE_USERNAME: andexevents
       SPRING_DATASOURCE_PASSWORD: andexevents_dev_password
-      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-andexevents}
       FIREBASE_JWKS_URL: ${FIREBASE_JWKS_URL:-}
     ports:
       - "8083:8083"

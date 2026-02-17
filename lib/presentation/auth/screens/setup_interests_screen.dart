@@ -161,8 +161,8 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: _canContinue
-                    ? const Color(0xFF5E60CE).withOpacity(0.1)
-                    : const Color(0xFFE0E0E0).withOpacity(0.3),
+                    ? const Color(0xFF5E60CE).withValues(alpha: 0.1)
+                    : const Color(0xFFE0E0E0).withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -212,7 +212,7 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? interest.color.withOpacity(0.1)
+                            ? interest.color.withValues(alpha: 0.1)
                             : Colors.white,
                         border: Border.all(
                           color: isSelected

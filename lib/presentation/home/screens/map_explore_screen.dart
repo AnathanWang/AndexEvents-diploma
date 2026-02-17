@@ -517,8 +517,8 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            categoryColor.withOpacity(0.3),
-                            categoryColor.withOpacity(0.1),
+                            categoryColor.withValues(alpha: 0.3),
+                            categoryColor.withValues(alpha: 0.1),
                           ],
                         ),
                       ),
@@ -540,8 +540,8 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      categoryColor.withOpacity(0.3),
-                      categoryColor.withOpacity(0.1),
+                      categoryColor.withValues(alpha: 0.3),
+                      categoryColor.withValues(alpha: 0.1),
                     ],
                   ),
                   borderRadius: const BorderRadius.only(
@@ -566,7 +566,7 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: categoryColor.withOpacity(0.14),
+                        color: categoryColor.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
