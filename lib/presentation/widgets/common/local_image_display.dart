@@ -11,14 +11,14 @@ class LocalImageDisplay extends StatelessWidget {
   final Color backgroundColor;
 
   const LocalImageDisplay({
-    Key? key,
+    super.key,
     required this.imageUrl,
     this.fit = BoxFit.cover,
     this.width,
     this.height,
     this.borderRadius,
     this.backgroundColor = const Color(0xFFF5F5F5),
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

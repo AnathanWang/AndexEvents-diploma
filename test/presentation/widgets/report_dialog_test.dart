@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:andexevents/presentation/widgets/report_dialog.dart';
-import 'package:andexevents/data/models/report_model.dart';
 
 void main() {
   testWidgets('ReportDialog renders correctly and handles interaction', (WidgetTester tester) async {

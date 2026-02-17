@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 
 import '../../core/auth/id_token_provider.dart';
 import '../../core/config/app_config.dart';
+import '../../core/services/logger_service.dart';
 
 /// Сервис для работы с Firebase Authentication
 class AuthService {
@@ -25,7 +26,7 @@ class AuthService {
               scopes: const ['email', 'profile'],
             ),
         _idTokenProvider = idTokenProvider ?? const IdTokenProvider() {
-    print('🔵 [AuthService] Инициализирован (Firebase)');
+    LoggerService.info('[AuthService] Инициализирован (Firebase)');
   }
 
   /// Получить текущего пользователя Firebase
@@ -97,7 +98,7 @@ class AuthService {
   /// Вход через Google и получение статуса онбординга
   Future<Map<String, dynamic>> signInWithGoogleAndGetStatus() async {
     try {
-      print('🔵 [Google Sign-In] Начинаем процесс входа...');
+      LoggerService.info('[Google Sign-In] Начинаем процесс входа...');
 
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
@@ -130,7 +131,7 @@ class AuthService {
         final profileData = await getCurrentUserProfile();
         isOnboardingCompleted = profileData['isOnboardingCompleted'] as bool? ?? false;
       } catch (e) {
-        print('🟡 [Google Sign-In] Не удалось получить статус онбординга: $e');
+        LoggerService.warning('[Google Sign-In] Не удалось получить статус онбординга', e);
         isOnboardingCompleted = false;
       }
 
@@ -141,7 +142,7 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthException(e));
     } catch (e) {
-      print('🔴 [Google Sign-In] Exception: $e');
+      LoggerService.error('[Google Sign-In] Exception', e);
       throw Exception('Ошибка входа через Google: $e');
     }
   }
@@ -232,7 +233,7 @@ class AuthService {
         throw Exception('Не удалось создать пользователя в базе данных (${response.statusCode})');
       }
     } catch (e) {
-      print('🔴 [Backend] Ошибка создания пользователя в backend: $e');
+      LoggerService.error('[Backend] Ошибка создания пользователя в backend', e);
     }
   }
 

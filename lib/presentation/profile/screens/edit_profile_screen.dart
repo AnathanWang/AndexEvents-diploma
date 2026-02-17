@@ -27,7 +27,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Map<String, String> _socialLinks = {};
 
   File? _newProfileImage;
-  List<File> _newPhotos = [];
+  final List<File> _newPhotos = [];
   List<String> _existingPhotos = [];
   UserModel? _currentUser;
   bool _isLoading = false;

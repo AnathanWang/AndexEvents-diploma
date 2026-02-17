@@ -105,8 +105,9 @@ class UserService {
   }) async {
     try {
       final String? token = await _getIdToken();
-      if (token == null)
+      if (token == null) {
         throw Exception('Не удалось получить токен авторизации');
+      }
 
       print('DEBUG: Token получен, длина: ${token.length}');
       print('DEBUG: Token начинается с: ${token.substring(0, 20)}...');
@@ -120,8 +121,9 @@ class UserService {
       if (gender != null) body['gender'] = gender;
       if (interests != null) body['interests'] = interests;
       if (socialLinks != null) body['socialLinks'] = socialLinks;
-      if (isOnboardingCompleted != null)
+      if (isOnboardingCompleted != null) {
         body['isOnboardingCompleted'] = isOnboardingCompleted;
+      }
 
       final url = '${AppConfig.baseUrl}/users/me';
       print('DEBUG: Отправка PUT запроса на: $url');
@@ -168,8 +170,9 @@ class UserService {
   }) async {
     try {
       final String? token = await _getIdToken();
-      if (token == null)
+      if (token == null) {
         throw Exception('Не удалось получить токен авторизации');
+      }
 
       final response = await http
           .put(
@@ -204,8 +207,9 @@ class UserService {
   Future<UserModel> getCurrentUser() async {
     try {
       final String? token = await _getIdToken();
-      if (token == null)
+      if (token == null) {
         throw Exception('Не удалось получить токен авторизации');
+      }
 
       final response = await http
           .get(

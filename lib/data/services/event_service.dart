@@ -57,8 +57,9 @@ class EventService {
   }) async {
     try {
       final String? token = await _getIdToken();
-      if (token == null)
+      if (token == null) {
         throw Exception('Не удалось получить токен авторизации');
+      }
 
       final Map<String, dynamic> body = {
         'title': title,
@@ -72,8 +73,9 @@ class EventService {
         'isOnline': isOnline,
       };
 
-      if (endDateTime != null)
+      if (endDateTime != null) {
         body['endDateTime'] = endDateTime.toIso8601String();
+      }
       if (imageUrl != null) body['imageUrl'] = imageUrl;
       if (maxParticipants != null) body['maxParticipants'] = maxParticipants;
       if (minAge != null) body['minAge'] = minAge;
@@ -120,8 +122,9 @@ class EventService {
       if (category != null) queryParams['category'] = category;
       if (latitude != null) queryParams['latitude'] = latitude.toString();
       if (longitude != null) queryParams['longitude'] = longitude.toString();
-      if (maxDistance != null)
+      if (maxDistance != null) {
         queryParams['maxDistance'] = maxDistance.toString();
+      }
 
       final uri = Uri.parse(
         '${AppConfig.baseUrl}/events',
@@ -175,8 +178,9 @@ class EventService {
   Future<void> participateInEvent(String eventId, String status) async {
     try {
       final String? token = await _getIdToken();
-      if (token == null)
+      if (token == null) {
         throw Exception('Не удалось получить токен авторизации');
+      }
 
       final response = await http.post(
         Uri.parse('${AppConfig.baseUrl}/events/$eventId/participate'),
@@ -200,8 +204,9 @@ class EventService {
   Future<void> cancelParticipation(String eventId) async {
     try {
       final String? token = await _getIdToken();
-      if (token == null)
+      if (token == null) {
         throw Exception('Не удалось получить токен авторизации');
+      }
 
       final response = await http.delete(
         Uri.parse('${AppConfig.baseUrl}/events/$eventId/participate'),
@@ -291,8 +296,9 @@ class EventService {
   }) async {
     try {
       final String? token = await _getIdToken();
-      if (token == null)
+      if (token == null) {
         throw Exception('Не удалось получить токен авторизации');
+      }
 
       final Map<String, dynamic> body = {};
       if (title != null) body['title'] = title;
@@ -302,8 +308,9 @@ class EventService {
       if (latitude != null) body['latitude'] = latitude;
       if (longitude != null) body['longitude'] = longitude;
       if (dateTime != null) body['dateTime'] = dateTime.toIso8601String();
-      if (endDateTime != null)
+      if (endDateTime != null) {
         body['endDateTime'] = endDateTime.toIso8601String();
+      }
       if (price != null) body['price'] = price;
       if (imageUrl != null) body['imageUrl'] = imageUrl;
       if (isOnline != null) body['isOnline'] = isOnline;
@@ -336,8 +343,9 @@ class EventService {
   Future<void> deleteEvent(String eventId) async {
     try {
       final String? token = await _getIdToken();
-      if (token == null)
+      if (token == null) {
         throw Exception('Не удалось получить токен авторизации');
+      }
 
       final response = await http.delete(
         Uri.parse('${AppConfig.baseUrl}/events/$eventId'),

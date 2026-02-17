@@ -9,11 +9,11 @@ class ReportDialog extends StatefulWidget {
   final String? targetEventId;
 
   const ReportDialog({
-    Key? key,
+    super.key,
     required this.reporterId,
     this.targetUserId,
     this.targetEventId,
-  }) : super(key: key);
+  });
 
   @override
   State<ReportDialog> createState() => _ReportDialogState();
@@ -105,7 +105,7 @@ class _ReportDialogState extends State<ReportDialog> {
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                 );
-              }).toList(),
+              }),
               const SizedBox(height: 16),
               const Text(
                 'Подробности (необязательно):',

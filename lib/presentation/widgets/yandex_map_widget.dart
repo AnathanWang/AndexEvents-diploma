@@ -29,7 +29,7 @@ class YandexMapWidget extends StatefulWidget {
 
 class _YandexMapWidgetState extends State<YandexMapWidget> {
   YandexMapController? _mapController;
-  Map<String, Uint8List> _markerIcons = {}; // Маркеры по категориям
+  final Map<String, Uint8List> _markerIcons = {}; // Маркеры по категориям
   Uint8List? _userMarkerIcon;
   Point? _userLocation;
 
