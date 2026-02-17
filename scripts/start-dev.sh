@@ -155,7 +155,7 @@ if [ -d "$BACKEND_DIR" ]; then
   fi
 
   # Wait for backend health endpoint if available (up to timeout)
-  HEALTH_URL="http://localhost:3000/health"
+  HEALTH_URL="http://localhost/health"
   if command -v curl >/dev/null 2>&1; then
     max_wait=20
     waited=0

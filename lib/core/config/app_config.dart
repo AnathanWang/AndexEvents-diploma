@@ -14,7 +14,6 @@ class AppConfig {
     }
 
     if (kReleaseMode) {
-      // TODO: Укажите адрес продакшн сервера
       return 'https://api.andexevents.com/api';
     }
 
@@ -25,7 +24,7 @@ class AppConfig {
 
     // Для iOS симулятора и macOS
     // Если вы используете физическое устройство, замените localhost на IP вашего компьютера
-    // Например: return 'http://192.168.1.147:3000/api';
+    // Например: return 'http://192.168.1.147/api';
     return 'http://localhost/api';
   }
 

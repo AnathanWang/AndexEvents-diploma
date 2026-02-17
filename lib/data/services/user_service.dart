@@ -148,7 +148,7 @@ class UserService {
       throw Exception(
         'Таймаут при запросе к API (${AppConfig.baseUrl}). '
         'Если вы на физическом устройстве, укажите IP компьютера через '
-        '--dart-define=API_BASE_URL=http://<IP>:3000/api',
+        '--dart-define=API_BASE_URL=http://<IP>/api',
       );
     } on SocketException catch (e) {
       throw Exception(

@@ -24,7 +24,7 @@ void main() {
     // Verify reason options exist
     expect(find.text('Spam'), findsOneWidget);
     expect(find.text('Inappropriate Content'), findsOneWidget);
-    expect(find.text('Fake Profile'), findsOneWidget);
+    expect(find.text('Fake Event'), findsOneWidget);
 
     // Verify buttons
     expect(find.text('Отмена'), findsOneWidget);

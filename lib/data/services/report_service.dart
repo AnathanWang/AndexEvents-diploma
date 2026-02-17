@@ -37,7 +37,7 @@ class ReportService {
 
       final body = <String, dynamic>{
         'reporterId': reporterId,
-        'reason': reason.name,
+        'reason': reason.toBackendValue,
       };
       if (targetUserId != null) body['targetUserId'] = targetUserId;
       if (targetEventId != null) body['targetEventId'] = targetEventId;

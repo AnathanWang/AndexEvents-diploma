@@ -169,8 +169,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
         return Icons.explicit;
       case ReportReason.harassment:
         return Icons.back_hand;
-      case ReportReason.fakeProfile:
-        return Icons.person_off;
+      case ReportReason.fakeEvent:
+        return Icons.event_busy;
       case ReportReason.other:
         return Icons.help_outline;
     }

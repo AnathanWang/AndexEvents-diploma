@@ -17,19 +17,19 @@ void main() {
       final json = report.toJson();
 
       expect(json['id'], 'report_123');
-      expect(json['reporter_id'], 'user_1');
-      expect(json['target_user_id'], 'user_2');
+      expect(json['reporterId'], 'user_1');
+      expect(json['targetUserId'], 'user_2');
       expect(json['reason'], 'SPAM');
       expect(json['details'], 'Spam details');
       expect(json['status'], 'PENDING');
-      expect(json['created_at'], now.toIso8601String());
+      expect(json['createdAt'], now.toIso8601String());
     });
 
     test('ReportReason enum should return correct backend values', () {
       expect(ReportReason.spam.toBackendValue, 'SPAM');
       expect(ReportReason.inappropriateContent.toBackendValue, 'INAPPROPRIATE_CONTENT');
       expect(ReportReason.harassment.toBackendValue, 'HARASSMENT');
-      expect(ReportReason.fakeProfile.toBackendValue, 'FAKE_PROFILE');
+      expect(ReportReason.fakeEvent.toBackendValue, 'FAKE_EVENT');
       expect(ReportReason.other.toBackendValue, 'OTHER');
     });
 
@@ -37,7 +37,7 @@ void main() {
       expect(ReportReason.spam.displayName, 'Spam');
       expect(ReportReason.inappropriateContent.displayName, 'Inappropriate Content');
       expect(ReportReason.harassment.displayName, 'Harassment');
-      expect(ReportReason.fakeProfile.displayName, 'Fake Profile');
+      expect(ReportReason.fakeEvent.displayName, 'Fake Event');
       expect(ReportReason.other.displayName, 'Other');
     });
 
@@ -69,8 +69,8 @@ void main() {
       );
 
       final json = report.toJson();
-      expect(json['target_user_id'], isNull);
-      expect(json['target_event_id'], 'event-5');
+      expect(json['targetUserId'], isNull);
+      expect(json['targetEventId'], 'event-5');
       expect(json['reason'], 'INAPPROPRIATE_CONTENT');
     });
 

@@ -29,7 +29,7 @@ help:
 	@echo "  docker-logs   View logs"
 
 GO := go
-DOCKER_COMPOSE := docker compose -f deployments/docker/docker-compose.yml
+DOCKER_COMPOSE := docker compose
 
 dev-up:
 	@echo "Starting infrastructure..."
