@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS "Report" (
     "id" TEXT PRIMARY KEY,
     "reporterId" TEXT NOT NULL REFERENCES "User"("id"),
     "targetUserId" TEXT REFERENCES "User"("id"),
-    "targetEventId" TEXT REFERENCES "Event"("id"),
+    "targetEventId" TEXT,
     "reason" "ReportReason" NOT NULL,
     "details" TEXT,
     "status" "ReportStatus" NOT NULL DEFAULT 'PENDING',
