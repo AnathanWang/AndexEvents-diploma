@@ -6,6 +6,8 @@ import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import 'register_screen.dart';
+import 'setup_profile_screen.dart';
+import '../../home/home_shell.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -47,9 +49,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _navigateToRegister() {
+    LoggerService.debug('🔵 [LoginScreen] Нажата кнопка регистрации');
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (BuildContext context) => const RegisterScreen(),
+        builder: (BuildContext context) {
+          LoggerService.debug('🔵 [LoginScreen] Открываем RegisterScreen');
+          return const RegisterScreen();
+        },
       ),
     );
   }
@@ -82,8 +88,16 @@ class _LoginScreenState extends State<LoginScreen> {
         
         // При успешной аутентификации навигация через andex_app.dart
         if (state is AuthAuthenticated) {
-          LoggerService.debug('DEBUG: AuthAuthenticated received');
-          // Навигация через andex_app.dart - ничего не делаем здесь
+          LoggerService.debug('DEBUG: AuthAuthenticated received, навигация к ${state.isOnboardingCompleted ? "HomeShell" : "SetupProfileScreen"}');
+          // Переходим к правильному экрану в зависимости от статуса onboarding
+          final destination = state.isOnboardingCompleted 
+              ? const HomeShell()
+              : const SetupProfileScreen();
+          
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute<void>(builder: (context) => destination),
+            (route) => false, // Удаляем все предыдущие routes
+          );
         }
       },
       child: Scaffold(

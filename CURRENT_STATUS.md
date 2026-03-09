@@ -1,52 +1,91 @@
 # Текущий статус проекта Andex Events
 
-**Дата:** 12 Февраля 2026
-**Состояние:** Активная разработка / Рефакторинг
+**Дата:** 9 Марта 2026  
+**Состояние:** Активная разработка - Auth & Navigation работают!
+
+## ✅ Последние исправления (9 марта 2026)
+
+### Firebase & Authentication
+- ✅ Firebase инициализация работает (исправлен белый экран)
+- ✅ Регистрация через Email + Password работает
+- ✅ Вход через Email + Password работает  
+- ✅ Backend создает пользователей в PostgreSQL
+- ✅ Навигация после auth работает корректно
+
+### Database Schema
+- ✅ Все SQL запросы исправлены - используют qualified names (`users."User"`)
+- ✅ Go сервисы (upload, match) работают с правильными схемами
+- ✅ Java сервисы (users, events, auth) работают с правильными схемами
+
+### Navigation Flow
+- ✅ RegisterScreen → SetupProfileScreen (через `pushAndRemoveUntil`)
+- ✅ LoginScreen → SetupProfileScreen или HomeShell (в зависимости от onboarding status)
+- ✅ Кнопка "Назад" с подтверждением выхода (PopScope)
+
+---
 
 ## 1. Текущая архитектура
 
 ### Backend (Микросервисы)
-*   **Архитектура:** Hybrid Microservices.
-*   **Node.js Backend:** Перемещен в `legacy/backend`. Больше не является основным.
+*   **Архитектура:** Hybrid Microservices - РАБОТАЕТ!
 *   **Active Services (Docker):**
-    *   `users-service` (Java/Spring)
-    *   `events-service` (Java/Spring)
-    *   `auth-service` (Java/Spring)
-    *   `match-service` (Go)
-    *   `upload-service` (Go)
+    *   ✅ `users-service` (Java/Spring) - порт 8081
+    *   ✅ `events-service` (Java/Spring) - порт 8082
+    *   ✅ `auth-service` (Java/Spring) - порт 8083
+    *   ✅ `match-service` (Go) - порт 8005
+    *   ✅ `upload-service` (Go) - порт 8006
 *   **Инфраструктура:**
-    *   **Gateway:** Traefik (единая точка входа `/api`).
-    *   **DB:** PostgreSQL.
-    *   **Storage:** MinIO (S3-compatible) для загрузки файлов.
-    *   **Auth:** Firebase Auth + Custom JWT logic depending on service.
+    *   **Gateway:** Traefik (порт 80) - `/api/*` routes
+    *   **DB:** PostgreSQL 16 с schemas (users, events, auth, public)
+    *   **Storage:** MinIO (S3-compatible) для файлов
+    *   **Auth:** Firebase Auth + FirebaseJwtVerifier в каждом сервисе
+    *   **Cache:** Redis
 
 ### Frontend (Flutter)
-*   **Состояние:** Стабильное, но требует архитектурных улучшений.
+*   **Состояние:** Authentication & Navigation работают!
 *   **Функционал:**
-    *   ✅ Авторизация / Регистрация.
-    *   ✅ Профиль пользователя.
-    *   ✅ Лента событий.
-    *   ✅ Матчинг (Lite версия).
-    *   ❌ Друзья (Функционал полностью удален из приложения).
-*   **Исправления:**
-    *   Устранены критические ошибки с `BuildContext` и асинхронностью (`mounted` checks).
-    *   Исправлены ошибки потока управления (`return` в `finally`).
+    *   ✅ Авторизация / Регистрация (Email + Password)
+    *   🔄 Настройка профиля (SetupProfileScreen) - в процессе
+    *   ❌ Лента событий - требует доработки
+    *   ❌ Матчинг - требует доработки
+    *   ❌ Загрузка фото - требует тестирования
 
 ---
 
-## 2. Что требует улучшения (Roadmap)
+## 2. Приоритеты на завтра (10 марта 2026)
 
-### 🔴 Приоритет: Высокий (Технический долг Flutter)
+### 🔴 ВЫСОКИЙ ПРИОРИТЕТ
+1.  **Онбординг (SetupProfileScreen):**
+    *   Завершить настройку профиля
+    *   Сохранение данных (displayName, bio, age, gender, interests)
+    *   Обновление `isOnboardingCompleted = true`
+    *   Переход к HomeShell после завершения
+
+2.  **Загрузка фотографий:**
+    *   Интеграция upload-service с SetupProfileScreen
+    *   Загрузка аватара пользователя
+    *   Сохранение `photoUrl` в базу
+
+### 🟡 СРЕДНИЙ ПРИОРИТЕТ  
+3.  **Home Screen:**
+    *   Реализация HomeShell с табами
+    *   Отображение ближайших событий
+    *   Навигация между разделами
+
+4.  **События:**
+    *   Создание событий через events-service
+    *   Список событий
+    *   Присоединение к событиям
+
+### 🟢 НИЗКИЙ ПРИОРИТЕТ (Технический долг)
 1.  **Dependency Injection (DI):**
-    *   *Проблема:* Сервисы создаются прямо в виджетах (`AuthBloc(authService: AuthService())`). Тестировать невозможно.
-    *   *Решение:* Внедрить `get_it` + `injectable` для управления зависимостями.
+    *   Внедрить `get_it` + `injectable`
 2.  **Навигация:**
-    *   *Проблема:* Сейчас используется нативная навигация `Navigator.push`, местами хардкод переходов.
-    *   *Решение:* Перейти на `go_router` или `auto_route` для поддержки Deep Links и Web.
+    *   Перейти на `go_router` для Deep Links
 3.  **Deprecated API:**
-    *   *Задча:* Заменить все вызовы `color.withOpacity(...)` на новый синтаксис `color.withValues(alpha: ...)` (Flutter 3.22+).
+    *   Заменить `color.withOpacity()` на `color.withValues(alpha: ...)`
 4.  **Сетевой слой:**
-    *   *Задача:* В проекте смешаны `http` и `dio`. Нужно привести всё к единому клиенту (`Dio`) с интерцепторами для логирования и обработки токенов.
+    *   Унифицировать на `Dio` с интерцепторами
 
 ### 🟡 Приоритет: Средний (Бэкенд и Инфраструктура)
 1.  **API Gateway Routing:**

@@ -26,7 +26,7 @@ public class UserRepository {
 
     public Optional<UserDto> findByEmail(String email) {
         List<UserDto> rows = jdbcTemplate.query(
-                "SELECT * FROM \"User\" WHERE email = ?",
+                "SELECT * FROM users.\"User\" WHERE email = ?",
                 mapper(),
                 email
         );
@@ -35,7 +35,7 @@ public class UserRepository {
 
     public Optional<UserDto> findById(String id) {
         List<UserDto> rows = jdbcTemplate.query(
-                "SELECT * FROM \"User\" WHERE id = ?",
+                "SELECT * FROM users.\"User\" WHERE id = ?",
                 mapper(),
                 id
         );
@@ -44,7 +44,7 @@ public class UserRepository {
 
     public Optional<UserDto> findByFirebaseUid(String firebaseUid) {
         List<UserDto> rows = jdbcTemplate.query(
-                "SELECT * FROM \"User\" WHERE \"firebaseUid\" = ? OR \"supabaseUid\" = ?",
+                "SELECT * FROM users.\"User\" WHERE \"firebaseUid\" = ? OR \"supabaseUid\" = ?",
                 mapper(),
                 firebaseUid,
                 firebaseUid
@@ -54,7 +54,7 @@ public class UserRepository {
 
     public UserDto insertUser(String id, String firebaseUid, String email, String displayName, String photoUrl) {
         jdbcTemplate.update(
-                "INSERT INTO \"User\" (id, \"firebaseUid\", \"supabaseUid\", email, \"displayName\", \"photoUrl\", \"createdAt\", \"updatedAt\") VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                "INSERT INTO users.\"User\" (id, \"firebaseUid\", \"supabaseUid\", email, \"displayName\", \"photoUrl\", \"createdAt\", \"updatedAt\") VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
                 id,
                 firebaseUid,
                 firebaseUid,
@@ -67,7 +67,7 @@ public class UserRepository {
 
     public UserDto updateFirebaseUid(String userId, String firebaseUid) {
         jdbcTemplate.update(
-                "UPDATE \"User\" SET \"firebaseUid\" = ?, \"supabaseUid\" = COALESCE(\"supabaseUid\", ?), \"updatedAt\" = NOW() WHERE id = ?",
+                "UPDATE users.\"User\" SET \"firebaseUid\" = ?, \"supabaseUid\" = COALESCE(\"supabaseUid\", ?), \"updatedAt\" = NOW() WHERE id = ?",
                 firebaseUid,
                 firebaseUid,
                 userId
@@ -81,7 +81,7 @@ public class UserRepository {
         }
 
         List<Object> params = new ArrayList<>();
-        StringBuilder sql = new StringBuilder("UPDATE \"User\" SET ");
+        StringBuilder sql = new StringBuilder("UPDATE users.\"User\" SET ");
 
         int i = 0;
         for (Map.Entry<String, Object> e : updates.entrySet()) {
@@ -98,7 +98,7 @@ public class UserRepository {
 
     public void updateLocation(String userId, double latitude, double longitude) {
         jdbcTemplate.update(
-                "UPDATE \"User\" SET \"lastLatitude\" = ?, \"lastLongitude\" = ?, \"lastLocationUpdate\" = NOW(), \"updatedAt\" = NOW() WHERE id = ?",
+                "UPDATE users.\"User\" SET \"lastLatitude\" = ?, \"lastLongitude\" = ?, \"lastLocationUpdate\" = NOW(), \"updatedAt\" = NOW() WHERE id = ?",
                 latitude,
                 longitude,
                 userId
@@ -124,7 +124,7 @@ public class UserRepository {
         double maxLon = userLon + lonChange;
 
         StringBuilder sql = new StringBuilder(
-                "SELECT * FROM \"User\" WHERE id <> ? " +
+                "SELECT * FROM users.\"User\" WHERE id <> ? " +
                         "AND \"isOnboardingCompleted\" = true " +
                         "AND \"isProfileVisible\" = true " +
                         "AND \"lastLatitude\" BETWEEN ? AND ? " +

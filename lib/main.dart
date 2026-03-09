@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 // import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'app/andex_app.dart';
+import 'firebase_options.dart';
 // import 'core/config/firebase_config.dart';
 
 // Background message handler
@@ -25,7 +26,9 @@ void main() async {
   // );
   
   // Initialize Firebase (uses android/app/google-services.json and ios/Runner/GoogleService-Info.plist)
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   // Setup background messaging handler
   // FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);

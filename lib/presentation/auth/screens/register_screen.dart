@@ -73,8 +73,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
 
         if (state is AuthAuthenticated) {
-          // Навигация через andex_app.dart - ничего не делаем здесь
-          LoggerService.warning('🟡 [RegisterScreen] AuthAuthenticated получен');
+          // Регистрация успешна - переходим к настройке профиля
+          LoggerService.warning('🟡 [RegisterScreen] AuthAuthenticated получен, переход к SetupProfileScreen');
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute<void>(
+              builder: (context) => const SetupProfileScreen(),
+            ),
+            (route) => false, // Удаляем все предыдущие routes
+          );
         } else if (state is AuthFailure) {
           // Показываем ошибку
           CustomNotification.error(context, state.message);

@@ -210,10 +210,14 @@ class AuthService {
     String? photoUrl,
   }) async {
     try {
+      LoggerService.info('[Backend] Создание пользователя: displayName=$displayName');
+      
       final token = await getIdToken();
       if (token == null || token.isEmpty) {
         throw Exception('Не удалось получить токен авторизации');
       }
+      
+      LoggerService.debug('[Backend] Token получен, отправка запроса к ${AppConfig.baseUrl}/users');
 
       final response = await http
           .post(
@@ -229,11 +233,18 @@ class AuthService {
           )
           .timeout(const Duration(seconds: 10));
 
+      LoggerService.info('[Backend] Response status: ${response.statusCode}');
+      LoggerService.debug('[Backend] Response body: ${response.body}');
+
       if (response.statusCode != 201 && response.statusCode != 409) {
-        throw Exception('Не удалось создать пользователя в базе данных (${response.statusCode})');
+        throw Exception('Не удалось создать пользователя в базе данных (${response.statusCode}): ${response.body}');
       }
+      
+      LoggerService.info('[Backend] Пользователь успешно создан');
     } catch (e) {
       LoggerService.error('[Backend] Ошибка создания пользователя в backend', e);
+      // Пробрасываем ошибку дальше чтобы AuthBloc мог обработать
+      rethrow;
     }
   }
 

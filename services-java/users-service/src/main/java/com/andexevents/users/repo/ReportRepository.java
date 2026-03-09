@@ -30,7 +30,7 @@ public class ReportRepository {
 
         jdbcTemplate.update(
                 """
-                INSERT INTO "Report" ("id", "reporterId", "targetUserId", "targetEventId",
+                INSERT INTO users."Report" ("id", "reporterId", "targetUserId", "targetEventId",
                     "reason", "details", "status", "createdAt", "updatedAt")
                 VALUES (?, ?, ?, ?, ?::"ReportReason", ?, 'PENDING', ?, ?)
                 """,
@@ -46,7 +46,7 @@ public class ReportRepository {
     public List<ReportDto> findAll() {
         return jdbcTemplate.query(
                 """
-                SELECT * FROM "Report" ORDER BY "createdAt" DESC
+                SELECT * FROM users."Report" ORDER BY "createdAt" DESC
                 """,
                 mapper()
         );
@@ -55,7 +55,7 @@ public class ReportRepository {
     public Optional<ReportDto> findById(String id) {
         List<ReportDto> rows = jdbcTemplate.query(
                 """
-                SELECT * FROM "Report" WHERE "id" = ?
+                SELECT * FROM users."Report" WHERE "id" = ?
                 """,
                 mapper(),
                 id
@@ -66,7 +66,7 @@ public class ReportRepository {
     public List<ReportDto> findByReporterId(String reporterId) {
         return jdbcTemplate.query(
                 """
-                SELECT * FROM "Report" WHERE "reporterId" = ? ORDER BY "createdAt" DESC
+                SELECT * FROM users."Report" WHERE "reporterId" = ? ORDER BY "createdAt" DESC
                 """,
                 mapper(),
                 reporterId
@@ -76,7 +76,7 @@ public class ReportRepository {
     public void resolve(String reportId, String resolverId, String status) {
         jdbcTemplate.update(
                 """
-                UPDATE "Report"
+                UPDATE users."Report"
                 SET "status" = ?::"ReportStatus", "resolverId" = ?, "resolvedAt" = NOW(), "updatedAt" = NOW()
                 WHERE "id" = ?
                 """,

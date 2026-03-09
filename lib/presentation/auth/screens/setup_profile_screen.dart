@@ -3,6 +3,7 @@ import '../../widgets/common/custom_notification.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../data/services/user_service.dart';
+import '../../../data/services/auth_service.dart';
 import 'setup_interests_screen.dart';
 import '../../widgets/common/custom_dropdown.dart';
 
@@ -103,16 +104,50 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
     );
   }
 
+  Future<bool> _handleBackPress() async {
+    // Показываем диалог подтверждения выхода
+    final bool? shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Выйти?'),
+        content: const Text('Вы уверены что хотите выйти? Прогресс настройки профиля не будет сохранен.'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Выйти', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      // Выполняем logout
+      await AuthService().signOut();
+      return true;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (didPop) return;
+        await _handleBackPress();
+      },
+      child: Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _handleBackPress,
         ),
         actions: <Widget>[
           TextButton(
@@ -377,6 +412,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
           ),
         ),
       ),
-    );
+      ), // Scaffold
+    ); // PopScope
   }
 }

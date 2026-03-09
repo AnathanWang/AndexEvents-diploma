@@ -15,7 +15,7 @@ public class UserLookupRepository {
 
     public Optional<String> findUserIdByFirebaseUid(String firebaseUid) {
         return jdbcTemplate.query(
-                "SELECT id FROM \"User\" WHERE \"firebaseUid\" = ? OR \"supabaseUid\" = ?",
+                "SELECT id FROM users.\"User\" WHERE \"firebaseUid\" = ? OR \"supabaseUid\" = ?",
                 rs -> rs.next() ? Optional.ofNullable(rs.getString("id")) : Optional.empty(),
                 firebaseUid,
                 firebaseUid
