@@ -40,13 +40,33 @@
 
 ## 🏗 Установка
 
-1. Клонируйте репозиторий:
+### 1. Клонируйте репозиторий:
 ```bash
 git clone https://github.com/YOUR_USERNAME/andexevents.git
 cd andexevents
 ```
 
-2. Установите зависимости:
+### 2. **ВАЖНО: Настройте Firebase конфигурацию**
+
+Проект использует Firebase для аутентификации. Конфигурационные файлы **не включены** в репозиторий.
+
+**Прочитайте инструкции**: [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
+
+Краткая версия:
+```bash
+# Скопируйте шаблон
+cp lib/firebase_options.dart.example lib/firebase_options.dart
+
+# Отредактируйте lib/firebase_options.dart и замените:
+# - YOUR_ANDROID_API_KEY на ваш Android API Key
+# - YOUR_IOS_API_KEY на ваш iOS API Key
+```
+
+Также загрузите из Firebase Console:
+- `android/app/google-services.json` (Android)
+- `ios/Runner/GoogleService-Info.plist` (iOS)
+
+### 3. Установите зависимости:
 ```bash
 flutter pub get
 ```
