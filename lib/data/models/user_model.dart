@@ -1,7 +1,7 @@
 /// Модель пользователя
 class UserModel {
   final String id;
-  final String supabaseUid;
+  final String firebaseUid;
   final String email;
   final String? displayName;
   final String? photoUrl;
@@ -14,12 +14,12 @@ class UserModel {
   final double? lastLatitude;
   final double? lastLongitude;
   final bool isOnboardingCompleted;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   const UserModel({
     required this.id,
-    required this.supabaseUid,
+    required this.firebaseUid,
     required this.email,
     this.displayName,
     this.photoUrl,
@@ -32,14 +32,14 @@ class UserModel {
     this.lastLatitude,
     this.lastLongitude,
     required this.isOnboardingCompleted,
-    required this.createdAt,
-    required this.updatedAt,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'] as String,
-      supabaseUid: json['supabaseUid'] as String,
+      firebaseUid: (json['firebaseUid'] ?? json['supabaseUid']) as String,
       email: json['email'] as String,
       displayName: json['displayName'] as String?,
       photoUrl: json['photoUrl'] as String?,
@@ -60,15 +60,15 @@ class UserModel {
       lastLatitude: (json['lastLatitude'] as num?)?.toDouble(),
       lastLongitude: (json['lastLongitude'] as num?)?.toDouble(),
       isOnboardingCompleted: json['isOnboardingCompleted'] as bool? ?? false,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : null,
+      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'] as String) : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'supabaseUid': supabaseUid,
+      'firebaseUid': firebaseUid,
       'email': email,
       'displayName': displayName,
       'photoUrl': photoUrl,
@@ -81,14 +81,14 @@ class UserModel {
       'lastLatitude': lastLatitude,
       'lastLongitude': lastLongitude,
       'isOnboardingCompleted': isOnboardingCompleted,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 
   UserModel copyWith({
     String? id,
-    String? supabaseUid,
+    String? firebaseUid,
     String? email,
     String? displayName,
     String? photoUrl,
@@ -106,7 +106,7 @@ class UserModel {
   }) {
     return UserModel(
       id: id ?? this.id,
-      supabaseUid: supabaseUid ?? this.supabaseUid,
+      firebaseUid: firebaseUid ?? this.firebaseUid,
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
       photoUrl: photoUrl ?? this.photoUrl,

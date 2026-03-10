@@ -172,36 +172,48 @@ class AuthService {
   /// Получить текущий профиль пользователя из бэкенда
   Future<Map<String, dynamic>> getCurrentUserProfile() async {
     try {
+      LoggerService.info('[AuthService] Получение токена...');
       final token = await getIdToken();
       if (token == null || token.isEmpty) {
         throw Exception('Пользователь не авторизован');
       }
+      
+      LoggerService.info('[AuthService] Token получен, длина: ${token.length}');
+      final url = '${AppConfig.baseUrl}/users/me';
+      LoggerService.info('[AuthService] GET $url');
 
       final response = await http.get(
-        Uri.parse('${AppConfig.baseUrl}/users/me'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
       ).timeout(AppConfig.receiveTimeout);
 
+      LoggerService.info('[AuthService] Response status: ${response.statusCode}');
+      LoggerService.debug('[AuthService] Response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        LoggerService.info('[AuthService] Профиль успешно загружен');
         return data['data'] as Map<String, dynamic>;
       }
 
-      throw Exception('Не удалось загрузить профиль пользователя');
+      throw Exception('Не удалось загрузить профиль пользователя (${response.statusCode}): ${response.body}');
     } on TimeoutException {
+      LoggerService.error('[AuthService] Timeout при запросе к ${AppConfig.baseUrl}/users/me');
       throw Exception(
         'Таймаут при запросе к API (${AppConfig.baseUrl}). '
         'Если вы на физическом устройстве, задайте API_BASE_URL через --dart-define.',
       );
     } on SocketException catch (e) {
+      LoggerService.error('[AuthService] SocketException: ${e.message}');
       throw Exception(
         'Не удалось подключиться к API (${AppConfig.baseUrl}): ${e.message}',
       );
     } catch (e) {
-      throw Exception('Ошибка загрузки профиля: $e');
+      LoggerService.error('[AuthService] Ошибка загрузки профиля', e);
+      rethrow;
     }
   }
 

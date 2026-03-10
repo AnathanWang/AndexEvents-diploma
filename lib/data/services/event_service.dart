@@ -134,7 +134,12 @@ class EventService {
       final headers = <String, String>{'Content-Type': 'application/json'};
       if (token != null) headers['Authorization'] = 'Bearer $token';
 
+      LoggerService.debug('[EventService] 🔹 Loading events: $uri');
+
       final response = await http.get(uri, headers: headers).timeout(AppConfig.receiveTimeout);
+
+      LoggerService.debug('[EventService] 🔹 Response status: ${response.statusCode}');
+      LoggerService.debug('[EventService] 🔹 Response body: ${response.body}');
 
       if (response.statusCode != 200) {
         final errorData = json.decode(response.body);

@@ -68,7 +68,7 @@ class SampleData {
       longitude: null,
       userModel: UserModel(
         id: 'user_1',
-        supabaseUid: 'sup_user_1',
+        firebaseUid: 'sup_user_1',
         email: 'liza@example.com',
         displayName: 'Лиза',
         photoUrl: null,
@@ -97,7 +97,7 @@ class SampleData {
       longitude: null,
       userModel: UserModel(
         id: 'user_2',
-        supabaseUid: 'sup_user_2',
+        firebaseUid: 'sup_user_2',
         email: 'nikita@example.com',
         displayName: 'Никита',
         photoUrl: null,
@@ -126,7 +126,7 @@ class SampleData {
       longitude: null,
       userModel: UserModel(
         id: 'user_3',
-        supabaseUid: 'sup_user_3',
+        firebaseUid: 'sup_user_3',
         email: 'kamila@example.com',
         displayName: 'Камила',
         photoUrl: null,

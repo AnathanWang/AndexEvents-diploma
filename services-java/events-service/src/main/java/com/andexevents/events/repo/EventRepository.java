@@ -23,8 +23,8 @@ public class EventRepository {
         String id = UUID.randomUUID().toString();
 
         jdbcTemplate.update(
-                "INSERT INTO \"Event\" (id, title, description, category, location, latitude, longitude, \"locationGeo\", \"dateTime\", price, \"imageUrl\", \"isOnline\", status, \"createdById\", \"createdAt\", \"updatedAt\") " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?, ?, ?, ?, 'APPROVED'::\"EventStatus\", ?, NOW(), NOW())",
+                "INSERT INTO events.\"Event\" (id, title, description, category, location, latitude, longitude, \"locationGeo\", \"dateTime\", price, \"imageUrl\", \"isOnline\", status, \"createdById\", \"createdAt\", \"updatedAt\") " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?, ?, ?, ?, 'APPROVED'::events.\"EventStatus\", ?, NOW(), NOW())",
                 id,
                 p.title(),
                 p.description(),
@@ -46,7 +46,7 @@ public class EventRepository {
 
     public Optional<EventRow> findEventRowById(String id) {
         List<EventRow> rows = jdbcTemplate.query(
-                "SELECT * FROM \"Event\" WHERE id = ?",
+                "SELECT * FROM events.\"Event\" WHERE id = ?",
                 (rs, rn) -> mapEventRow(rs),
                 id
         );
@@ -55,7 +55,7 @@ public class EventRepository {
 
     public Optional<EventDtos.CreatorDto> findCreatorByEventId(String eventId) {
         List<EventDtos.CreatorDto> rows = jdbcTemplate.query(
-                "SELECT u.id, u.\"displayName\", u.\"photoUrl\" FROM \"User\" u JOIN \"Event\" e ON e.\"createdById\" = u.id WHERE e.id = ?",
+                "SELECT u.id, u.\"displayName\", u.\"photoUrl\" FROM users.\"User\" u JOIN events.\"Event\" e ON e.\"createdById\" = u.id WHERE e.id = ?",
                 (rs, rn) -> new EventDtos.CreatorDto(rs.getString("id"), rs.getString("displayName"), rs.getString("photoUrl")),
                 eventId
         );
@@ -64,7 +64,7 @@ public class EventRepository {
 
     public long countParticipants(String eventId) {
         Long v = jdbcTemplate.queryForObject(
-                "SELECT COUNT(1) FROM \"Participant\" WHERE \"eventId\" = ?",
+                "SELECT COUNT(1) FROM events.\"Participant\" WHERE \"eventId\" = ?",
                 Long.class,
                 eventId
         );
@@ -73,7 +73,7 @@ public class EventRepository {
 
     public boolean isParticipating(String eventId, String userId) {
         Integer v = jdbcTemplate.query(
-                "SELECT 1 FROM \"Participant\" WHERE \"eventId\" = ? AND \"userId\" = ? LIMIT 1",
+                "SELECT 1 FROM events.\"Participant\" WHERE \"eventId\" = ? AND \"userId\" = ? LIMIT 1",
                 rs -> rs.next() ? 1 : 0,
                 eventId,
                 userId
@@ -85,7 +85,7 @@ public class EventRepository {
         return jdbcTemplate.query(
                 "SELECT p.id, p.\"userId\", p.\"eventId\", p.status, p.\"joinedAt\", p.\"updatedAt\", " +
                         "u.id as u_id, u.\"displayName\" as u_displayName, u.\"photoUrl\" as u_photoUrl, u.email as u_email " +
-                        "FROM \"Participant\" p JOIN \"User\" u ON u.id = p.\"userId\" " +
+                        "FROM events.\"Participant\" p JOIN users.\"User\" u ON u.id = p.\"userId\" " +
                         "WHERE p.\"eventId\" = ? ORDER BY p.\"joinedAt\" DESC LIMIT ?",
                 (rs, rn) -> mapParticipant(rs),
                 eventId,
@@ -97,7 +97,7 @@ public class EventRepository {
         return jdbcTemplate.query(
             "SELECT p.id, p.\"userId\", p.\"eventId\", p.status, p.\"joinedAt\", p.\"updatedAt\", " +
                 "u.id as u_id, u.\"displayName\" as u_displayName, u.\"photoUrl\" as u_photoUrl, u.email as u_email " +
-                "FROM \"Participant\" p JOIN \"User\" u ON u.id = p.\"userId\" " +
+                "FROM events.\"Participant\" p JOIN users.\"User\" u ON u.id = p.\"userId\" " +
                 "WHERE p.\"eventId\" = ? ORDER BY p.\"joinedAt\" DESC",
             (rs, rn) -> mapParticipant(rs),
             eventId
@@ -106,14 +106,14 @@ public class EventRepository {
 
     public List<EventRow> listApprovedEvents() {
         return jdbcTemplate.query(
-                "SELECT * FROM \"Event\" WHERE status = 'APPROVED'::\"EventStatus\" ORDER BY \"createdAt\" DESC",
+                "SELECT * FROM events.\"Event\" WHERE status = 'APPROVED'::events.\"EventStatus\" ORDER BY \"createdAt\" DESC",
                 (rs, rn) -> mapEventRow(rs)
         );
     }
 
     public List<EventRow> listUserApprovedEvents(String userId) {
         return jdbcTemplate.query(
-                "SELECT * FROM \"Event\" WHERE status = 'APPROVED'::\"EventStatus\" AND \"createdById\" = ? ORDER BY \"createdAt\" DESC",
+                "SELECT * FROM events.\"Event\" WHERE status = 'APPROVED'::events.\"EventStatus\" AND \"createdById\" = ? ORDER BY \"createdAt\" DESC",
                 (rs, rn) -> mapEventRow(rs),
                 userId
         );
@@ -138,10 +138,10 @@ public class EventRepository {
                         "ST_Distance(e.\"locationGeo\", ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography) as distance, " +
                         "u.id as u_id, u.\"displayName\" as u_displayName, u.\"photoUrl\" as u_photoUrl, " +
                         "COUNT(p.id) as \"participantCount\" " +
-                        "FROM \"Event\" e " +
-                        "LEFT JOIN \"User\" u ON e.\"createdById\" = u.id " +
-                        "LEFT JOIN \"Participant\" p ON e.id = p.\"eventId\" " +
-                        "WHERE e.status = 'APPROVED'::\"EventStatus\" AND e.\"isOnline\" = false " +
+                        "FROM events.\"Event\" e " +
+                        "LEFT JOIN users.\"User\" u ON e.\"createdById\" = u.id " +
+                        "LEFT JOIN events.\"Participant\" p ON e.id = p.\"eventId\" " +
+                        "WHERE e.status = 'APPROVED'::events.\"EventStatus\" AND e.\"isOnline\" = false " +
                         "AND ST_DWithin(e.\"locationGeo\", ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?) " +
                         categoryClause +
                         "GROUP BY e.id, u.id " +
@@ -166,8 +166,8 @@ public class EventRepository {
 
         String countSql =
                 "SELECT COUNT(DISTINCT e.id) " +
-                        "FROM \"Event\" e " +
-                        "WHERE e.status = 'APPROVED'::\"EventStatus\" AND e.\"isOnline\" = false " +
+                        "FROM events.\"Event\" e " +
+                        "WHERE e.status = 'APPROVED'::events.\"EventStatus\" AND e.\"isOnline\" = false " +
                         "AND ST_DWithin(e.\"locationGeo\", ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?) " +
                         categoryClause;
 
@@ -184,7 +184,7 @@ public class EventRepository {
     public Optional<EventRow> updateEvent(String eventId, EventUpdateParams p) {
         // For simplicity use update + re-read
         jdbcTemplate.update(
-                "UPDATE \"Event\" SET title = COALESCE(?, title), description = COALESCE(?, description), category = COALESCE(?, category), " +
+                "UPDATE events.\"Event\" SET title = COALESCE(?, title), description = COALESCE(?, description), category = COALESCE(?, category), " +
                         "location = COALESCE(?, location), latitude = COALESCE(?, latitude), longitude = COALESCE(?, longitude), " +
                         "\"locationGeo\" = CASE WHEN ? IS NOT NULL AND ? IS NOT NULL THEN ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography ELSE \"locationGeo\" END, " +
                         "\"dateTime\" = COALESCE(?, \"dateTime\"), price = COALESCE(?, price), \"imageUrl\" = COALESCE(?, \"imageUrl\"), \"isOnline\" = COALESCE(?, \"isOnline\"), \"updatedAt\" = NOW() " +
@@ -209,14 +209,14 @@ public class EventRepository {
     }
 
     public boolean deleteEvent(String eventId) {
-        int affected = jdbcTemplate.update("DELETE FROM \"Event\" WHERE id = ?", eventId);
+        int affected = jdbcTemplate.update("DELETE FROM events.\"Event\" WHERE id = ?", eventId);
         return affected > 0;
     }
 
     public Optional<ParticipantRow> upsertParticipation(String eventId, String userId, String status) {
         String id = UUID.randomUUID().toString();
         List<ParticipantRow> rows = jdbcTemplate.query(
-                "INSERT INTO \"Participant\" (id, \"userId\", \"eventId\", status, \"joinedAt\", \"updatedAt\") " +
+                "INSERT INTO events.\"Participant\" (id, \"userId\", \"eventId\", status, \"joinedAt\", \"updatedAt\") " +
                         "VALUES (?, ?, ?, ?::\"ParticipantStatus\", NOW(), NOW()) " +
                         "ON CONFLICT (\"userId\", \"eventId\") DO UPDATE SET status = EXCLUDED.status, \"updatedAt\" = NOW() " +
                         "RETURNING id, \"userId\", \"eventId\", status, \"joinedAt\", \"updatedAt\"",
@@ -231,7 +231,7 @@ public class EventRepository {
 
     public Optional<ParticipantRow> deleteParticipation(String eventId, String userId) {
         List<ParticipantRow> rows = jdbcTemplate.query(
-                "DELETE FROM \"Participant\" WHERE \"eventId\" = ? AND \"userId\" = ? RETURNING id, \"userId\", \"eventId\", status, \"joinedAt\", \"updatedAt\"",
+                "DELETE FROM events.\"Participant\" WHERE \"eventId\" = ? AND \"userId\" = ? RETURNING id, \"userId\", \"eventId\", status, \"joinedAt\", \"updatedAt\"",
                 (rs, rn) -> mapParticipantRow(rs),
                 eventId,
                 userId

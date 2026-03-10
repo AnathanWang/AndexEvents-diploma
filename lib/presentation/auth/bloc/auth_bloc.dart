@@ -39,18 +39,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthCheckRequested event,
     Emitter<AuthState> emit,
   ) async {
+    LoggerService.info('🔵 [AuthBloc] Проверка начального состояния...');
     final User? user = _authService.currentUser;
     if (user != null) {
+      LoggerService.info('🔵 [AuthBloc] Пользователь найден в Firebase: ${user.email}');
       try {
         // Загружаем профиль из бэкенда для проверки onboarding
+        LoggerService.info('🔵 [AuthBloc] Загрузка профиля из backend...');
         final userProfile = await _authService.getCurrentUserProfile();
+        LoggerService.info('🔵 [AuthBloc] Профиль получен: $userProfile');
         final bool isOnboardingCompleted = userProfile['isOnboardingCompleted'] ?? false;
+        LoggerService.info('🔵 [AuthBloc] isOnboardingCompleted = $isOnboardingCompleted');
         emit(AuthAuthenticated(user: user, isOnboardingCompleted: isOnboardingCompleted));
       } catch (e) {
         // Если не удалось загрузить профиль, считаем что onboarding не завершен
+        LoggerService.error('🔴 [AuthBloc] Ошибка загрузки профиля при проверке состояния', e);
+        LoggerService.warning('🟡 [AuthBloc] Устанавливаем isOnboardingCompleted = false');
         emit(AuthAuthenticated(user: user, isOnboardingCompleted: false));
       }
     } else {
+      LoggerService.info('🔵 [AuthBloc] Пользователь не найден, показываем Onboarding');
       emit(const AuthUnauthenticated());
     }
   }
@@ -75,14 +83,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       // Загружаем профиль для проверки onboarding
       try {
+        LoggerService.info('🔵 [AuthBloc] Загрузка профиля пользователя...');
         final userProfile = await _authService.getCurrentUserProfile();
+        LoggerService.info('🔵 [AuthBloc] Профиль получен: $userProfile');
         final bool isOnboardingCompleted = userProfile['isOnboardingCompleted'] ?? false;
+        LoggerService.info('🔵 [AuthBloc] isOnboardingCompleted = $isOnboardingCompleted');
         emit(AuthAuthenticated(
           user: user,
           isOnboardingCompleted: isOnboardingCompleted,
         ));
       } catch (e) {
         // Если не удалось загрузить профиль, считаем что onboarding не завершен
+        LoggerService.error('🔴 [AuthBloc] Ошибка загрузки профиля', e);
+        LoggerService.warning('🟡 [AuthBloc] Устанавливаем isOnboardingCompleted = false');
         emit(AuthAuthenticated(
           user: user,
           isOnboardingCompleted: false,

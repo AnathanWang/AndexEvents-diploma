@@ -213,7 +213,7 @@ func (r *matchRepository) GetMutualMatchUsers(ctx context.Context, userID string
 			u."minAge", u."maxAge", u."maxDistance", u."fcmToken", u."isOnboardingCompleted",
 			u."createdAt", u."updatedAt"
 		FROM "Match" m
-		JOIN "User" u ON u.id = CASE WHEN m."userAId" = $1 THEN m."userBId" ELSE m."userAId" END
+		JOIN users."User" u ON u.id = CASE WHEN m."userAId" = $1 THEN m."userBId" ELSE m."userAId" END
 		WHERE m."isMutual" = true AND (m."userAId" = $1 OR m."userBId" = $1)
 		ORDER BY m."matchedAt" DESC NULLS LAST, m."updatedAt" DESC
 	`
@@ -262,7 +262,7 @@ func (r *matchRepository) GetActionUsers(ctx context.Context, userID string, act
 			u."minAge", u."maxAge", u."maxDistance", u."fcmToken", u."isOnboardingCompleted",
 			u."createdAt", u."updatedAt"
 		FROM recent m
-		JOIN "User" u ON u.id = CASE WHEN m."userAId" = $1 THEN m."userBId" ELSE m."userAId" END
+		JOIN users."User" u ON u.id = CASE WHEN m."userAId" = $1 THEN m."userBId" ELSE m."userAId" END
 		WHERE (CASE WHEN m."userAId" = $1 THEN m."userAAction" ELSE m."userBAction" END) = $3
 		ORDER BY m."createdAt" DESC
 	`

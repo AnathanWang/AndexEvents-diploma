@@ -68,7 +68,7 @@ func AuthMiddleware(firebaseClient *firebase.Client, pool *pgxpool.Pool) gin.Han
 
 		var dbUserID string
 		err = pool.QueryRow(c.Request.Context(),
-			`SELECT id FROM users."User" WHERE "supabaseUid" = $1`, uid,
+			`SELECT id FROM users."User" WHERE "firebaseUid" = $1 OR "supabaseUid" = $1`, uid,
 		).Scan(&dbUserID)
 
 		if err == nil {
