@@ -1,0 +1,90 @@
+name: Build Android APK/AAB
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type (apk or appbundle)'
+        required: true
+        default: 'apk'
+        type: choice
+        options:
+          - apk
+          - appbundle
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+        
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.x'
+        channel: 'stable'
+        cache: true
+        
+    - name: Get dependencies
+      run: flutter pub get
+      
+    - name: Run tests
+      run: flutter test
+      
+    - name: Setup Android signing
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+        echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" > android/key.properties
+        echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> android/key.properties
+        echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> android/key.properties
+        echo "storeFile=upload-keystore.jks" >> android/key.properties
+        
+    - name: Build APK (Debug)
+      if: github.ref != 'refs/heads/main'
+      run: |
+        flutter build apk --debug \
+          --dart-define=YANDEX_MAPKIT_API_KEY=${{ secrets.YANDEX_MAPKIT_API_KEY }} \
+          --dart-define=YANDEX_API_KEY=${{ secrets.YANDEX_GEOCODING_API_KEY }}
+          
+    - name: Build APK (Release)
+      if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event.inputs.build_type == 'apk')
+      run: |
+        flutter build apk --release \
+          --dart-define=YANDEX_MAPKIT_API_KEY=${{ secrets.YANDEX_MAPKIT_API_KEY }} \
+          --dart-define=YANDEX_API_KEY=${{ secrets.YANDEX_GEOCODING_API_KEY }}
+          
+    - name: Build App Bundle (Release)
+      if: github.ref == 'refs/heads/main' && github.event.inputs.build_type == 'appbundle'
+      run: |
+        flutter build appbundle --release \
+          --dart-define=YANDEX_MAPKIT_API_KEY=${{ secrets.YANDEX_MAPKIT_API_KEY }} \
+          --dart-define=YANDEX_API_KEY=${{ secrets.YANDEX_GEOCODING_API_KEY }}
+          
+    - name: Upload APK artifact
+      if: github.event.inputs.build_type != 'appbundle'
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-apk
+        path: build/app/outputs/flutter-apk/*.apk
+        retention-days: 30
+        
+    - name: Upload App Bundle artifact
+      if: github.event.inputs.build_type == 'appbundle'
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-bundle
+        path: build/app/outputs/bundle/release/*.aab
+        retention-days: 30

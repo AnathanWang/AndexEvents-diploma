@@ -141,7 +141,99 @@ flutter run
 6. Если нужно автоматизировать ещё больше
    - Можно добавить `scripts/start-dev.sh`, который экспортирует переменные и запускает `flutter run` и/или бэкенд. Скажите — подготовлю.
 
-## 📦 Структура проекта
+## � Production Deployment
+
+### Локальная сборка для Production
+
+Используйте скрипт для автоматизированной production сборки:
+
+```bash
+# Android APK
+./scripts/build-production.sh android
+
+# Android App Bundle (для Google Play)
+./scripts/build-production.sh appbundle
+
+# iOS
+./scripts/build-production.sh ios
+
+# Web
+./scripts/build-production.sh web
+```
+
+**Требования:**
+- API ключи должны быть в `secrets/yandex_mapkit_api_key.txt` и `secrets/yandex_geocode_api_key.txt`
+- Для signed Android builds: настройте `android/key.properties` и keystore
+- Для iOS: подписание и архивация выполняются в Xcode
+
+### CI/CD на GitHub Actions
+
+Проект включает готовые workflows для автоматической сборки:
+
+1. **Настройка GitHub Secrets** (Settings → Secrets and variables → Actions):
+   ```
+   YANDEX_MAPKIT_API_KEY        # Ваш Yandex MapKit API ключ
+   YANDEX_GEOCODING_API_KEY     # Ваш Yandex Geocoding API ключ
+   ANDROID_KEYSTORE_BASE64      # Base64-encoded Android keystore
+   ANDROID_KEYSTORE_PASSWORD    # Пароль от keystore
+   ANDROID_KEY_PASSWORD         # Пароль от ключа
+   ANDROID_KEY_ALIAS            # Алиас ключа
+   ```
+
+2. **Android Build** (`.github/workflows/build-android.yml`):
+   - Автоматически собирает APK при push в `main` или `develop`
+   - Для release builds требуется настройка Android signing
+   - Артефакты сохраняются на 30 дней
+
+3. **iOS Build** (`.github/workflows/build-ios.yml`):
+   - Автоматически собирает iOS app при push в `main`
+   - Требует macOS runner (платный на GitHub)
+   - Для подписи apps нужна дополнительная настройка certificates
+
+### Создание Android Keystore
+
+Для signed release builds:
+
+```bash
+# Создать keystore
+keytool -genkey -v -keystore upload-keystore.jks \
+  -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+
+# Конвертировать в Base64 для GitHub Secrets
+base64 upload-keystore.jks > keystore.base64.txt
+
+# Создать key.properties (НЕ коммитить!)
+cat > android/key.properties << EOF
+storePassword=ваш_пароль_keystore
+keyPassword=ваш_пароль_ключа
+keyAlias=upload
+storeFile=upload-keystore.jks
+EOF
+```
+
+### Безопасность в Production
+
+**✅ Правильно:**
+- Хранить ключи в GitHub Secrets / CI environment variables
+- Использовать отдельные ключи для dev/staging/production
+- Ограничить API ключи по домену/bundle ID
+- Регулярно ротировать ключи
+
+**❌ Неправильно:**
+- Хардкодить ключи в коде
+- Коммитить `.vscode/launch.json` с реальными ключами
+- Использовать production ключи в development
+- Публиковать ключи в логах CI/CD
+
+### Мониторинг Production
+
+После деплоя следите за:
+- Квотами Yandex API (dashboard.yandex.ru)
+- Ошибками в Firebase Crashlytics
+- Производительностью через Firebase Performance
+- Отзывами пользователей в Google Play / App Store
+
+## �📦 Структура проекта
 
 ```
 lib/

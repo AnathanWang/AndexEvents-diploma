@@ -1,0 +1,37 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "andexevents (dev)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define=YANDEX_MAPKIT_API_KEY=YOUR_MAPKIT_KEY_HERE",
+        "--dart-define=YANDEX_API_KEY=YOUR_GEOCODING_KEY_HERE"
+      ]
+    },
+    {
+      "name": "andexevents (profile)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "profile",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define=YANDEX_MAPKIT_API_KEY=YOUR_MAPKIT_KEY_HERE",
+        "--dart-define=YANDEX_API_KEY=YOUR_GEOCODING_KEY_HERE"
+      ]
+    },
+    {
+      "name": "andexevents (release)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define=YANDEX_MAPKIT_API_KEY=YOUR_MAPKIT_KEY_HERE",
+        "--dart-define=YANDEX_API_KEY=YOUR_GEOCODING_KEY_HERE"
+      ]
+    }
+  ]
+}

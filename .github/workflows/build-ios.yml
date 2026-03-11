@@ -1,0 +1,49 @@
+name: Build iOS App
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.x'
+        channel: 'stable'
+        cache: true
+        
+    - name: Get dependencies
+      run: flutter pub get
+      
+    - name: Run tests
+      run: flutter test
+      
+    - name: Setup Yandex MapKit API key
+      run: |
+        echo "YANDEX_MAPKIT_API_KEY = ${{ secrets.YANDEX_MAPKIT_API_KEY }}" > ios/Secrets.xcconfig
+        
+    - name: Install CocoaPods
+      run: |
+        cd ios
+        pod install
+        
+    - name: Build iOS (No Codesign)
+      run: |
+        flutter build ios --release --no-codesign \
+          --dart-define=YANDEX_MAPKIT_API_KEY=${{ secrets.YANDEX_MAPKIT_API_KEY }} \
+          --dart-define=YANDEX_API_KEY=${{ secrets.YANDEX_GEOCODING_API_KEY }}
+          
+    - name: Upload IPA artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-app
+        path: build/ios/iphoneos/*.app
+        retention-days: 30
