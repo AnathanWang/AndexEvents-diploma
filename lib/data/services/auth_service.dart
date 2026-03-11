@@ -169,6 +169,22 @@ class AuthService {
     }
   }
 
+  /// Проверка доступности email (не занят ли он)
+  /// Возвращает true если email свободен, false если занят
+  Future<bool> checkEmailAvailability(String email) async {
+    try {
+      final trimmedEmail = email.trim();
+      final signInMethods = await _auth.fetchSignInMethodsForEmail(trimmedEmail);
+      // Если список пустой - email свободен
+      // Если есть методы входа - email уже зарегистрирован
+      return signInMethods.isEmpty;
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_mapFirebaseAuthException(e));
+    } catch (e) {
+      throw Exception('Ошибка проверки email: $e');
+    }
+  }
+
   /// Получить текущий профиль пользователя из бэкенда
   Future<Map<String, dynamic>> getCurrentUserProfile() async {
     try {

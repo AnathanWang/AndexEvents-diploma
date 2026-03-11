@@ -5,6 +5,12 @@
 **Текущая версия:** MVP (Alpha)  
 **Статус проекта:** Активная разработка + TDD
 
+**📊 Прогресс:** 1/48 задач выполнено (2.08%)  
+- 🔴 Критические: 1/9 ✅
+- 🟡 Высокие: 0/12
+- 🟠 Средние: 0/18
+- 🟢 Низкие: 0/9
+
 ---
 
 ## ✅ **Что уже работает**
@@ -113,16 +119,24 @@ Refs: ROADMAP.md #1
 
 ### 🔴 **КРИТИЧЕСКИ ВАЖНО (MVP)**
 
-#### 1. **Восстановление пароля**
-- **Файл:** `lib/presentation/auth/screens/login_screen.dart:223`
-- **Статус:** Backend готов (`auth_service.resetPassword`)
-- **TODO:**
-  - Создать экран `ForgotPasswordScreen`
-  - Форма ввода email
-  - Отправка письма для сброса пароля
-  - UI подтверждения отправки
+#### ✅ 1. **Восстановление пароля** — ВЫПОЛНЕНО (12 марта 2026)
+- **Файл:** `lib/presentation/auth/screens/forgot_password_screen.dart`
+- **Статус:** ✅ Реализовано с TDD подходом
+- **Commit:** `5636ffc` feat(auth): add password reset with TDD
+- **Тесты:** 20/20 passedинг (100% coverage)
+  - AuthService: 6 unit tests ✅
+  - AuthBloc: 5 bloc tests ✅
+  - ForgotPasswordScreen: 9 widget tests ✅
+- **Реализация:**
+  - ✅ Backend: `AuthService.resetPassword()` с обработкой ошибок
+  - ✅ BLoC: `AuthPasswordResetRequested` event handling
+  - ✅ UI: ForgotPasswordScreen с валидацией email
+  - ✅ Интеграция: Подключен к LoginScreen
+  - ✅ UX: Success dialog, error snackbar, loading state
 - **Приоритет:** Высокий
-- **Оценка:** 2-4 часа
+- **Оценка:** 2-4 часа → **Фактически: 2 часа**
+
+---
 
 #### 2. **Deep Links и Universal Links**
 - **Статус:** Не реализовано (нужно для шаринга и уведомлений)
