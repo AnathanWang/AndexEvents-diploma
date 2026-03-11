@@ -7,6 +7,7 @@ import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import 'register_screen.dart';
 import 'setup_profile_screen.dart';
+import 'forgot_password_screen.dart';
 import '../../home/home_shell.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -220,7 +221,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {
-                      // TODO: Восстановление пароля
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const ForgotPasswordScreen(),
+                        ),
+                      );
                     },
                     child: const Text(
                       'Забыли пароль?',
