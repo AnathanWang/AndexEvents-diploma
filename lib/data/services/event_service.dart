@@ -69,13 +69,13 @@ class EventService {
         'location': location,
         'latitude': latitude,
         'longitude': longitude,
-        'dateTime': dateTime.toIso8601String(),
+        'dateTime': dateTime.toUtc().toIso8601String(),
         'price': price,
         'isOnline': isOnline,
       };
 
       if (endDateTime != null) {
-        body['endDateTime'] = endDateTime.toIso8601String();
+        body['endDateTime'] = endDateTime.toUtc().toIso8601String();
       }
       if (imageUrl != null) body['imageUrl'] = imageUrl;
       if (maxParticipants != null) body['maxParticipants'] = maxParticipants;
@@ -320,9 +320,9 @@ class EventService {
       if (location != null) body['location'] = location;
       if (latitude != null) body['latitude'] = latitude;
       if (longitude != null) body['longitude'] = longitude;
-      if (dateTime != null) body['dateTime'] = dateTime.toIso8601String();
+      if (dateTime != null) body['dateTime'] = dateTime.toUtc().toIso8601String();
       if (endDateTime != null) {
-        body['endDateTime'] = endDateTime.toIso8601String();
+        body['endDateTime'] = endDateTime.toUtc().toIso8601String();
       }
       if (price != null) body['price'] = price;
       if (imageUrl != null) body['imageUrl'] = imageUrl;

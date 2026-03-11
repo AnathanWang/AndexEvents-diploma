@@ -42,6 +42,7 @@ public class EventController {
                 body.latitude(),
                 body.longitude(),
                 Instant.parse(body.dateTime()),
+                body.endDateTime() != null ? Instant.parse(body.endDateTime()) : null,
                 body.price(),
                 body.imageUrl(),
                 body.isOnline(),
@@ -134,6 +135,7 @@ public class EventController {
                 body.latitude(),
                 body.longitude(),
                 body.dateTime() == null ? null : Instant.parse(body.dateTime()),
+                body.endDateTime() == null ? null : Instant.parse(body.endDateTime()),
                 body.price(),
                 body.imageUrl(),
                 body.isOnline()
@@ -220,6 +222,7 @@ public class EventController {
             @NotNull Double latitude,
             @NotNull Double longitude,
             @NotBlank String dateTime,
+            String endDateTime,
             Double price,
             String imageUrl,
             Boolean isOnline
@@ -234,6 +237,7 @@ public class EventController {
             Double latitude,
             Double longitude,
             String dateTime,
+            String endDateTime,
             Double price,
             String imageUrl,
             Boolean isOnline

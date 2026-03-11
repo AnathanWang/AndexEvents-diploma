@@ -23,8 +23,8 @@ public class EventRepository {
         String id = UUID.randomUUID().toString();
 
         jdbcTemplate.update(
-                "INSERT INTO events.\"Event\" (id, title, description, category, location, latitude, longitude, \"locationGeo\", \"dateTime\", price, \"imageUrl\", \"isOnline\", status, \"createdById\", \"createdAt\", \"updatedAt\") " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?, ?, ?, ?, 'APPROVED'::events.\"EventStatus\", ?, NOW(), NOW())",
+                "INSERT INTO events.\"Event\" (id, title, description, category, location, latitude, longitude, \"locationGeo\", \"dateTime\", \"endDateTime\", price, \"imageUrl\", \"isOnline\", status, \"createdById\", \"createdAt\", \"updatedAt\") " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?, ?, ?, ?, ?, 'APPROVED'::events.\"EventStatus\", ?, NOW(), NOW())",
                 id,
                 p.title(),
                 p.description(),
@@ -35,6 +35,7 @@ public class EventRepository {
                 p.longitude(),
                 p.latitude(),
                 Timestamp.from(p.dateTime()),
+                p.endDateTime() != null ? Timestamp.from(p.endDateTime()) : null,
                 p.price() == null ? 0.0 : p.price(),
                 p.imageUrl(),
                 p.isOnline() != null && p.isOnline(),
@@ -187,7 +188,7 @@ public class EventRepository {
                 "UPDATE events.\"Event\" SET title = COALESCE(?, title), description = COALESCE(?, description), category = COALESCE(?, category), " +
                         "location = COALESCE(?, location), latitude = COALESCE(?, latitude), longitude = COALESCE(?, longitude), " +
                         "\"locationGeo\" = CASE WHEN ? IS NOT NULL AND ? IS NOT NULL THEN ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography ELSE \"locationGeo\" END, " +
-                        "\"dateTime\" = COALESCE(?, \"dateTime\"), price = COALESCE(?, price), \"imageUrl\" = COALESCE(?, \"imageUrl\"), \"isOnline\" = COALESCE(?, \"isOnline\"), \"updatedAt\" = NOW() " +
+                        "\"dateTime\" = COALESCE(?, \"dateTime\"), \"endDateTime\" = COALESCE(?, \"endDateTime\"), price = COALESCE(?, price), \"imageUrl\" = COALESCE(?, \"imageUrl\"), \"isOnline\" = COALESCE(?, \"isOnline\"), \"updatedAt\" = NOW() " +
                         "WHERE id = ?",
                 p.title(),
                 p.description(),
@@ -200,6 +201,7 @@ public class EventRepository {
                 p.longitude(),
                 p.latitude(),
                 p.dateTime() == null ? null : Timestamp.from(p.dateTime()),
+                p.endDateTime() == null ? null : Timestamp.from(p.endDateTime()),
                 p.price(),
                 p.imageUrl(),
                 p.isOnline(),
@@ -247,6 +249,7 @@ public class EventRepository {
             double latitude,
             double longitude,
             Instant dateTime,
+            Instant endDateTime,
             Double price,
             String imageUrl,
             Boolean isOnline,
@@ -262,6 +265,7 @@ public class EventRepository {
             Double latitude,
             Double longitude,
             Instant dateTime,
+            Instant endDateTime,
             Double price,
             String imageUrl,
             Boolean isOnline

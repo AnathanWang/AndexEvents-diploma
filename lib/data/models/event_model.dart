@@ -20,8 +20,8 @@ class EventModel {
   final int? minAge;
   final int? maxAge;
   final String? createdById;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   // Дополнительные поля для UI
   final int participantsCount;
@@ -49,8 +49,8 @@ class EventModel {
     this.minAge,
     this.maxAge,
     this.createdById,
-    required this.createdAt,
-    required this.updatedAt,
+    this.createdAt,
+    this.updatedAt,
     this.participantsCount = 0,
     this.isParticipating = false,
     this.creatorName,
@@ -96,8 +96,12 @@ class EventModel {
       minAge: json['minAge'] as int?,
       maxAge: json['maxAge'] as int?,
       createdById: json['createdById'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : null,
       participantsCount: participantsCount,
       isParticipating: json['isParticipating'] as bool? ?? false,
       creatorName: createdBy?['displayName'] as String?,
@@ -115,8 +119,8 @@ class EventModel {
       'location': location,
       'latitude': latitude,
       'longitude': longitude,
-      'dateTime': dateTime.toIso8601String(),
-      'endDateTime': endDateTime?.toIso8601String(),
+      'dateTime': dateTime.toUtc().toIso8601String(),
+      'endDateTime': endDateTime?.toUtc().toIso8601String(),
       'price': price,
       'imageUrl': imageUrl,
       'isOnline': isOnline,
@@ -126,8 +130,8 @@ class EventModel {
       'minAge': minAge,
       'maxAge': maxAge,
       'createdById': createdById,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 
