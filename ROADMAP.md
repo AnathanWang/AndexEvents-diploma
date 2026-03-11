@@ -5,8 +5,8 @@
 **Текущая версия:** MVP (Alpha)  
 **Статус проекта:** Активная разработка + TDD
 
-**📊 Прогресс:** 1/48 задач выполнено (2.08%)  
-- 🔴 Критические: 1/9 ✅
+**📊 Прогресс:** 2/49 задач выполнено (4.08%) 
+- 🔴 Критические: 2/10 ✅
 - 🟡 Высокие: 0/12
 - 🟠 Средние: 0/18
 - 🟢 Низкие: 0/9
@@ -119,7 +119,26 @@ Refs: ROADMAP.md #1
 
 ### 🔴 **КРИТИЧЕСКИ ВАЖНО (MVP)**
 
-#### ✅ 1. **Восстановление пароля** — ВЫПОЛНЕНО (12 марта 2026)
+#### ✅ 1. **Валидация email адреса при регистрации** — ВЫПОЛНЕНО (12 марта 2026)
+- **Файл:** `lib/presentation/auth/screens/register_screen.dart`
+- **Статус:** ✅ Реализовано с TDD подходом
+- **Commit:** `d979a7c` feat(auth): add email availability check with TDD
+- **Тесты:** 15/15 passing (100% coverage)
+  - AuthService: 7 unit tests ✅
+  - RegisterScreen: 8 widget tests ✅
+- **Реализация:**
+  - ✅ Backend: `AuthService.checkEmailAvailability()` через Firebase
+  - ✅ Debounce: 500ms delay для оптимизации API вызовов
+  - ✅ UI: Real-time индикаторы (✅ Доступен, ❌ Занят, loading spinner)
+  - ✅ Validation: Блокировка кнопки регистрации если email занят
+  - ✅ Error handling: Network errors, invalid format
+  - ✅ DI: Dependency injection для тестирования
+- **Приоритет:** 🔴 Критический
+- **Оценка:** 3-5 часов → **Фактически: 2.5 часа**
+
+---
+
+#### ✅ 2. **Восстановление пароля** — ВЫПОЛНЕНО (12 марта 2026)
 - **Файл:** `lib/presentation/auth/screens/forgot_password_screen.dart`
 - **Статус:** ✅ Реализовано с TDD подходом
 - **Commit:** `5636ffc` feat(auth): add password reset with TDD
@@ -138,7 +157,7 @@ Refs: ROADMAP.md #1
 
 ---
 
-#### 2. **Deep Links и Universal Links**
+#### 3. **Deep Links и Universal Links**
 - **Статус:** Не реализовано (нужно для шаринга и уведомлений)
 - **Сценарии:**
   - Открытие события по ссылке: `andexevents://event/{eventId}`
@@ -151,7 +170,7 @@ Refs: ROADMAP.md #1
 - **Приоритет:** Высокий
 - **Оценка:** 8-12 часов
 
-#### 3. **Push уведомления** ❌
+#### 4. **Push уведомления** ❌
 - **Статус:** Firebase подключен, но FCM не настроен
 - **Компоненты:**
   - **Backend:**
