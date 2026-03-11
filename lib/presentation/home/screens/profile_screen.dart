@@ -12,7 +12,6 @@ import '../../events/screens/edit_event_screen.dart';
 import '../../events/bloc/event_bloc.dart';
 import '../../models/event_preview.dart';
 import '../../models/match_preview.dart';
-import '../../widgets/admin_panel_snippet.dart';
 import '../../widgets/match_card.dart';
 import '../../widgets/section_header.dart';
 import '../../../data/services/user_service.dart';
@@ -315,31 +314,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 12),
               _buildMatchesList(),
               const SizedBox(height: 24),
-              const SectionHeader(
-                title: 'Инструменты модератора',
-                caption: 'Доступно для ролей admin и moderator',
-              ),
-              const SizedBox(height: 12),
-              const AdminPanelSnippet(),
-              
-              // Временная кнопка для перехода в Admin Dashboard
-              // В реальном приложении это должно быть скрыто за проверкой роли
-              const SizedBox(height: 24),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.admin_panel_settings),
-                  label: const Text('Admin Dashboard'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueGrey[900],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.all(16),
+              // Admin Dashboard Card
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+                  );
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: <Color>[
+                        Color(0xFF5E60CE),
+                        Color(0xFF9370DB),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 20,
+                        offset: Offset(0, 18),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: const <Widget>[
+                      Icon(
+                        Icons.admin_panel_settings_rounded,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              'Панель модератора',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Управление событиями и пользователями',
+                              style: TextStyle(
+                                color: Color(0xFFE8E8FF),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ],
                   ),
                 ),
               ),

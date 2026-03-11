@@ -9,122 +9,293 @@ class AdminDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Dashboard'),
-        backgroundColor: Colors.blueGrey[900],
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Overview',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 16,
-              runSpacing: 16,
-              children: [
-                _buildStatCard(
-                  context,
-                  'Active Reports',
-                  '12',
-                  Icons.warning,
-                  Colors.orange,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ReportsScreen()),
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: CustomScrollView(
+        slivers: [
+          // App Bar with gradient
+          SliverAppBar(
+            expandedHeight: 200,
+            pinned: true,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: <Color>[
+                      Color(0xFF5E60CE),
+                      Color(0xFF9370DB),
+                    ],
                   ),
                 ),
-                _buildStatCard(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const <Widget>[
+                      Icon(
+                        Icons.admin_panel_settings_rounded,
+                        color: Colors.white,
+                        size: 64,
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        'Панель модератора',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            leading: Container(
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF5E60CE)),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ),
+
+          // Content
+          SliverPadding(
+            padding: const EdgeInsets.all(20),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                const Text(
+                  'Инструменты',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF4A4D6A),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildActionCard(
                   context,
-                  'Pending Events',
-                  '5',
-                  Icons.event,
-                  Colors.blue,
-                  () => Navigator.push(
+                  title: 'Модерация событий',
+                  subtitle: 'Проверка и одобрение мероприятий',
+                  icon: Icons.event_available_rounded,
+                  gradientColors: const [Color(0xFF5E60CE), Color(0xFF9370DB)],
+                  badge: '5',
+                  onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const EventModerationScreen()),
                   ),
                 ),
-                _buildStatCard(
+                const SizedBox(height: 16),
+                _buildActionCard(
                   context,
-                  'Total Users',
-                  '1,234',
-                  Icons.people,
-                  Colors.green,
-                  () => Navigator.push(
+                  title: 'Жалобы и отчёты',
+                  subtitle: 'Рассмотрение пользовательских жалоб',
+                  icon: Icons.report_problem_rounded,
+                  gradientColors: const [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
+                  badge: '12',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildActionCard(
+                  context,
+                  title: 'Управление пользователями',
+                  subtitle: 'Список и статусы всех участников',
+                  icon: Icons.people_rounded,
+                  gradientColors: const [Color(0xFF4ECDC4), Color(0xFF44A08D)],
+                  badge: '1,234',
+                  onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const UsersListScreen()),
                   ),
                 ),
-              ],
+                const SizedBox(height: 32),
+                const Text(
+                  'Статистика',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF4A4D6A),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard(
+                        title: 'Активных событий',
+                        value: '128',
+                        icon: Icons.event,
+                        color: const Color(0xFF5E60CE),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildStatCard(
+                        title: 'Пользователей',
+                        value: '1.2K',
+                        icon: Icons.people,
+                        color: const Color(0xFF4ECDC4),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 100),
+              ]),
             ),
-            const SizedBox(height: 32),
-            const Text(
-              'Quick Actions',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required List<Color> gradientColors,
+    String? badge,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 20,
+              offset: Offset(0, 8),
             ),
-            const SizedBox(height: 16),
-            // Add quick action buttons here if needed
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: gradientColors,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF4A4D6A),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF9E9E9E),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (badge != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: gradientColors,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  badge,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Color(0xFF9E9E9E),
+              size: 16,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatCard(
-    BuildContext context,
-    String title,
-    String count,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return SizedBox(
-      width: 200,
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Icon(icon, color: color, size: 32),
-                    Icon(Icons.arrow_forward, color: Colors.grey[400], size: 16),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  count,
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 32),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
           ),
-        ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF9E9E9E),
+            ),
+          ),
+        ],
       ),
     );
   }
