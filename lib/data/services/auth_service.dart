@@ -60,6 +60,10 @@ class AuthService {
         photoUrl: user.photoURL,
       );
 
+      // Автоматически отправляем verification email
+      await user.sendEmailVerification();
+      LoggerService.info('[AuthService] Verification email sent to $email');
+
       return credential;
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthException(e));
@@ -182,6 +186,47 @@ class AuthService {
       throw Exception(_mapFirebaseAuthException(e));
     } catch (e) {
       throw Exception('Ошибка проверки email: $e');
+    }
+  }
+
+  /// Отправка письма для подтверждения email
+  Future<void> sendVerificationEmail() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('Пользователь не авторизован');
+      }
+      
+      await user.sendEmailVerification();
+      LoggerService.info('[AuthService] Verification email sent to ${user.email}');
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'too-many-requests') {
+        throw Exception('Слишком много запросов. Подождите перед повторной отправкой');
+      }
+      throw Exception(_mapFirebaseAuthException(e));
+    } catch (e) {
+      throw Exception('Ошибка отправки письма: $e');
+    }
+  }
+
+  /// Проверка подтвержден ли email
+  bool get isEmailVerified {
+    final user = _auth.currentUser;
+    return user?.emailVerified ?? false;
+  }
+
+  /// Обновить данные пользователя (для проверки emailVerified статуса)
+  Future<void> reloadUser() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('Пользователь не авторизован');
+      }
+      
+      await user.reload();
+      LoggerService.debug('[AuthService] User reloaded, emailVerified: ${user.emailVerified}');
+    } catch (e) {
+      throw Exception('Ошибка обновления пользователя: $e');
     }
   }
 
