@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
+import 'email_verification_screen.dart';
 import 'setup_profile_screen.dart';
 
 enum EmailAvailabilityStatus {
@@ -170,11 +171,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
 
         if (state is AuthAuthenticated) {
-          // Регистрация успешна - переходим к настройке профиля
-          LoggerService.warning('🟡 [RegisterScreen] AuthAuthenticated получен, переход к SetupProfileScreen');
+          // Регистрация успешна - переходим к проверке email
+          LoggerService.warning('🟡 [RegisterScreen] AuthAuthenticated получен, переход к EmailVerificationScreen');
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute<void>(
-              builder: (context) => const SetupProfileScreen(),
+              builder: (context) => EmailVerificationScreen(
+                userEmail: _emailController.text.trim(),
+              ),
             ),
             (route) => false, // Удаляем все предыдущие routes
           );
