@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:async';
 import '../../../data/services/user_service.dart';
 import '../../../data/services/auth_service.dart';
 import 'setup_interests_screen.dart';

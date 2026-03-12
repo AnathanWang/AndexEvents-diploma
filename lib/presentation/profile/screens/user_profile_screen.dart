@@ -393,31 +393,71 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: <Color>[
-                      const Color(0xFF5E60CE).withValues(alpha: 0.7),
-                      const Color(0xFF9370DB).withValues(alpha: 0.7),
-                    ],
-                  ),
-                ),
-                child: Center(
-                  child: CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.white,
-                    child: Text(
-                      widget.userInitials,
-                      style: const TextStyle(
-                        color: Color(0xFF5E60CE),
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Фоновое фото пользователя
+                  if (widget.user?.photoUrl != null && widget.user!.photoUrl!.isNotEmpty)
+                    Image.network(
+                      widget.user!.photoUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: <Color>[
+                                const Color(0xFF5E60CE).withValues(alpha: 0.7),
+                                const Color(0xFF9370DB).withValues(alpha: 0.7),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  else
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: <Color>[
+                            const Color(0xFF5E60CE).withValues(alpha: 0.7),
+                            const Color(0xFF9370DB).withValues(alpha: 0.7),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // Затемнение для читаемости инициалов
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.2),
+                          Colors.transparent,
+                        ],
                       ),
                     ),
                   ),
-                ),
+                  // Инициалы в центре
+                  Center(
+                    child: CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.white.withValues(alpha: 0.9),
+                      child: Text(
+                        widget.userInitials,
+                        style: const TextStyle(
+                          color: Color(0xFF5E60CE),
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -469,12 +509,22 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Люблю спорт, музыку и путешествия. Ищу новые впечатления и интересные события! '
-                        'Регулярно хожу на митапы и концерты. Открыт к новым знакомствам.',
-                        style: TextStyle(
-                          fontSize: 16,
+                      const SizedBox(height: 8),
+                      if (widget.user?.age != null)
+                        Text(
+                          '${widget.user!.age} лет',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF9E9E9E),
+                          ),
+                        ),
+                      const SizedBox(height: 12),
+                      Text(
+                        widget.user?.bio?.isNotEmpty == true
+                            ? widget.user!.bio!
+                            : 'Еще не заполнена биография',
+                        style: const TextStyle(
+                          fontSize: 15,
                           color: Color(0xFF4A4D6A),
                           height: 1.5,
                         ),
@@ -489,14 +539,25 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   child: Row(
                     children: <Widget>[
                       Expanded(
-                        child: _buildStatCard('24', 'Событий', Icons.event),
+                        child: _buildStatCard(
+                          widget.user?.interests.length.toString() ?? '0',
+                          'Интересов',
+                          Icons.favorite,
+                        ),
                       ),
                       const SizedBox(width: 12),
-                      // Removed Friends stat card
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildStatCard('4.8', 'Рейтинг', Icons.star),
-                      ),
+                      if (widget.matchPercentage != null)
+                        Expanded(
+                          child: _buildStatCard(
+                            '${widget.matchPercentage}%',
+                            'Совпадение',
+                            Icons.favorite_border,
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: _buildStatCard('—', 'Совпадение', Icons.favorite_border),
+                        ),
                     ],
                   ),
                 ),
@@ -581,7 +642,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
