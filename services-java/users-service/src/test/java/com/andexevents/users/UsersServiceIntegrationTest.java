@@ -164,6 +164,44 @@ class UsersServiceIntegrationTest {
         assertThat(((Map) list.get(0)).get("email")).isEqualTo("u2@example.com");
     }
 
+    @Test
+    void updateProfile_withSocialLinks_returnsUpdatedUser() {
+        rest.exchange(
+                "/api/users",
+                HttpMethod.POST,
+                jsonAuthed("t1", Map.of("displayName", "Alice")),
+                Map.class
+        );
+
+        ResponseEntity<Map> updated = rest.exchange(
+                "/api/users/me",
+                HttpMethod.PUT,
+                jsonAuthed(
+                        "t1",
+                        Map.of(
+                                "bio", "Hello",
+                                "socialLinks", Map.of(
+                                        "telegram", "https://t.me/alice",
+                                        "instagram", "https://instagram.com/alice"
+                                )
+                        )
+                ),
+                Map.class
+        );
+
+        assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(updated.getBody()).isNotNull();
+        assertThat(updated.getBody().get("success")).isEqualTo(true);
+
+        Map data = (Map) updated.getBody().get("data");
+        assertThat(data.get("bio")).isEqualTo("Hello");
+
+        Map socialLinks = (Map) data.get("socialLinks");
+        assertThat(socialLinks).isNotNull();
+        assertThat(socialLinks.get("telegram")).isEqualTo("https://t.me/alice");
+        assertThat(socialLinks.get("instagram")).isEqualTo("https://instagram.com/alice");
+    }
+
     private HttpEntity<Void> authed(String token) {
         HttpHeaders h = new HttpHeaders();
         h.setBearerAuth(token);

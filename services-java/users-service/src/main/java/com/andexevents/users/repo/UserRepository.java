@@ -86,8 +86,19 @@ public class UserRepository {
         int i = 0;
         for (Map.Entry<String, Object> e : updates.entrySet()) {
             if (i++ > 0) sql.append(", ");
-            sql.append('"').append(e.getKey()).append('"').append(" = ?");
-            params.add(e.getValue());
+            sql.append('"').append(e.getKey()).append('"').append(" = ");
+
+            if ("socialLinks".equals(e.getKey())) {
+                sql.append("CAST(? AS jsonb)");
+                try {
+                    params.add(objectMapper.writeValueAsString(e.getValue()));
+                } catch (Exception ex) {
+                    throw new IllegalArgumentException("Failed to serialize socialLinks", ex);
+                }
+            } else {
+                sql.append("?");
+                params.add(e.getValue());
+            }
         }
         sql.append(", \"updatedAt\" = NOW() WHERE id = ?");
         params.add(userId);
