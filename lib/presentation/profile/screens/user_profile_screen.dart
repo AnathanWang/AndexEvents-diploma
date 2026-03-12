@@ -4,6 +4,7 @@ import '../../widgets/common/custom_notification.dart';
 import '../../widgets/report_dialog.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../data/models/user_model.dart';
+import '../widgets/photo_gallery_sheet.dart';
 // import '../../../data/services/friend_service.dart'; // Removed FriendService
 
 class UserProfileScreen extends StatefulWidget {
@@ -393,71 +394,99 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Фоновое фото пользователя
-                  if (widget.user?.photoUrl != null && widget.user!.photoUrl!.isNotEmpty)
-                    Image.network(
-                      widget.user!.photoUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: <Color>[
-                                const Color(0xFF5E60CE).withValues(alpha: 0.7),
-                                const Color(0xFF9370DB).withValues(alpha: 0.7),
-                              ],
+              background: GestureDetector(
+                onTap: _openPhotosGallery,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Фоновое фото пользователя
+                    if (widget.user?.photoUrl != null && widget.user!.photoUrl!.isNotEmpty)
+                      Image.network(
+                        widget.user!.photoUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: <Color>[
+                                  const Color(0xFF5E60CE).withValues(alpha: 0.7),
+                                  const Color(0xFF9370DB).withValues(alpha: 0.7),
+                                ],
+                              ),
                             ),
+                          );
+                        },
+                      )
+                    else
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: <Color>[
+                              const Color(0xFF5E60CE).withValues(alpha: 0.7),
+                              const Color(0xFF9370DB).withValues(alpha: 0.7),
+                            ],
                           ),
-                        );
-                      },
-                    )
-                  else
+                        ),
+                      ),
+                    // Затемнение для читаемости инициалов
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: <Color>[
-                            const Color(0xFF5E60CE).withValues(alpha: 0.7),
-                            const Color(0xFF9370DB).withValues(alpha: 0.7),
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.2),
+                            Colors.transparent,
                           ],
                         ),
                       ),
                     ),
-                  // Затемнение для читаемости инициалов
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.2),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Инициалы в центре
-                  Center(
-                    child: CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.white.withValues(alpha: 0.9),
-                      child: Text(
-                        widget.userInitials,
-                        style: const TextStyle(
-                          color: Color(0xFF5E60CE),
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
+                    // Инициалы в центре
+                    Center(
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Colors.white.withValues(alpha: 0.9),
+                        child: Text(
+                          widget.userInitials,
+                          style: const TextStyle(
+                            color: Color(0xFF5E60CE),
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    // Иконка для открытия галереи
+                    if (widget.user?.photos.isNotEmpty == true ||
+                        widget.user?.photoUrl?.isNotEmpty == true)
+                      Positioned(
+                        bottom: 16,
+                        right: 16,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.collections,
+                            color: const Color(0xFF5E60CE),
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -768,6 +797,32 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _openPhotosGallery() {
+    if (widget.user == null) return;
+    
+    final allPhotos = <String>[];
+    if (widget.user!.photoUrl?.isNotEmpty == true) {
+      allPhotos.add(widget.user!.photoUrl!);
+    }
+    allPhotos.addAll(
+      widget.user!.photos.where((p) => p != widget.user!.photoUrl),
+    );
+
+    if (allPhotos.isEmpty) return;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return PhotoGallerySheet(
+          photos: widget.user!.photos,
+          mainPhotoUrl: widget.user!.photoUrl,
+        );
+      },
     );
   }
 
