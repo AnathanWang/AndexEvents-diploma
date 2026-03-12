@@ -283,18 +283,25 @@ class AuthService {
     String? photoUrl,
   }) async {
     try {
-      LoggerService.info('[Backend] Создание пользователя: displayName=$displayName');
+      LoggerService.info('[Backend] === НАЧАЛО создания пользователя в backend ===');
+      LoggerService.info('[Backend] displayName=$displayName, photoUrl=$photoUrl');
+      LoggerService.info('[Backend] baseUrl=${AppConfig.baseUrl}');
       
       final token = await getIdToken();
+      LoggerService.info('[Backend] Token получен: ${token?.substring(0, 20) ?? "NULL"}...');
+      
       if (token == null || token.isEmpty) {
+        LoggerService.error('[Backend] ОШИБКА: Токен пустой или null');
         throw Exception('Не удалось получить токен авторизации');
       }
       
-      LoggerService.debug('[Backend] Token получен, отправка запроса к ${AppConfig.baseUrl}/users');
+      final url = '${AppConfig.baseUrl}/users';
+      LoggerService.info('[Backend] Полный URL: $url');
+      LoggerService.info('[Backend] Отправка POST запроса...');
 
       final response = await http
           .post(
-            Uri.parse('${AppConfig.baseUrl}/users'),
+            Uri.parse(url),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
@@ -304,19 +311,34 @@ class AuthService {
               'photoUrl': photoUrl,
             }),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              LoggerService.error('[Backend] TIMEOUT: Запрос превысил 15 секунд');
+              throw Exception('Timeout: сервер не ответил за 15 секунд');
+            },
+          );
 
-      LoggerService.info('[Backend] Response status: ${response.statusCode}');
-      LoggerService.debug('[Backend] Response body: ${response.body}');
+      LoggerService.info('[Backend] Response получен! Status: ${response.statusCode}');
+      LoggerService.info('[Backend] Response headers: ${response.headers}');
+      LoggerService.info('[Backend] Response body: ${response.body}');
 
       if (response.statusCode != 201 && response.statusCode != 409) {
-        throw Exception('Не удалось создать пользователя в базе данных (${response.statusCode}): ${response.body}');
+        final error = 'Не удалось создать пользователя (${response.statusCode}): ${response.body}';
+        LoggerService.error('[Backend] ОШИБКА: $error');
+        throw Exception(error);
       }
       
-      LoggerService.info('[Backend] Пользователь успешно создан');
-    } catch (e) {
-      LoggerService.error('[Backend] Ошибка создания пользователя в backend', e);
-      // Пробрасываем ошибку дальше чтобы AuthBloc мог обработать
+      LoggerService.info('[Backend] === УСПЕХ: Пользователь создан в backend ===');
+    } on http.ClientException catch (e) {
+      LoggerService.error('[Backend] ClientException (сетевая ошибка)', e);
+      rethrow;
+    } on TimeoutException catch (e) {
+      LoggerService.error('[Backend] TimeoutException', e);
+      rethrow;
+    } catch (e, stackTrace) {
+      LoggerService.error('[Backend] Unexpected error создания пользователя', e);
+      LoggerService.error('[Backend] StackTrace: $stackTrace');
       rethrow;
     }
   }
