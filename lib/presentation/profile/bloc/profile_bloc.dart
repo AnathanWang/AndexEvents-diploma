@@ -18,6 +18,8 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     on<ProfileLoadRequested>(_onProfileLoadRequested);
     on<ProfileUpdateRequested>(_onProfileUpdateRequested);
     on<ProfilePhotoUpdateRequested>(_onProfilePhotoUpdateRequested);
+    on<AdditionalPhotoUploadRequested>(_onAdditionalPhotoUploadRequested);
+    on<AdditionalPhotoDeleteRequested>(_onAdditionalPhotoDeleteRequested);
   }
 
   Future<void> _onProfileLoadRequested(
@@ -105,6 +107,69 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       emit(
         ProfileError(
           'Не удалось загрузить фото (проблема сети/симулятора). Попробуйте: 1) Отключить VPN 2) Использовать реальное устройство',
+          user: currentState.user,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onAdditionalPhotoUploadRequested(
+    AdditionalPhotoUploadRequested event,
+    Emitter<ProfileState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is! ProfileLoaded) return;
+
+    emit(
+      ProfileUpdating(currentState.user, userEvents: currentState.userEvents),
+    );
+
+    try {
+      LoggerService.debug('🔵 [ProfileBloc] Начинаем загрузку дополнительного фото...');
+      final photoUrl = await _userService.uploadAdditionalPhoto(
+        File(event.photoPath),
+      );
+
+      LoggerService.debug('🔵 [ProfileBloc] Добавляем фото в профиль: $photoUrl');
+      final updatedUser = await _userService.getCurrentUser();
+      final userEvents = await _eventService.getUserEvents(updatedUser.id);
+      LoggerService.info('🟢 [ProfileBloc] Дополнительное фото загружено успешно');
+      emit(ProfileLoaded(updatedUser, userEvents: userEvents));
+    } catch (e) {
+      LoggerService.error('🔴 [ProfileBloc] Ошибка загрузки дополнительного фото: $e');
+      emit(
+        ProfileError(
+          'Не удалось загрузить фото: $e',
+          user: currentState.user,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onAdditionalPhotoDeleteRequested(
+    AdditionalPhotoDeleteRequested event,
+    Emitter<ProfileState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is! ProfileLoaded) return;
+
+    emit(
+      ProfileUpdating(currentState.user, userEvents: currentState.userEvents),
+    );
+
+    try {
+      LoggerService.debug('🔵 [ProfileBloc] Удаляем фото: ${event.photoUrl}');
+      await _userService.deleteAdditionalPhoto(event.photoUrl);
+
+      final updatedUser = await _userService.getCurrentUser();
+      final userEvents = await _eventService.getUserEvents(updatedUser.id);
+      LoggerService.info('🟢 [ProfileBloc] Фото удалено успешно');
+      emit(ProfileLoaded(updatedUser, userEvents: userEvents));
+    } catch (e) {
+      LoggerService.error('🔴 [ProfileBloc] Ошибка удаления фото: $e');
+      emit(
+        ProfileError(
+          'Не удалось удалить фото: $e',
           user: currentState.user,
         ),
       );

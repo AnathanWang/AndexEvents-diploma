@@ -51,3 +51,23 @@ class ProfilePhotoUpdateRequested extends ProfileEvent {
   @override
   List<Object?> get props => [photoPath];
 }
+
+/// Загрузить дополнительное фото профиля
+class AdditionalPhotoUploadRequested extends ProfileEvent {
+  final String photoPath;
+
+  const AdditionalPhotoUploadRequested(this.photoPath);
+
+  @override
+  List<Object?> get props => [photoPath];
+}
+
+/// Удалить дополнительное фото профиля
+class AdditionalPhotoDeleteRequested extends ProfileEvent {
+  final String photoUrl;
+
+  const AdditionalPhotoDeleteRequested(this.photoUrl);
+
+  @override
+  List<Object?> get props => [photoUrl];
+}

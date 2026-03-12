@@ -218,11 +218,6 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
   }
 
   void _removePhoto(int index) {
-    final allPhotos = [
-      ...widget.uploadedPhotos,
-      ..._localFiles.map((f) => f.path),
-    ];
-
     if (index < widget.uploadedPhotos.length) {
       // Удаление загруженной фотографии
       widget.onPhotoRemoved(widget.uploadedPhotos[index]);

@@ -28,17 +28,56 @@ class ProgressUploadService {
     );
   }
 
-  /// Загрузить фото профиля
-  Future<String> uploadProfilePhoto(
+  /// Загрузить дополнительное фото профиля
+  Future<String> uploadAdditionalPhoto(
     String filePath, {
     Function(double)? onProgress,
   }) async {
-     return _uploadFile(
+    return _uploadFile(
       filePath: filePath,
-      bucket: 'avatars',
+      bucket: 'photos',
       maxSizeMB: 5,
       onProgress: onProgress,
     );
+  }
+
+  /// Удалить фото с бэкенда
+  Future<void> deletePhoto(String photoUrl) async {
+    try {
+      LoggerService.info('[ProgressUploadService] Удаляем фото: $photoUrl');
+
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('Пользователь не авторизован');
+      }
+
+      final token = await user.getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final url = Uri.parse(
+        '${AppConfig.baseUrl}/upload?bucket=photos&url=${Uri.encodeComponent(photoUrl)}',
+      );
+
+      final response = await http.delete(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        LoggerService.info('[ProgressUploadService] Фото удалено');
+      } else {
+        LoggerService.error('[ProgressUploadService] Ошибка удаления: ${response.statusCode}');
+        throw Exception('Ошибка удаления фото: ${response.statusCode}');
+      }
+    } catch (e) {
+      LoggerService.error('[ProgressUploadService] Ошибка при удалении фото', e);
+      rethrow;
+    }
   }
 
   Future<String> _uploadFile({

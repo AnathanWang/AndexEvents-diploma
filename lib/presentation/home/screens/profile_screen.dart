@@ -8,6 +8,7 @@ import '../../profile/bloc/profile_bloc.dart';
 import '../../profile/bloc/profile_event.dart';
 import '../../profile/bloc/profile_state.dart';
 import '../../profile/screens/edit_profile_screen.dart';
+import '../../profile/screens/privacy_settings_screen.dart';
 import '../../events/screens/edit_event_screen.dart';
 import '../../events/bloc/event_bloc.dart';
 import '../../models/event_preview.dart';
@@ -16,6 +17,7 @@ import '../../widgets/match_card.dart';
 import '../../widgets/section_header.dart';
 import '../../../data/services/user_service.dart';
 import '../../profile/screens/user_profile_screen.dart';
+import '../../profile/widgets/photo_gallery_sheet.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
 
 enum _ProfileMatchFilter {
@@ -37,11 +39,15 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final UserService _userService = UserService();
+  final GlobalKey _avatarKey = GlobalKey();
 
   _ProfileMatchFilter _filter = _ProfileMatchFilter.mutual;
   bool _matchesLoading = false;
   String? _matchesError;
   String? _loadedForUserId;
+  bool _showInSearch = true;
+  bool _showVisitedEvents = true;
+  bool _matchNotifications = true;
 
   final Map<_ProfileMatchFilter, List<MatchPreview>> _matchesByFilter =
       <_ProfileMatchFilter, List<MatchPreview>>{};
@@ -415,73 +421,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Builder(
             builder: (context) => GestureDetector(
               onTap: () async {
-                final profileBloc = context.read<ProfileBloc>();
-                final result = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute<bool>(
-                    builder: (context) => BlocProvider.value(
-                      value: profileBloc,
-                      child: const EditProfileScreen(),
-                    ),
-                  ),
-                );
-                if (result == true && context.mounted) {
-                  CustomNotification.success(context, 'Профиль успешно обновлен!');
-                }
+                _openPhotosGallery(user);
               },
-              child: (user.photoUrl != null && user.photoUrl!.isNotEmpty)
-                  ? Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF5E60CE),
-                      ),
-                      child: ClipOval(
-                        child: CachedNetworkImage(
-                          imageUrl: user.photoUrl!.trim(),
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          ),
-                          errorWidget: (context, url, error) {
-                            LoggerService.error(
-                              '🔴 [ProfileScreen] Ошибка загрузки аватара: $error',
-                            );
-                            return CircleAvatar(
-                              radius: 32,
-                              backgroundColor: const Color(0xFF5E60CE),
-                              child: Text(
-                                user.displayName?.isNotEmpty == true
-                                    ? user.displayName![0].toUpperCase()
-                                    : user.email[0].toUpperCase(),
-                                style: const TextStyle(
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: <Widget>[
+                  Container(
+                    key: _avatarKey,
+                    width: 64,
+                    height: 64,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFF5E60CE),
+                    ),
+                    child: ClipOval(
+                      child: (user.photoUrl != null && user.photoUrl!.isNotEmpty)
+                          ? CachedNetworkImage(
+                              imageUrl: user.photoUrl!.trim(),
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
                                   color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                      ),
-                    )
-                  : CircleAvatar(
-                      radius: 32,
-                      backgroundColor: const Color(0xFF5E60CE),
-                      child: Text(
-                        user.displayName?.isNotEmpty == true
-                            ? user.displayName![0].toUpperCase()
-                            : user.email[0].toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                              errorWidget: (context, url, error) {
+                                LoggerService.error(
+                                  '🔴 [ProfileScreen] Ошибка загрузки аватара: $error',
+                                );
+                                return _buildProfileAvatarFallback(user);
+                              },
+                            )
+                          : _buildProfileAvatarFallback(user),
                     ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -491,9 +466,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: <Widget>[
                 Row(
                   children: [
-                    Text(
-                      user.displayName ?? user.email,
-                      style: theme.textTheme.titleMedium,
+                    Expanded(
+                      child: Text(
+                        user.displayName ?? user.email,
+                        style: theme.textTheme.titleMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     if (user.age != null) ...[
                       const SizedBox(width: 8),
@@ -504,6 +482,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ],
+                    PopupMenuButton<String>(
+                      icon: const Icon(
+                        Icons.more_vert,
+                        color: Color(0xFF4A4D6A),
+                      ),
+                      onSelected: (value) {
+                        if (value == 'edit') {
+                          _openEditProfile(context);
+                        } else if (value == 'privacy') {
+                          _openPrivacySettings();
+                        }
+                      },
+                      itemBuilder: (context) => const <PopupMenuEntry<String>>[
+                        PopupMenuItem<String>(
+                          value: 'edit',
+                          child: Row(
+                            children: <Widget>[
+                              Icon(Icons.edit_outlined),
+                              SizedBox(width: 12),
+                              Text('Редактировать профиль'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem<String>(
+                          value: 'privacy',
+                          child: Row(
+                            children: <Widget>[
+                              Icon(Icons.shield_outlined),
+                              SizedBox(width: 12),
+                              Text('Настройки приватности'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
                 if (user.gender != null && user.gender != 'Не указывать') ...[
@@ -823,5 +836,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
       'дек',
     ];
     return '${dateTime.day} ${months[dateTime.month - 1]}, ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  void _openPhotosGallery(UserModel user) {
+    if (user.photoUrl == null && user.photos.isEmpty) return;
+
+    final avatarRect = _avatarRect();
+
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierColor: Colors.transparent,
+        pageBuilder: (BuildContext context, _, __) {
+          return PhotoGallerySheet(
+            photos: user.photos,
+            mainPhotoUrl: user.photoUrl,
+            initialAvatarSize: 64,
+            sourceRect: avatarRect,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 10),
+        reverseTransitionDuration: const Duration(milliseconds: 180),
+      ),
+    );
+  }
+
+  Future<void> _openEditProfile(BuildContext context) async {
+    final profileBloc = context.read<ProfileBloc>();
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (context) => BlocProvider.value(
+          value: profileBloc,
+          child: const EditProfileScreen(),
+        ),
+      ),
+    );
+    if (result == true && context.mounted) {
+      CustomNotification.success(context, 'Профиль успешно обновлен!');
+    }
+  }
+
+  Future<void> _openPrivacySettings() async {
+    final result = await Navigator.of(context).push<Map<String, bool>>(
+      MaterialPageRoute<Map<String, bool>>(
+        builder: (context) => PrivacySettingsScreen(
+          showInSearch: _showInSearch,
+          showVisitedEvents: _showVisitedEvents,
+          matchNotifications: _matchNotifications,
+        ),
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _showInSearch = result['showInSearch'] ?? _showInSearch;
+      _showVisitedEvents = result['showVisitedEvents'] ?? _showVisitedEvents;
+      _matchNotifications = result['matchNotifications'] ?? _matchNotifications;
+    });
+  }
+
+  Rect? _avatarRect() {
+    final context = _avatarKey.currentContext;
+    if (context == null) return null;
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox) return null;
+    final offset = renderObject.localToGlobal(Offset.zero);
+    return offset & renderObject.size;
+  }
+
+  Widget _buildProfileAvatarFallback(UserModel user) {
+    return Container(
+      color: const Color(0xFF5E60CE),
+      alignment: Alignment.center,
+      child: Text(
+        user.displayName?.isNotEmpty == true
+            ? user.displayName![0].toUpperCase()
+            : user.email[0].toUpperCase(),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
   }
 }

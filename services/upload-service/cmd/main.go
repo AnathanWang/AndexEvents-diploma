@@ -89,6 +89,7 @@ func main() {
 	{
 		api.Use(middleware.FirebaseAuthMiddleware(logger, firebaseClient, userRepo))
 		api.POST("", uploadHandler.UploadFile)
+		api.DELETE("", uploadHandler.DeletePhoto)
 	}
 
 	srv := &http.Server{

@@ -43,6 +43,7 @@ public class UserService {
 
         if (req.displayName() != null) updates.put("displayName", req.displayName());
         if (req.photoUrl() != null) updates.put("photoUrl", req.photoUrl());
+        if (req.photos() != null) updates.put("photos", req.photos().toArray(new String[0]));
         if (req.bio() != null) updates.put("bio", req.bio());
         if (req.age() != null) updates.put("age", req.age());
         if (req.gender() != null) updates.put("gender", req.gender());
@@ -76,9 +77,20 @@ public class UserService {
         );
     }
 
+    public UserDto addPhoto(String userId, String photoUrl) {
+        userRepository.addPhoto(userId, photoUrl);
+        return userRepository.findById(userId).orElseThrow();
+    }
+
+    public UserDto removePhoto(String userId, String photoUrl) {
+        userRepository.removePhoto(userId, photoUrl);
+        return userRepository.findById(userId).orElseThrow();
+    }
+
     public record UpdateProfileRequest(
             String displayName,
             String photoUrl,
+            List<String> photos,
             String bio,
             Integer age,
             String gender,

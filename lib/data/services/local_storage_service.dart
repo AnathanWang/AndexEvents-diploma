@@ -65,6 +65,50 @@ class LocalStorageService {
     );
   }
 
+  /// Загрузить дополнительное фото профиля на бэкенд
+  Future<String> uploadAdditionalPhoto(
+    String filePath, {
+    Function(double)? onProgress,
+  }) async {
+    return _uploadFile(
+      filePath,
+      bucket: 'photos',
+      fileDescription: 'дополнительное фото профиля',
+      maxSizeBytes: 5 * 1024 * 1024,
+      onProgress: onProgress,
+    );
+  }
+
+  /// Удалить дополнительное фото профиля на бэкенде
+  Future<void> deletePhoto(String photoUrl) async {
+    try {
+      final token = await _idTokenProvider.getIdToken();
+      if (token == null) {
+        throw Exception('Пользователь не авторизован');
+      }
+
+      final uri = Uri.parse(
+        '${AppConfig.baseUrl}/upload?bucket=photos&url=${Uri.encodeComponent(photoUrl)}',
+      );
+
+      final response = await http.delete(
+        uri,
+        headers: <String, String>{
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        LoggerService.error('[UploadService] Ошибка удаления фото: ${response.statusCode}');
+        throw Exception('Ошибка удаления фото: ${response.statusCode}');
+      }
+    } catch (e) {
+      LoggerService.error('[UploadService] Ошибка при удалении фото: $e');
+      rethrow;
+    }
+  }
+
   Future<String> _uploadFile(
     String filePath, {
     required String bucket,

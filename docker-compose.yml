@@ -63,9 +63,11 @@ services:
       mc alias set local http://minio:9000 andexevents andexevents_minio_secret;
       mc mb --ignore-existing local/avatars;
       mc mb --ignore-existing local/events;
+      mc mb --ignore-existing local/photos;
       mc mb --ignore-existing local/media;
       mc anonymous set download local/avatars;
       mc anonymous set download local/events;
+      mc anonymous set download local/photos;
       echo 'MinIO buckets created and configured!';
       "
     networks:

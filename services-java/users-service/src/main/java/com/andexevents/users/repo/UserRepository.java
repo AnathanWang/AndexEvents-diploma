@@ -172,6 +172,9 @@ public class UserRepository {
         Array interestsArr = rs.getArray("interests");
         List<String> interests = interestsArr == null ? List.of() : Arrays.asList((String[]) interestsArr.getArray());
 
+        Array photosArr = rs.getArray("photos");
+        List<String> photos = photosArr == null ? List.of() : Arrays.asList((String[]) photosArr.getArray());
+
         Map<String, Object> socialLinks = null;
         String socialLinksJson = rs.getString("socialLinks");
         if (socialLinksJson != null) {
@@ -188,6 +191,7 @@ public class UserRepository {
                 rs.getString("email"),
                 rs.getString("displayName"),
                 rs.getString("photoUrl"),
+                photos,
                 rs.getString("bio"),
                 interests,
                 socialLinks,
@@ -206,6 +210,22 @@ public class UserRepository {
                 (Boolean) rs.getObject("isOnboardingCompleted"),
                 toInstant(rs.getObject("createdAt")),
                 toInstant(rs.getObject("updatedAt"))
+        );
+    }
+
+    public void addPhoto(String userId, String photoUrl) {
+        jdbcTemplate.update(
+                "UPDATE users.\"User\" SET \"photos\" = array_append(COALESCE(\"photos\", ARRAY[]::text[]), ?), \"updatedAt\" = NOW() WHERE id = ?",
+                photoUrl,
+                userId
+        );
+    }
+
+    public void removePhoto(String userId, String photoUrl) {
+        jdbcTemplate.update(
+                "UPDATE users.\"User\" SET \"photos\" = array_remove(\"photos\", ?), \"updatedAt\" = NOW() WHERE id = ?",
+                photoUrl,
+                userId
         );
     }
 

@@ -99,6 +99,47 @@ class UserService {
     }
   }
 
+  /// Загрузить дополнительное фото профиля
+  Future<String> uploadAdditionalPhoto(File photoFile) async {
+    try {
+      LoggerService.info('[UserService] Начинаем загрузку дополнительного фото...');
+      LoggerService.info('[UserService] Размер файла: ${photoFile.lengthSync()} bytes');
+
+      final url = await _storageService.uploadAdditionalPhoto(
+        photoFile.path,
+        onProgress: (progress) {
+          LoggerService.debug(
+            '[UserService] Upload progress: ${(progress * 100).toStringAsFixed(1)}%',
+          );
+        },
+      );
+
+      LoggerService.info('[UserService] Дополнительное фото успешно загружено: $url');
+      return url;
+    } on TimeoutException {
+      LoggerService.error('[UserService] Таймаут при загрузке фото');
+      rethrow;
+    } on SocketException catch (e) {
+      LoggerService.error('[UserService] Ошибка подключения при загрузке фото: $e');
+      rethrow;
+    } catch (e) {
+      LoggerService.error('[UserService] Ошибка при загрузке дополнительного фото: $e');
+      rethrow;
+    }
+  }
+
+  /// Удалить фото профиля
+  Future<void> deleteAdditionalPhoto(String photoUrl) async {
+    try {
+      LoggerService.info('[UserService] Удаляем фото...');
+      await _storageService.deletePhoto(photoUrl);
+      LoggerService.info('[UserService] Фото успешно удалено');
+    } catch (e) {
+      LoggerService.error('[UserService] Ошибка при удалении фото: $e');
+      rethrow;
+    }
+  }
+
   /// Обновить профиль пользователя
   Future<void> updateProfile({
     String? displayName,

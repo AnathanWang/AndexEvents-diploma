@@ -29,3 +29,13 @@ func (r *UserRepository) UpdateUserPhotoURL(ctx context.Context, userID string, 
 	_, err := r.pool.Exec(ctx, `UPDATE users."User" SET "photoUrl" = $1 WHERE id = $2`, photoURL, userID)
 	return err
 }
+
+func (r *UserRepository) AddUserPhoto(ctx context.Context, userID string, photoURL string) error {
+	_, err := r.pool.Exec(ctx, `UPDATE users."User" SET "photos" = array_append(COALESCE("photos", ARRAY[]::text[]), $1) WHERE id = $2`, photoURL, userID)
+	return err
+}
+
+func (r *UserRepository) RemoveUserPhoto(ctx context.Context, userID string, photoURL string) error {
+	_, err := r.pool.Exec(ctx, `UPDATE users."User" SET "photos" = array_remove("photos", $1) WHERE id = $2`, photoURL, userID)
+	return err
+}

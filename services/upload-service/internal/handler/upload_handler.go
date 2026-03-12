@@ -118,6 +118,11 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 			h.logger.Warn("Failed to update user photoUrl", zap.String("userID", dbUserID), zap.Error(err))
 			// Keep upload successful even if DB update fails (matches Node spirit).
 		}
+	} else if bucket == "photos" {
+		if err := h.userRepo.AddUserPhoto(c.Request.Context(), dbUserID, fileURL); err != nil {
+			h.logger.Warn("Failed to add user photo", zap.String("userID", dbUserID), zap.Error(err))
+			// Keep upload successful even if DB update fails.
+		}
 	}
 
 	c.JSON(http.StatusOK, UploadResponse{
@@ -128,6 +133,39 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 			Size:   fileHeader.Size,
 			Bucket: bucket,
 		},
+	})
+}
+
+func (h *UploadHandler) DeletePhoto(c *gin.Context) {
+	bucket := c.Query("bucket")
+	if bucket == "" {
+		bucket = "photos"
+	}
+	bucket = strings.ToLower(strings.TrimSpace(bucket))
+
+	photoURL := c.Query("url")
+	if photoURL == "" {
+		c.JSON(http.StatusBadRequest, UploadResponse{Success: false, Message: "Missing photo URL parameter"})
+		return
+	}
+
+	dbUserID, ok := middleware.GetDBUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, UploadResponse{Success: false, Message: "Unauthorized"})
+		return
+	}
+
+	if bucket == "photos" {
+		if err := h.userRepo.RemoveUserPhoto(c.Request.Context(), dbUserID, photoURL); err != nil {
+			h.logger.Warn("Failed to remove user photo", zap.String("userID", dbUserID), zap.Error(err))
+			c.JSON(http.StatusInternalServerError, UploadResponse{Success: false, Message: "Failed to remove photo"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, UploadResponse{
+		Success: true,
+		Message: "Photo deleted successfully",
 	})
 }
 

@@ -58,6 +58,8 @@ class UserProfileScreen extends StatefulWidget {
 }
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
+  final GlobalKey _avatarKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -394,97 +396,66 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              background: GestureDetector(
-                onTap: _openPhotosGallery,
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: <Color>[
+                      const Color(0xFF5E60CE).withValues(alpha: 0.92),
+                      const Color(0xFF9370DB).withValues(alpha: 0.88),
+                    ],
+                  ),
+                ),
                 child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // Фоновое фото пользователя
-                    if (widget.user?.photoUrl != null && widget.user!.photoUrl!.isNotEmpty)
-                      Image.network(
-                        widget.user!.photoUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: <Color>[
-                                  const Color(0xFF5E60CE).withValues(alpha: 0.7),
-                                  const Color(0xFF9370DB).withValues(alpha: 0.7),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      )
-                    else
-                      Container(
+                  children: <Widget>[
+                    Positioned.fill(
+                      child: DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
                             colors: <Color>[
-                              const Color(0xFF5E60CE).withValues(alpha: 0.7),
-                              const Color(0xFF9370DB).withValues(alpha: 0.7),
+                              Colors.white.withValues(alpha: 0.08),
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.12),
                             ],
                           ),
                         ),
                       ),
-                    // Затемнение для читаемости инициалов
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.2),
-                            Colors.transparent,
+                    ),
+                    Center(
+                      child: GestureDetector(
+                        onTap: _openPhotosGallery,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: <Widget>[
+                            Container(
+                              key: _avatarKey,
+                              width: 124,
+                              height: 124,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.95),
+                                  width: 4,
+                                ),
+                                boxShadow: <BoxShadow>[
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child: _buildAvatarPhoto(),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
-                    // Инициалы в центре
-                    Center(
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.white.withValues(alpha: 0.9),
-                        child: Text(
-                          widget.userInitials,
-                          style: const TextStyle(
-                            color: Color(0xFF5E60CE),
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Иконка для открытия галереи
-                    if (widget.user?.photos.isNotEmpty == true ||
-                        widget.user?.photoUrl?.isNotEmpty == true)
-                      Positioned(
-                        bottom: 16,
-                        right: 16,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.2),
-                                blurRadius: 8,
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.collections,
-                            color: const Color(0xFF5E60CE),
-                            size: 20,
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ),
@@ -813,16 +784,61 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     if (allPhotos.isEmpty) return;
 
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return PhotoGallerySheet(
-          photos: widget.user!.photos,
-          mainPhotoUrl: widget.user!.photoUrl,
-        );
-      },
+    final avatarRect = _avatarRect();
+
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierColor: Colors.transparent,
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return PhotoGallerySheet(
+            photos: widget.user!.photos,
+            mainPhotoUrl: widget.user!.photoUrl,
+            initialAvatarSize: 124,
+            sourceRect: avatarRect,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 10),
+        reverseTransitionDuration: const Duration(milliseconds: 180),
+      ),
+    );
+  }
+
+  Rect? _avatarRect() {
+    final context = _avatarKey.currentContext;
+    if (context == null) return null;
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox) return null;
+    final offset = renderObject.localToGlobal(Offset.zero);
+    return offset & renderObject.size;
+  }
+
+  Widget _buildAvatarPhoto() {
+    final photoUrl = widget.user?.photoUrl;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      return Image.network(
+        photoUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildAvatarFallback();
+        },
+      );
+    }
+    return _buildAvatarFallback();
+  }
+
+  Widget _buildAvatarFallback() {
+    return Container(
+      color: Colors.white,
+      alignment: Alignment.center,
+      child: Text(
+        widget.userInitials,
+        style: const TextStyle(
+          color: Color(0xFF5E60CE),
+          fontSize: 36,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 

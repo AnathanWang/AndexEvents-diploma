@@ -12,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -73,6 +72,7 @@ public class UserController {
         UserService.UpdateProfileRequest update = new UserService.UpdateProfileRequest(
                 body.displayName(),
                 body.photoUrl(),
+            null,
                 body.bio(),
                 body.age(),
                 body.gender(),
@@ -139,6 +139,30 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ok(matches));
     }
 
+    @PostMapping("/me/photos")
+    public ResponseEntity<ApiResponse<UserDto>> addPhoto(HttpServletRequest request, @RequestBody AddPhotoRequest body) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(false, null, "Unauthorized: User ID not found"));
+        }
+
+        UserDto updated = userService.addPhoto(auth.userId(), body.photoUrl());
+        return ResponseEntity.ok(ApiResponse.ok(updated));
+    }
+
+    @DeleteMapping("/me/photos")
+    public ResponseEntity<ApiResponse<UserDto>> removePhoto(HttpServletRequest request, @RequestBody RemovePhotoRequest body) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(false, null, "Unauthorized: User ID not found"));
+        }
+
+        UserDto updated = userService.removePhoto(auth.userId(), body.photoUrl());
+        return ResponseEntity.ok(ApiResponse.ok(updated));
+    }
+
     public record CreateUserRequest(String displayName, String photoUrl) {
     }
 
@@ -154,5 +178,11 @@ public class UserController {
         }
 
     public record UpdateLocationRequest(@NotNull Double latitude, @NotNull Double longitude) {
+    }
+
+    public record AddPhotoRequest(String photoUrl) {
+    }
+
+    public record RemovePhotoRequest(String photoUrl) {
     }
 }

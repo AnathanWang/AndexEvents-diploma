@@ -54,7 +54,7 @@ func (m *MinioClient) StatObject(ctx context.Context, bucket string, objectName 
 
 func AllowedBucket(bucket string) bool {
 	switch bucket {
-	case "avatars", "events":
+	case "avatars", "events", "photos":
 		return true
 	default:
 		return false
