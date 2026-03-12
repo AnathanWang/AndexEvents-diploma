@@ -190,12 +190,8 @@ class _MatchesScreenState extends State<MatchesScreen>
 
   bool get _isProfileComplete {
     if (_currentUser == null) return false;
-
-    return _currentUser!.displayName != null &&
-        _currentUser!.displayName!.isNotEmpty &&
-        _currentUser!.bio != null &&
-        _currentUser!.bio!.isNotEmpty &&
-        _currentUser!.interests.isNotEmpty;
+    // Profile is complete when onboarding is finished
+    return _currentUser!.isOnboardingCompleted;
   }
 
   Future<void> _openEditProfile() async {

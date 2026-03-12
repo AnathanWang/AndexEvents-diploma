@@ -73,6 +73,8 @@ class UserService {
   Future<String> uploadProfilePhoto(File photoFile) async {
     try {
       LoggerService.info('[UserService] Начинаем загрузку фото профиля...');
+      LoggerService.info('[UserService] Размер файла: ${photoFile.lengthSync()} bytes');
+      LoggerService.info('[UserService] Путь файла: ${photoFile.path}');
 
       final url = await _storageService.uploadProfilePhoto(
         photoFile.path,
@@ -85,8 +87,14 @@ class UserService {
 
       LoggerService.info('[UserService] Фото профиля успешно загружено: $url');
       return url;
+    } on TimeoutException {
+      LoggerService.error('[UserService] Таймаут при загрузке фото');
+      rethrow;
+    } on SocketException catch (e) {
+      LoggerService.error('[UserService] Ошибка подключения при загрузке фото: $e');
+      rethrow;
     } catch (e) {
-      LoggerService.error('[UserService] Ошибка при загрузке фото профиля', e);
+      LoggerService.error('[UserService] Ошибка при загрузке фото профиля: $e');
       rethrow;
     }
   }

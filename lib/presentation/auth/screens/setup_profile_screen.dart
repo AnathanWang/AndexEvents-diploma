@@ -67,9 +67,21 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
         // Загружаем фото если выбрано
         if (_profileImage != null) {
           try {
-            photoUrl = await _userService.uploadProfilePhoto(_profileImage!);
+            photoUrl = await _userService.uploadProfilePhoto(_profileImage!)
+                .timeout(
+              const Duration(seconds: 30),
+              onTimeout: () {
+                throw TimeoutException('Загрузка фото заняла слишком много времени');
+              },
+            );
           } catch (photoError) {
             // Не прерываем процесс, продолжаем без фото
+            if (!mounted) return;
+            CustomNotification.show(
+              context,
+              'Не удалось загрузить фото, продолжаем без него',
+              isError: true,
+            );
           }
         }
 
@@ -78,6 +90,11 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
           photoUrl: photoUrl,
           age: int.tryParse(_ageController.text),
           gender: _selectedGender,
+        ).timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            throw TimeoutException('Обновление профиля заняло слишком много времени');
+          },
         );
 
         if (!mounted) return;

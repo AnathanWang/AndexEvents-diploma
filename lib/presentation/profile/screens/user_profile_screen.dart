@@ -517,35 +517,40 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 const SizedBox(height: 12),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: <String>[
-                      'Спорт',
-                      'Музыка',
-                      'Путешествия',
-                      'Технологии',
-                      'Фотография',
-                    ].map((String interest) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: const Color(0xFF5E60CE).withValues(alpha: 0.3),
+                  child: widget.user?.interests.isNotEmpty == true
+                      ? Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: widget.user!.interests.map((String interest) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF5E60CE)
+                                    .withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(0xFF5E60CE)
+                                      .withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Text(
+                                interest,
+                                style: const TextStyle(
+                                  color: Color(0xFF5E60CE),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        )
+                      : const Text(
+                          'Интересы не указаны',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF9E9E9E),
                           ),
                         ),
-                        child: Text(
-                          interest,
-                          style: const TextStyle(
-                            color: Color(0xFF5E60CE),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
                 ),
                 const SizedBox(height: 24),
                 
@@ -581,8 +586,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
                               Text(
-                                'У вас 3 общих интереса',
-                                style: TextStyle(
+                                'У вас ${widget.commonInterests.length} общих интереса',
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFF4A4D6A),
@@ -590,8 +595,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               ),
                               SizedBox(height: 4),
                               Text(
-                                'Спорт, Музыка, Технологии',
-                                style: TextStyle(
+                                widget.commonInterests.join(', '),
+                                style: const TextStyle(
                                   fontSize: 14,
                                   color: Color(0xFF9E9E9E),
                                 ),
