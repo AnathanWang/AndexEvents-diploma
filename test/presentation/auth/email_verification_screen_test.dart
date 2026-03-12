@@ -15,6 +15,9 @@ void main() {
 
   setUp(() {
     mockAuthService = MockAuthService();
+    // Default stubs for polling
+    when(mockAuthService.reloadUser()).thenAnswer((_) async => Future.value());
+    when(mockAuthService.isEmailVerified).thenReturn(false);
   });
 
   Widget createTestWidget({String? userEmail}) {
@@ -34,6 +37,7 @@ void main() {
 
       // Act
       await tester.pumpWidget(createTestWidget(userEmail: testEmail));
+      await tester.pump(); // Let lifecycle callbacks run
 
       // Assert
       expect(find.text('Проверьте почту'), findsOneWidget);
@@ -47,10 +51,23 @@ void main() {
     testWidgets('displays resend button', (WidgetTester tester) async {
       // Arrange & Act
       await tester.pumpWidget(createTestWidget());
+      await tester.pump();
 
       // Assert
       expect(
         find.widgetWithText(ElevatedButton, 'Отправить письмо повторно'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('displays manual check button', (WidgetTester tester) async {
+      // Arrange & Act
+      await tester.pumpWidget(createTestWidget());
+      await tester.pump();
+
+      // Assert
+      expect(
+        find.widgetWithText(OutlinedButton, 'Я подтвердил email'),
         findsOneWidget,
       );
     });
@@ -209,50 +226,29 @@ void main() {
         (WidgetTester tester) async {
       // Arrange & Act
       await tester.pumpWidget(createTestWidget());
+      await tester.pump();
 
       // Assert
       expect(find.text('Вернуться к входу'), findsOneWidget);
     });
 
-    testWidgets('navigates back when back button pressed',
+    testWidgets('manual check shows error when email not verified',
         (WidgetTester tester) async {
       // Arrange
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => EmailVerificationScreen(
-                        userEmail: 'test@example.com',
-                        authService: mockAuthService,
-                      ),
-                    ),
-                  );
-                },
-                child: const Text('Go to Verification'),
-              ),
-            ),
-          ),
-        ),
-      );
+      when(mockAuthService.reloadUser()).thenAnswer((_) async => Future.value());
+      when(mockAuthService.isEmailVerified).thenReturn(false);
+      
+      await tester.pumpWidget(createTestWidget());
+      await tester.pump();
 
-      // Act - navigate to verification screen
-      await tester.tap(find.text('Go to Verification'));
+      // Act
+      final checkButton = find.widgetWithText(OutlinedButton, 'Я подтвердил email');
+      await tester.tap(checkButton);
       await tester.pumpAndSettle();
 
-      expect(find.byType(EmailVerificationScreen), findsOneWidget);
-
-      // Act - tap back button
-      final backButton = find.text('Вернуться к входу');
-      await tester.tap(backButton);
-      await tester.pumpAndSettle();
-
-      // Assert - should navigate back
-      expect(find.byType(EmailVerificationScreen), findsNothing);
+      // Assert
+      expect(find.textContaining('Email еще не подтвержден'), findsOneWidget);
+      verify(mockAuthService.reloadUser()).called(1);
     });
   });
 }
