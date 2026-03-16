@@ -16,6 +16,7 @@ type MatchRepository interface {
 	CreateOrUpdateMatch(ctx context.Context, userID, targetUserID string, action model.MatchAction) (*model.Match, error)
 	GetMutualMatchUsers(ctx context.Context, userID string) ([]model.User, error)
 	GetActionUsers(ctx context.Context, userID string, action model.MatchAction, limit int) ([]model.User, error)
+	GetIncomingLikeUsers(ctx context.Context, userID string, limit int) ([]model.User, error)
 }
 
 type matchRepository struct {
@@ -107,13 +108,13 @@ func (r *matchRepository) CreateOrUpdateMatch(ctx context.Context, userID, targe
 
 	// Обновляем действие для текущего пользователя
 	var otherAction *model.MatchAction
-	setColumn := "userAAction"
+	setColumn := `"userAAction"`
 	if existing.UserAID == userID {
 		otherAction = existing.UserBAction
-		setColumn = "userAAction"
+		setColumn = `"userAAction"`
 	} else {
 		otherAction = existing.UserAAction
-		setColumn = "userBAction"
+		setColumn = `"userBAction"`
 	}
 
 	isMutual := false
@@ -165,6 +166,7 @@ func (r *matchRepository) CreateOrUpdateMatch(ctx context.Context, userID, targe
 
 func scanUser(row pgx.Row, dest *model.User) error {
 	var interests []string
+	var photos []string
 	var socialLinks []byte
 
 	err := row.Scan(
@@ -173,6 +175,7 @@ func scanUser(row pgx.Row, dest *model.User) error {
 		&dest.Email,
 		&dest.DisplayName,
 		&dest.PhotoURL,
+		&photos,
 		&dest.Bio,
 		&interests,
 		&socialLinks,
@@ -197,6 +200,7 @@ func scanUser(row pgx.Row, dest *model.User) error {
 	}
 
 	dest.Interests = interests
+	dest.Photos = photos
 	if socialLinks != nil {
 		dest.SocialLinks = json.RawMessage(socialLinks)
 	}
@@ -207,7 +211,7 @@ func scanUser(row pgx.Row, dest *model.User) error {
 func (r *matchRepository) GetMutualMatchUsers(ctx context.Context, userID string) ([]model.User, error) {
 	query := `
 		SELECT
-			u.id, u."supabaseUid", u.email, u."displayName", u."photoUrl", u.bio, u.interests,
+			u.id, u."supabaseUid", u.email, u."displayName", u."photoUrl", COALESCE(u.photos, ARRAY[]::text[]), u.bio, u.interests,
 			u."socialLinks", u.age, u.gender, u.role, u."lastLatitude", u."lastLongitude",
 			u."lastLocationUpdate", u."isProfileVisible", u."isLocationVisible",
 			u."minAge", u."maxAge", u."maxDistance", u."fcmToken", u."isOnboardingCompleted",
@@ -248,26 +252,75 @@ func (r *matchRepository) GetActionUsers(ctx context.Context, userID string, act
 	}
 
 	query := `
-		WITH recent AS (
-			SELECT *
-			FROM "Match"
-			WHERE "userAId" = $1 OR "userBId" = $1
-			ORDER BY "createdAt" DESC
-			LIMIT $2
-		)
 		SELECT
-			u.id, u."supabaseUid", u.email, u."displayName", u."photoUrl", u.bio, u.interests,
+			u.id, u."supabaseUid", u.email, u."displayName", u."photoUrl", COALESCE(u.photos, ARRAY[]::text[]), u.bio, u.interests,
 			u."socialLinks", u.age, u.gender, u.role, u."lastLatitude", u."lastLongitude",
 			u."lastLocationUpdate", u."isProfileVisible", u."isLocationVisible",
 			u."minAge", u."maxAge", u."maxDistance", u."fcmToken", u."isOnboardingCompleted",
 			u."createdAt", u."updatedAt"
-		FROM recent m
+		FROM "Match" m
 		JOIN users."User" u ON u.id = CASE WHEN m."userAId" = $1 THEN m."userBId" ELSE m."userAId" END
 		WHERE (CASE WHEN m."userAId" = $1 THEN m."userAAction" ELSE m."userBAction" END) = $3
-		ORDER BY m."createdAt" DESC
+		  AND (m."userAId" = $1 OR m."userBId" = $1)
+		ORDER BY m."updatedAt" DESC
+		LIMIT $2
 	`
 
 	rows, err := r.pool.Query(ctx, query, userID, limit, string(action))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := make([]model.User, 0)
+	for rows.Next() {
+		var u model.User
+		if err := scanUser(rows, &u); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
+func (r *matchRepository) GetIncomingLikeUsers(ctx context.Context, userID string, limit int) ([]model.User, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+
+	query := `
+		SELECT
+			u.id, u."supabaseUid", u.email, u."displayName", u."photoUrl", COALESCE(u.photos, ARRAY[]::text[]), u.bio, u.interests,
+			u."socialLinks", u.age, u.gender, u.role, u."lastLatitude", u."lastLongitude",
+			u."lastLocationUpdate", u."isProfileVisible", u."isLocationVisible",
+			u."minAge", u."maxAge", u."maxDistance", u."fcmToken", u."isOnboardingCompleted",
+			u."createdAt", u."updatedAt"
+		FROM "Match" m
+		JOIN users."User" u ON u.id = CASE WHEN m."userAId" = $1 THEN m."userBId" ELSE m."userAId" END
+		WHERE
+			(m."userAId" = $1 OR m."userBId" = $1)
+			AND (CASE WHEN m."userAId" = $1 THEN m."userBAction" ELSE m."userAAction" END) IN ($3, $4)
+			AND (CASE WHEN m."userAId" = $1 THEN m."userAAction" ELSE m."userBAction" END) IS NULL
+			AND m."isMutual" = false
+		ORDER BY m."updatedAt" DESC
+		LIMIT $2
+	`
+
+	rows, err := r.pool.Query(
+		ctx,
+		query,
+		userID,
+		limit,
+		string(model.MatchActionLike),
+		string(model.MatchActionSuperLike),
+	)
 	if err != nil {
 		return nil, err
 	}

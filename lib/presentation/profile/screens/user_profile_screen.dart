@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../widgets/common/custom_notification.dart';
 import '../../widgets/report_dialog.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/models/event_model.dart';
+import '../../../data/services/event_service.dart';
+import '../../events/bloc/event_bloc.dart';
+import '../../events/screens/real_event_detail_screen.dart';
 import '../widgets/photo_gallery_sheet.dart';
 // import '../../../data/services/friend_service.dart'; // Removed FriendService
 
@@ -11,6 +16,7 @@ class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({
     required this.userName,
     required this.userInitials,
+    this.eventService,
     super.key,
   })  : user = null,
         matchPercentage = null,
@@ -22,6 +28,7 @@ class UserProfileScreen extends StatefulWidget {
     int? matchPercentage,
     List<String> commonInterests = const <String>[],
     bool canViewSensitiveInfo = false,
+    EventService? eventService,
     super.key,
   })  : userName = (user.displayName?.isNotEmpty == true)
             ? user.displayName!
@@ -34,7 +41,8 @@ class UserProfileScreen extends StatefulWidget {
         user = user,
         matchPercentage = matchPercentage,
         commonInterests = commonInterests,
-        canViewSensitiveInfo = canViewSensitiveInfo;
+        canViewSensitiveInfo = canViewSensitiveInfo,
+        eventService = eventService;
 
   final String userName;
   final String userInitials;
@@ -42,6 +50,7 @@ class UserProfileScreen extends StatefulWidget {
   final int? matchPercentage;
   final List<String> commonInterests;
   final bool canViewSensitiveInfo;
+  final EventService? eventService;
 
   static String _initialsFrom(String name) {
     final parts = name
@@ -59,10 +68,217 @@ class UserProfileScreen extends StatefulWidget {
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
   final GlobalKey _avatarKey = GlobalKey();
+  late final EventService _eventService;
+
+  bool _eventsLoading = false;
+  String? _eventsError;
+  List<EventModel> _creatorEvents = <EventModel>[];
+  List<EventModel> _participatedEvents = <EventModel>[];
 
   @override
   void initState() {
     super.initState();
+    _eventService = widget.eventService ?? EventService();
+    _loadRecentEvents();
+  }
+
+  Future<void> _loadRecentEvents() async {
+    final userId = widget.user?.id;
+    if (userId == null || userId.isEmpty) return;
+
+    setState(() {
+      _eventsLoading = true;
+      _eventsError = null;
+    });
+
+    try {
+      final results = await Future.wait<List<EventModel>>(<Future<List<EventModel>>>[
+        _eventService.getUserEvents(userId),
+        _eventService.getUserParticipatedEvents(userId),
+      ]);
+
+      if (!mounted) return;
+
+      final creator = List<EventModel>.from(results[0])
+        ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+      final participated = List<EventModel>.from(results[1])
+        ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+
+      setState(() {
+        _creatorEvents = creator;
+        _participatedEvents = participated;
+        _eventsLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _eventsLoading = false;
+        _eventsError = e.toString();
+      });
+    }
+  }
+
+  void _openEventDetails(String eventId) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => BlocProvider<EventBloc>(
+          create: (_) => EventBloc(),
+          child: RealEventDetailScreen(eventId: eventId),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventSection(String title, List<EventModel> events) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF4A4D6A),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 118,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: events.length > 5 ? 5 : events.length,
+            itemBuilder: (BuildContext context, int index) {
+              final event = events[index];
+              return GestureDetector(
+                onTap: () => _openEventDetails(event.id),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: SizedBox(
+                      width: 160,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: <Widget>[
+                          if ((event.imageUrl ?? '').trim().isNotEmpty)
+                            Image.network(
+                              event.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => Container(
+                                color: const Color(0xFF5E60CE),
+                              ),
+                            ),
+                          if ((event.imageUrl ?? '').trim().isEmpty)
+                            Container(color: const Color(0xFF5E60CE)),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: <Color>[
+                                  Colors.black.withValues(alpha: 0.1),
+                                  Colors.black.withValues(alpha: 0.6),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                const Spacer(),
+                                Text(
+                                  event.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  event.location,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.92),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecentEventsContent() {
+    if (_eventsLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20),
+        child: SizedBox(
+          height: 60,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    if (_eventsError != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Text(
+          'Не удалось загрузить события',
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF9E9E9E),
+          ),
+        ),
+      );
+    }
+
+    if (_creatorEvents.isEmpty && _participatedEvents.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20),
+        child: Text(
+          'Пользователь пока не участвовал в событиях',
+          style: TextStyle(
+            fontSize: 14,
+            color: Color(0xFF9E9E9E),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: <Widget>[
+        if (_participatedEvents.isNotEmpty)
+          _buildEventSection(
+            'События, в которых участвовал',
+            _participatedEvents,
+          ),
+        if (_participatedEvents.isNotEmpty && _creatorEvents.isNotEmpty)
+          const SizedBox(height: 16),
+        if (_creatorEvents.isNotEmpty)
+          _buildEventSection('События как создатель', _creatorEvents),
+      ],
+    );
   }
 
 
@@ -684,38 +900,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                SizedBox(
-                  height: 120,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: 5,
-                    itemBuilder: (BuildContext context, int index) {
-                      return Container(
-                        width: 100,
-                        margin: const EdgeInsets.only(right: 12),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: <Color>[
-                              const Color(0xFF5E60CE).withValues(alpha: 0.7),
-                              const Color(0xFF9370DB).withValues(alpha: 0.7),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.celebration,
-                            color: Colors.white,
-                            size: 32,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+                _buildRecentEventsContent(),
                 const SizedBox(height: 24),
                 
                 // Соцсети (доступны только после взаимного лайка)

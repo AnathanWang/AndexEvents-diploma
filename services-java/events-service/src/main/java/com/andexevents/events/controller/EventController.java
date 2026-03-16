@@ -107,6 +107,11 @@ public class EventController {
         return ApiResponse.ok(eventService.listUserEvents(userId));
     }
 
+    @GetMapping("/user/{userId}/participated")
+    public ApiResponse<List<EventDtos.EventDto>> getUserParticipatedEvents(@PathVariable String userId) {
+        return ApiResponse.ok(eventService.listUserParticipatedEvents(userId));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<EventDtos.EventDto>> getEventById(HttpServletRequest request, @PathVariable String id) {
         AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);

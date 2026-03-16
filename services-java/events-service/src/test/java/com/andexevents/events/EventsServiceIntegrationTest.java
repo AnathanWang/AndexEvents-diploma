@@ -58,8 +58,9 @@ class EventsServiceIntegrationTest {
     @BeforeEach
     void setup() {
         // Minimal shared User table for joins and lookups.
-        jdbc.execute("CREATE TABLE IF NOT EXISTS \"User\" (id TEXT PRIMARY KEY, \"firebaseUid\" TEXT, \"supabaseUid\" TEXT, email TEXT, \"displayName\" TEXT, \"photoUrl\" TEXT)");
-        jdbc.execute("CREATE UNIQUE INDEX IF NOT EXISTS \"User_firebaseUid_key\" ON \"User\"(\"firebaseUid\")");
+        jdbc.execute("CREATE SCHEMA IF NOT EXISTS users");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS users.\"User\" (id TEXT PRIMARY KEY, \"firebaseUid\" TEXT, \"supabaseUid\" TEXT, email TEXT, \"displayName\" TEXT, \"photoUrl\" TEXT)");
+        jdbc.execute("CREATE UNIQUE INDEX IF NOT EXISTS \"User_firebaseUid_key\" ON users.\"User\"(\"firebaseUid\")");
 
             DecodedJWT jwt1 = jwt("firebase-1", "u1@example.com");
             DecodedJWT jwt2 = jwt("firebase-2", "u2@example.com");
@@ -138,9 +139,55 @@ class EventsServiceIntegrationTest {
         assertThat(userPreview.get("email")).isEqualTo("u2@example.com");
     }
 
+        @Test
+        void userParticipatedEvents_returnsRealParticipatedEvents() {
+        ResponseEntity<Map> created = rest.exchange(
+            "/api/events",
+            HttpMethod.POST,
+            jsonAuthed("u1", Map.of(
+                "title", "Participated Event",
+                "description", "Desc",
+                "category", "C",
+                "location", "L",
+                "latitude", 55.751244,
+                "longitude", 37.618423,
+                "dateTime", "2026-02-09T12:00:00Z",
+                "price", 0,
+                "imageUrl", "",
+                "isOnline", false
+            )),
+            Map.class
+        );
+        assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Map createdData = (Map) created.getBody().get("data");
+        String eventId = (String) createdData.get("id");
+
+        ResponseEntity<Map> participate = rest.exchange(
+            "/api/events/" + eventId + "/participate",
+            HttpMethod.POST,
+            jsonAuthed("u2", Map.of("status", "GOING")),
+            Map.class
+        );
+        assertThat(participate.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        ResponseEntity<Map> participated = rest.exchange(
+            "/api/events/user/user-2/participated",
+            HttpMethod.GET,
+            new HttpEntity<>(new HttpHeaders()),
+            Map.class
+        );
+
+        assertThat(participated.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List rows = (List) participated.getBody().get("data");
+        assertThat(rows).isNotEmpty();
+        Map first = (Map) rows.get(0);
+        assertThat(first.get("id")).isEqualTo(eventId);
+        assertThat(first.get("title")).isEqualTo("Participated Event");
+        }
+
     private void ensureUser(String id, String firebaseUid, String email, String displayName) {
         jdbc.update(
-                "INSERT INTO \"User\" (id, \"firebaseUid\", \"supabaseUid\", email, \"displayName\", \"photoUrl\") VALUES (?, ?, ?, ?, ?, ?) " +
+            "INSERT INTO users.\"User\" (id, \"firebaseUid\", \"supabaseUid\", email, \"displayName\", \"photoUrl\") VALUES (?, ?, ?, ?, ?, ?) " +
                         "ON CONFLICT (id) DO NOTHING",
                 id,
                 firebaseUid,

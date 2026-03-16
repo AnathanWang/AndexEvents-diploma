@@ -101,6 +101,45 @@ func (h *MatchHandler) GetMyActions(c *gin.Context) {
 	})
 }
 
+// GET /api/matches/incoming-likes?limit=50
+func (h *MatchHandler) GetIncomingLikes(c *gin.Context) {
+	userID, ok := c.Get("dbUserID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, model.ErrorResponse{
+			Success: false,
+			Message: "Unauthorized: User ID not found",
+		})
+		return
+	}
+
+	limit := 50
+	if limitRaw := c.Query("limit"); limitRaw != "" {
+		if parsed, err := strconv.Atoi(limitRaw); err == nil {
+			if parsed < 1 {
+				parsed = 1
+			}
+			if parsed > 200 {
+				parsed = 200
+			}
+			limit = parsed
+		}
+	}
+
+	users, err := h.matchService.GetIncomingLikes(c.Request.Context(), userID.(string), limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Success: false,
+			Message: "Failed to fetch incoming likes",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, model.UsersResponse{
+		Success: true,
+		Data:    users,
+	})
+}
+
 func (h *MatchHandler) SendLike(c *gin.Context) {
 	h.sendAction(c, model.MatchActionLike)
 }

@@ -49,6 +49,14 @@ public class EventService {
         return out;
     }
 
+    public List<EventDtos.EventDto> listUserParticipatedEvents(String userId) {
+        List<EventDtos.EventDto> out = new ArrayList<>();
+        for (EventRepository.EventRow row : repo.listUserParticipatedApprovedEvents(userId)) {
+            out.add(toDto(row, null, null));
+        }
+        return out;
+    }
+
     public Optional<EventDtos.EventDto> getById(String eventId, String viewerUserId) {
         EventRepository.EventRow row = repo.findEventRowById(eventId).orElse(null);
         if (row == null) return Optional.empty();

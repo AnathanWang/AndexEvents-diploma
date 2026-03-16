@@ -16,6 +16,7 @@ type MatchService interface {
 	CreateOrUpdateMatch(ctx context.Context, userID, targetUserID string, action model.MatchAction) (*model.Match, error)
 	GetMutualMatches(ctx context.Context, userID string) ([]model.User, error)
 	GetUsersByAction(ctx context.Context, userID string, action model.MatchAction, limit int) ([]model.User, error)
+	GetIncomingLikes(ctx context.Context, userID string, limit int) ([]model.User, error)
 }
 
 type matchService struct {
@@ -42,4 +43,8 @@ func (s *matchService) GetUsersByAction(ctx context.Context, userID string, acti
 		return nil, ErrInvalidAction
 	}
 	return s.repo.GetActionUsers(ctx, userID, action, limit)
+}
+
+func (s *matchService) GetIncomingLikes(ctx context.Context, userID string, limit int) ([]model.User, error) {
+	return s.repo.GetIncomingLikeUsers(ctx, userID, limit)
 }

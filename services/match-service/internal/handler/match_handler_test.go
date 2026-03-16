@@ -37,6 +37,11 @@ func (m *MockMatchService) GetUsersByAction(ctx context.Context, userID string, 
 	return args.Get(0).([]model.User), args.Error(1)
 }
 
+func (m *MockMatchService) GetIncomingLikes(ctx context.Context, userID string, limit int) ([]model.User, error) {
+	args := m.Called(ctx, userID, limit)
+	return args.Get(0).([]model.User), args.Error(1)
+}
+
 func setupRouter(mockService *MockMatchService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -46,6 +51,7 @@ func setupRouter(mockService *MockMatchService) *gin.Engine {
 	{
 		api.GET("", setDBUserID("user-123"), h.GetMyMutualMatches)
 		api.GET("/actions", setDBUserID("user-123"), h.GetMyActions)
+		api.GET("/incoming-likes", setDBUserID("user-123"), h.GetIncomingLikes)
 		api.POST("/like", setDBUserID("user-123"), h.SendLike)
 	}
 
@@ -96,5 +102,53 @@ func TestSendLike_Success(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestGetMyActions_IncludesPhotos(t *testing.T) {
+	mockSvc := new(MockMatchService)
+	router := setupRouter(mockSvc)
+
+	displayName := "Alice"
+	mockSvc.On("GetUsersByAction", mock.Anything, "user-123", model.MatchActionLike, 50).Return([]model.User{
+		{
+			ID:          "user-456",
+			SupabaseUID: "sb-456",
+			Email:       "alice@example.com",
+			DisplayName: &displayName,
+			PhotoURL:    nil,
+			Photos:      []string{"https://cdn/p1.jpg", "https://cdn/p2.jpg"},
+		},
+	}, nil)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/matches/actions?action=LIKE", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "\"photos\":[\"https://cdn/p1.jpg\",\"https://cdn/p2.jpg\"]")
+	mockSvc.AssertExpectations(t)
+}
+
+func TestGetIncomingLikes_Success(t *testing.T) {
+	mockSvc := new(MockMatchService)
+	router := setupRouter(mockSvc)
+
+	displayName := "Bob"
+	mockSvc.On("GetIncomingLikes", mock.Anything, "user-123", 50).Return([]model.User{
+		{
+			ID:          "user-789",
+			SupabaseUID: "sb-789",
+			Email:       "bob@example.com",
+			DisplayName: &displayName,
+		},
+	}, nil)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/matches/incoming-likes", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "user-789")
 	mockSvc.AssertExpectations(t)
 }

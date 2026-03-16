@@ -467,6 +467,58 @@ class UserService {
     }
   }
 
+  /// Получить пользователей, которые лайкнули меня, но я еще не ответил
+  Future<List<UserModel>> getIncomingLikes({
+    int limit = 50,
+  }) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final uri = Uri.parse(
+        '${AppConfig.baseUrl}/matches/incoming-likes?limit=$limit',
+      );
+
+      final response = await _with429Retry(
+        () => http
+            .get(
+              uri,
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Content-Type': 'application/json',
+              },
+            )
+            .timeout(const Duration(seconds: 10)),
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final usersList = json['data'] as List<dynamic>?;
+        return usersList
+                ?.map((u) => UserModel.fromJson(u as Map<String, dynamic>))
+                .toList() ??
+            [];
+      } else if (response.statusCode == 401) {
+        throw Exception('Истекла сессия авторизации');
+      } else if (response.statusCode == 429) {
+        throw Exception('Слишком много запросов. Попробуйте чуть позже.');
+      } else {
+        throw Exception(
+          'Ошибка при получении входящих лайков: ${response.statusCode}',
+        );
+      }
+    } on TimeoutException {
+      throw Exception('Таймаут при запросе к API (${AppConfig.baseUrl}).');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error loading incoming likes', e);
+      rethrow;
+    }
+  }
+
   /// Построить query string из параметров
   String _buildQueryString(Map<String, dynamic> params) {
     if (params.isEmpty) return '';

@@ -22,6 +22,7 @@ import '../../admin/screens/admin_dashboard_screen.dart';
 
 enum _ProfileMatchFilter {
   mutual,
+  incoming,
   liked,
   skipped,
   postponed,
@@ -76,6 +77,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       switch (filter) {
         case _ProfileMatchFilter.mutual:
           users = await _userService.getMutualMatches();
+          break;
+        case _ProfileMatchFilter.incoming:
+          users = await _userService.getIncomingLikes();
           break;
         case _ProfileMatchFilter.liked:
           users = await _userService.getUsersByMatchAction(action: 'LIKE');
@@ -148,6 +152,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: <Widget>[
           chip(_ProfileMatchFilter.mutual, 'Взаимные'),
           const SizedBox(width: 10),
+          chip(_ProfileMatchFilter.incoming, 'Меня лайкнули'),
+          const SizedBox(width: 10),
           chip(_ProfileMatchFilter.liked, 'Лайкнул'),
           const SizedBox(width: 10),
           chip(_ProfileMatchFilter.skipped, 'Пропустил'),
@@ -160,7 +166,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildMatchesList() {
     final matches = _matchesByFilter[_filter] ?? <MatchPreview>[];
-    final canViewSensitiveInfo = _filter == _ProfileMatchFilter.mutual;
+    final canViewSensitiveInfo =
+        _filter == _ProfileMatchFilter.mutual ||
+        _filter == _ProfileMatchFilter.incoming;
 
     final String filterKey = _filter.toString();
     late final Widget content;

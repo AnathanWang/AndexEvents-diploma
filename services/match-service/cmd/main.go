@@ -86,6 +86,7 @@ func main() {
 
 		api.GET("", matchHandler.GetMyMutualMatches)
 		api.GET("/actions", matchHandler.GetMyActions)
+		api.GET("/incoming-likes", matchHandler.GetIncomingLikes)
 		api.POST("/like", matchHandler.SendLike)
 		api.POST("/dislike", matchHandler.SendDislike)
 		api.POST("/super-like", matchHandler.SendSuperLike)

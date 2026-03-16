@@ -8,9 +8,7 @@ import '../../../data/services/match_seen_service.dart';
 import '../../models/match_preview.dart';
 import '../../profile/screens/edit_profile_screen.dart';
 import '../../profile/screens/user_profile_screen.dart';
-import '../../widgets/report_dialog.dart';
 import '../../widgets/common/custom_notification.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class MatchesScreen extends StatefulWidget {
   const MatchesScreen({super.key, this.matches = const []});
@@ -35,11 +33,8 @@ class _MatchesScreenState extends State<MatchesScreen>
   bool _isAnimating =
       false; // Флаг для предотвращения свайпов во время анимации
 
-  // Для показа детальной информации
-  bool _showDetails = false;
+  // Подсказка свайпа
   bool _showHint = true;
-  late AnimationController _detailsController;
-  late Animation<double> _detailsAnimation;
 
   final UserService _userService = UserService();
   final MatchSeenService _matchSeenService = MatchSeenService();
@@ -49,7 +44,6 @@ class _MatchesScreenState extends State<MatchesScreen>
     super.initState();
     _matches = widget.matches;
     _loadUserData();
-    _setupAnimations();
   }
 
   Future<void> _loadMatches() async {
@@ -117,6 +111,29 @@ class _MatchesScreenState extends State<MatchesScreen>
     }
   }
 
+  Future<void> _refreshMatches({bool resetSeen = false}) async {
+    if (_currentUser == null) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      if (resetSeen) {
+        await _matchSeenService.clear(_currentUser!.id);
+      }
+      await _loadMatches();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   void _openUserProfile(MatchPreview match) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -130,20 +147,8 @@ class _MatchesScreenState extends State<MatchesScreen>
     );
   }
 
-  void _setupAnimations() {
-    _detailsController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _detailsAnimation = CurvedAnimation(
-      parent: _detailsController,
-      curve: Curves.easeOutCubic,
-    );
-  }
-
   @override
   void dispose() {
-    _detailsController.dispose();
     super.dispose();
   }
 
@@ -365,21 +370,20 @@ class _MatchesScreenState extends State<MatchesScreen>
       return;
     }
 
-    if (_currentIndex < _matches.length - 1) {
-      _currentIndex++;
-    } else {
-      // Достигли конца списка матчей: не зацикливаемся на начало
-      setState(() {
+    setState(() {
+      if (_currentIndex < _matches.length - 1) {
+        _currentIndex++;
+      } else {
+        // Достигли конца списка матчей: не зацикливаемся на начало
         _currentIndex = 0;
         _matches = <MatchPreview>[];
-      });
-      return;
-    }
+      }
 
-    // Сброс состояния свайпа
-    _dragPosition = Offset.zero;
-    _isDragging = false;
-    _dragDistance = 0;
+      // Сброс состояния свайпа
+      _dragPosition = Offset.zero;
+      _isDragging = false;
+      _dragDistance = 0;
+    });
   }
 
   void _handleLike() {
@@ -445,16 +449,6 @@ class _MatchesScreenState extends State<MatchesScreen>
         });
   }
 
-  void _hideDetailsScreen() {
-    _detailsController.reverse().then((_) {
-      if (mounted) {
-        setState(() {
-          _showDetails = false;
-        });
-      }
-    });
-  }
-
   double get _rotation {
     if (_dragPosition.dx == 0) return 0;
     const maxRotation = 0.1;
@@ -482,27 +476,9 @@ class _MatchesScreenState extends State<MatchesScreen>
     } else if (_dragPosition.dy < -50) {
       return 'ЕЩЁ ПОДУМАЮ';
     } else if (_dragPosition.dy > 50) {
-      return 'ПОДРОБНЕЕ';
+      return 'INFO';
     }
     return '';
-  }
-
-  void _showReportDialog(MatchPreview match) {
-    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    if (currentUserId == null) {
-      CustomNotification.show(context, 'Ошибка авторизации', isError: true);
-      return;
-    }
-
-    showDialog<void>(
-      context: context,
-      builder: (BuildContext context) {
-        return ReportDialog(
-          reporterId: currentUserId,
-          targetUserId: match.userModel.id,
-        );
-      },
-    );
   }
 
   @override
@@ -521,15 +497,7 @@ class _MatchesScreenState extends State<MatchesScreen>
       return _buildNoMatchesScreen();
     }
 
-    return Stack(
-      children: [
-        // Основной контент с карточками
-        _buildMainContent(),
-
-        // Детальная информация (слайд снизу)
-        if (_showDetails) _buildDetailsOverlay(),
-      ],
-    );
+    return _buildMainContent();
   }
 
   Widget _buildProfileIncompleteScreen() {
@@ -627,6 +595,24 @@ class _MatchesScreenState extends State<MatchesScreen>
               style: TextStyle(fontSize: 15, color: Color(0xFF9699A8)),
             ),
             const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () => _refreshMatches(resetSeen: true),
+              icon: const Icon(Icons.refresh, size: 20),
+              label: const Text('Обновить подборку'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF5E60CE),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+            ),
+            const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: _openEditProfile,
               icon: const Icon(Icons.edit_outlined, size: 20),
@@ -714,7 +700,7 @@ class _MatchesScreenState extends State<MatchesScreen>
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'Свайп вниз для подробностей',
+                          'Свайп вниз для профиля',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 11,
@@ -748,6 +734,27 @@ class _MatchesScreenState extends State<MatchesScreen>
               ),
             ),
           ),
+
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 8,
+          right: 16,
+          child: SafeArea(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.25),
+                ),
+              ),
+              child: IconButton(
+                tooltip: 'Обновить подборку',
+                onPressed: () => _refreshMatches(resetSeen: true),
+                icon: const Icon(Icons.refresh, color: Colors.white),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -969,285 +976,6 @@ class _MatchesScreenState extends State<MatchesScreen>
                 fontWeight: FontWeight.bold,
                 letterSpacing: 2,
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailsOverlay() {
-    final match = _matches[_currentIndex];
-
-    return GestureDetector(
-      onTap: _hideDetailsScreen,
-      child: Container(
-        color: Colors.black54,
-        child: GestureDetector(
-          onTap: () {}, // Prevent closing when tapping on content
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 1),
-              end: Offset.zero,
-            ).animate(_detailsAnimation),
-            child: DraggableScrollableSheet(
-              initialChildSize: 0.9,
-              minChildSize: 0.5,
-              maxChildSize: 0.95,
-              builder: (context, scrollController) {
-                return Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      // Handle bar
-                      const SizedBox(height: 12),
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Close button
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.flag_outlined, color: Colors.grey),
-                            onPressed: () => _showReportDialog(match),
-                            tooltip: 'Пожаловаться',
-                          ),
-                          Text(
-                            match.name,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF4A4D6A),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: _hideDetailsScreen,
-                          ),
-                        ],
-                      ),
-
-                      // Content
-                      Expanded(
-                        child: ListView(
-                          controller: scrollController,
-                          padding: const EdgeInsets.all(24),
-                          children: [
-                            // Фото профиля
-                            if (_currentUser?.photoUrl != null)
-                              Center(
-                                child: Container(
-                                  width: 120,
-                                  height: 120,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    image: DecorationImage(
-                                      image: NetworkImage(
-                                        _currentUser!.photoUrl!,
-                                      ),
-                                      fit: BoxFit.cover,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.1),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(height: 24),
-
-                            // Процент совпадения
-                            Center(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFF5E60CE),
-                                      Color(0xFF4ECCA3),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.favorite,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '${match.matchPercentage}% совпадение',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 32),
-
-                            // О себе
-                            if (_currentUser?.bio != null) ...[
-                              const Text(
-                                'О себе',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF4A4D6A),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                _currentUser!.bio!,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  color: Color(0xFF4A4D6A),
-                                  height: 1.5,
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                            ],
-
-                            // Общие интересы
-                            const Text(
-                              'Общие интересы',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF4A4D6A),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: match.commonInterests
-                                  .map(
-                                    (interest) => Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 10,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(
-                                          0xFF5E60CE,
-                                        ).withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color: const Color(
-                                            0xFF5E60CE,
-                                          ).withValues(alpha: 0.3),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.favorite,
-                                            size: 16,
-                                            color: Color(0xFF5E60CE),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            interest,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              color: Color(0xFF5E60CE),
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                            const SizedBox(height: 32),
-
-                            // Кнопки действий
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: () {
-                                      _hideDetailsScreen();
-                                      _handleDislike();
-                                      _animateCardOut(const Offset(-1000, 0));
-                                    },
-                                    icon: const Icon(Icons.close, size: 20),
-                                    label: const Text('Не интересно'),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: Colors.red,
-                                      side: const BorderSide(
-                                        color: Colors.red,
-                                        width: 2,
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () {
-                                      _hideDetailsScreen();
-                                      _handleLike();
-                                      _animateCardOut(const Offset(1000, 0));
-                                    },
-                                    icon: const Icon(Icons.favorite, size: 20),
-                                    label: const Text('Нравится'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      elevation: 0,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
             ),
           ),
         ),

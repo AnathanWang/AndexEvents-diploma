@@ -261,6 +261,36 @@ class EventService {
     }
   }
 
+  /// Получить события, в которых пользователь участвовал
+  Future<List<EventModel>> getUserParticipatedEvents(String userId) async {
+    try {
+      final String? token = await _getIdToken();
+
+      final headers = <String, String>{'Content-Type': 'application/json'};
+      if (token != null) headers['Authorization'] = 'Bearer $token';
+
+      final response = await http.get(
+        Uri.parse('${AppConfig.baseUrl}/events/user/$userId/participated'),
+        headers: headers,
+      );
+
+      if (response.statusCode != 200) {
+        final errorData = json.decode(response.body);
+        throw Exception(
+          errorData['message'] ??
+              'Ошибка загрузки событий участия пользователя',
+        );
+      }
+
+      final responseData = json.decode(response.body);
+      final List<dynamic> eventsJson = responseData['data'];
+
+      return eventsJson.map((json) => EventModel.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Ошибка загрузки событий участия пользователя: $e');
+    }
+  }
+
   /// Получить список участников события
   Future<List<ParticipantModel>> getEventParticipants(String eventId) async {
     try {

@@ -120,6 +120,17 @@ public class EventRepository {
         );
     }
 
+        public List<EventRow> listUserParticipatedApprovedEvents(String userId) {
+        return jdbcTemplate.query(
+            "SELECT e.* FROM events.\"Event\" e " +
+                "JOIN events.\"Participant\" p ON p.\"eventId\" = e.id " +
+                "WHERE p.\"userId\" = ? AND e.status = 'APPROVED'::events.\"EventStatus\" " +
+                "ORDER BY p.\"joinedAt\" DESC",
+            (rs, rn) -> mapEventRow(rs),
+            userId
+        );
+        }
+
     public NearbyQueryResult listNearbyApprovedEvents(double lat, double lon, int maxDistanceMeters, String category, int page, int limit) {
         int offset = (page - 1) * limit;
 
@@ -219,7 +230,7 @@ public class EventRepository {
         String id = UUID.randomUUID().toString();
         List<ParticipantRow> rows = jdbcTemplate.query(
                 "INSERT INTO events.\"Participant\" (id, \"userId\", \"eventId\", status, \"joinedAt\", \"updatedAt\") " +
-                        "VALUES (?, ?, ?, ?::\"ParticipantStatus\", NOW(), NOW()) " +
+                "VALUES (?, ?, ?, ?::events.\"ParticipantStatus\", NOW(), NOW()) " +
                         "ON CONFLICT (\"userId\", \"eventId\") DO UPDATE SET status = EXCLUDED.status, \"updatedAt\" = NOW() " +
                         "RETURNING id, \"userId\", \"eventId\", status, \"joinedAt\", \"updatedAt\"",
                 (rs, rn) -> mapParticipantRow(rs),

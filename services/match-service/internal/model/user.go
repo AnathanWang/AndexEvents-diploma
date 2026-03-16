@@ -19,6 +19,7 @@ type User struct {
 	Email                 string          `json:"email"`
 	DisplayName           *string         `json:"displayName,omitempty"`
 	PhotoURL              *string         `json:"photoUrl,omitempty"`
+	Photos                []string        `json:"photos,omitempty"`
 	Bio                   *string         `json:"bio,omitempty"`
 	Interests             []string        `json:"interests,omitempty"`
 	SocialLinks           json.RawMessage `json:"socialLinks,omitempty"`
