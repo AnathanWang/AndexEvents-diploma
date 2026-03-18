@@ -8,6 +8,15 @@ import '../../core/config/app_config.dart';
 import '../../core/auth/id_token_provider.dart';
 import '../../core/services/logger_service.dart';
 
+class ReportAccessDeniedException implements Exception {
+  ReportAccessDeniedException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class ReportService {
   static final ReportService _instance = ReportService._internal();
   final IdTokenProvider _idTokenProvider = const IdTokenProvider();
@@ -17,6 +26,22 @@ class ReportService {
   }
 
   ReportService._internal();
+
+  String? _extractErrorMessage(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        final message = decoded['message'];
+        if (message is String && message.trim().isNotEmpty) {
+          return message.trim();
+        }
+      }
+    } catch (_) {
+      // Ignore JSON parsing errors and use fallback message.
+    }
+
+    return null;
+  }
 
   Future<String?> _getIdToken() async {
     return _idTokenProvider.getIdToken();
@@ -56,7 +81,10 @@ class ReportService {
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         final errorData = jsonDecode(response.body);
-        throw Exception(errorData['message'] ?? 'Ошибка отправки жалобы: ${response.statusCode}');
+        throw Exception(
+          errorData['message'] ??
+              'Ошибка отправки жалобы: ${response.statusCode}',
+        );
       }
 
       LoggerService.info('[ReportService] Жалоба успешно отправлена');
@@ -96,11 +124,23 @@ class ReportService {
             .toList();
       }
 
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw ReportAccessDeniedException(
+          _extractErrorMessage(response.body) ??
+              'Недостаточно прав для просмотра жалоб. Войдите под модератором.',
+        );
+      }
+
       throw Exception('Ошибка загрузки жалоб: ${response.statusCode}');
     } on TimeoutException {
       throw Exception('Таймаут при загрузке жалоб');
     } on SocketException catch (e) {
       throw Exception('Не удалось подключиться к API: ${e.message}');
+    } on ReportAccessDeniedException catch (e) {
+      LoggerService.warning(
+        '[ReportService] Доступ к жалобам отклонен: ${e.message}',
+      );
+      rethrow;
     } catch (e) {
       LoggerService.error('[ReportService] Ошибка загрузки жалоб', e);
       rethrow;
@@ -127,14 +167,27 @@ class ReportService {
           .timeout(AppConfig.receiveTimeout);
 
       if (response.statusCode != 200) {
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          throw ReportAccessDeniedException(
+            _extractErrorMessage(response.body) ??
+                'Недостаточно прав для изменения жалоб.',
+          );
+        }
         throw Exception('Ошибка разрешения жалобы: ${response.statusCode}');
       }
 
-      LoggerService.info('[ReportService] Жалоба $reportId разрешена: $resolution');
+      LoggerService.info(
+        '[ReportService] Жалоба $reportId разрешена: $resolution',
+      );
     } on TimeoutException {
       throw Exception('Таймаут при разрешении жалобы');
     } on SocketException catch (e) {
       throw Exception('Не удалось подключиться к API: ${e.message}');
+    } on ReportAccessDeniedException catch (e) {
+      LoggerService.warning(
+        '[ReportService] Доступ на изменение жалобы отклонен: ${e.message}',
+      );
+      rethrow;
     } catch (e) {
       LoggerService.error('[ReportService] Ошибка разрешения жалобы', e);
       rethrow;

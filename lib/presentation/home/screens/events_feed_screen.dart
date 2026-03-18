@@ -1,9 +1,13 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/services/logger_service.dart';
+import '../../../data/services/geocoding_service.dart';
 import '../../events/bloc/event_bloc.dart';
 import '../../events/bloc/event_event.dart';
 import '../../events/bloc/event_state.dart';
@@ -23,8 +27,12 @@ class EventsFeedScreen extends StatefulWidget {
 class _EventsFeedScreenState extends State<EventsFeedScreen> {
   late TextEditingController _searchController;
   List<EventModel> _filteredEvents = [];
-  String _selectedCity = 'Москва';
+  List<EventModel> _allEvents = [];
+  double? _selectedCityLatitude;
+  double? _selectedCityLongitude;
+  String _selectedCity = 'Все города';
   final List<String> _cities = [
+    'Все города',
     'Москва',
     'Санкт-Петербург',
     'Казань',
@@ -55,97 +63,38 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
     super.dispose();
   }
 
-  void _showCityBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (BuildContext context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 10),
-              Container(
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE0E0E0),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    const Text(
-                      'Выберите город',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF4A4D6A),
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: _cities.length,
-                  separatorBuilder: (_, __) => const Divider(
-                    height: 1,
-                    indent: 20,
-                    endIndent: 20,
-                    color: Color(0xFFE0E0E0),
-                  ),
-                  itemBuilder: (context, index) {
-                    final city = _cities[index];
-                    final isSelected = city == _selectedCity;
-                    return ListTile(
-                      onTap: () {
-                        setState(() {
-                          _selectedCity = city;
-                        });
-                        Navigator.pop(context);
-                      },
-                      title: Text(
-                        city,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? const Color(0xFF5E60CE)
-                              : const Color(0xFF4A4D6A),
-                        ),
-                      ),
-                      trailing: isSelected
-                          ? const Icon(
-                              Icons.check_circle,
-                              color: Color(0xFF5E60CE),
-                            )
-                          : null,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
+  Future<void> _showCityBottomSheet() async {
+    final List<String> cityOptions = _buildCityOptions();
+
+    final _CitySelection? pickedCity =
+        await showModalBottomSheet<_CitySelection>(
+          context: context,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          builder: (BuildContext context) => _CityPickerSheet(
+            cityOptions: cityOptions,
+            selectedCity: _selectedCity,
           ),
         );
-      },
-    );
+
+    if (!mounted || pickedCity == null) {
+      return;
+    }
+
+    if (pickedCity.cityName == _selectedCity &&
+        pickedCity.latitude == _selectedCityLatitude &&
+        pickedCity.longitude == _selectedCityLongitude) {
+      return;
+    }
+
+    setState(() {
+      _selectedCity = pickedCity.cityName;
+      _selectedCityLatitude = pickedCity.latitude;
+      _selectedCityLongitude = pickedCity.longitude;
+      _filterEvents(_allEvents, _searchController.text);
+    });
   }
 
   void _handleFiltersChanged(Map<String, dynamic> filters) {
@@ -156,18 +105,114 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
   }
 
   void _filterEvents(List<EventModel> events, String query) {
-    if (query.isEmpty) {
-      _filteredEvents = events;
-    } else {
-      _filteredEvents = events
-          .where(
-            (event) =>
-                event.title.toLowerCase().contains(query.toLowerCase()) ||
-                event.location.toLowerCase().contains(query.toLowerCase()) ||
-                event.category.toLowerCase().contains(query.toLowerCase()),
-          )
-          .toList();
+    final normalizedQuery = query.trim().toLowerCase();
+    _filteredEvents = events.where((event) {
+      final matchesCity = _matchesSelectedCity(event);
+      final matchesQuery =
+          normalizedQuery.isEmpty ||
+          event.title.toLowerCase().contains(normalizedQuery) ||
+          event.location.toLowerCase().contains(normalizedQuery) ||
+          event.category.toLowerCase().contains(normalizedQuery);
+
+      return matchesCity && matchesQuery;
+    }).toList();
+  }
+
+  List<String> _buildCityOptions() {
+    final Set<String> citiesFromEvents = _allEvents
+        .map((e) => _extractCityName(e.location))
+        .where((city) => city.isNotEmpty)
+        .toSet();
+
+    final Set<String> merged = <String>{..._cities, ...citiesFromEvents};
+
+    final List<String> sorted =
+        merged.where((city) => city != 'Все города').toList()
+          ..sort((a, b) => a.compareTo(b));
+
+    return <String>['Все города', ...sorted];
+  }
+
+  String _extractCityName(String location) {
+    final trimmed = location.trim();
+    if (trimmed.isEmpty) return '';
+
+    final firstChunk = trimmed.split(',').first.trim();
+    if (firstChunk.isEmpty) return trimmed;
+    return firstChunk;
+  }
+
+  bool _matchesSelectedCity(EventModel event) {
+    if (_selectedCity == 'Все города') return true;
+
+    // Если выбрана точка города через геокодер, фильтруем события по радиусу.
+    if (_selectedCityLatitude != null && _selectedCityLongitude != null) {
+      const radiusMeters = 120000.0; // ~120 км вокруг выбранного города
+      final distance = _distanceMeters(
+        lat1: _selectedCityLatitude!,
+        lon1: _selectedCityLongitude!,
+        lat2: event.latitude,
+        lon2: event.longitude,
+      );
+      if (distance <= radiusMeters) {
+        return true;
+      }
     }
+
+    final location = _normalizeForCompare(event.location);
+    final selected = _normalizeForCompare(_selectedCity);
+
+    if (location.contains(selected)) return true;
+
+    // Небольшой набор синонимов для частых написаний города
+    final aliases = <String, List<String>>{
+      'санктпетербург': <String>['спб', 'питер'],
+      'ростовнадону': <String>['ростов на дону', 'ростов'],
+    };
+
+    final aliasList = aliases[selected] ?? const <String>[];
+    for (final alias in aliasList) {
+      if (location.contains(_normalizeForCompare(alias))) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  double _distanceMeters({
+    required double lat1,
+    required double lon1,
+    required double lat2,
+    required double lon2,
+  }) {
+    const earthRadius = 6371000.0;
+    final dLat = _toRadians(lat2 - lat1);
+    final dLon = _toRadians(lon2 - lon1);
+
+    final a =
+        (sin(dLat / 2) * sin(dLat / 2)) +
+        cos(_toRadians(lat1)) *
+            cos(_toRadians(lat2)) *
+            (sin(dLon / 2) * sin(dLon / 2));
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    return earthRadius * c;
+  }
+
+  double _toRadians(double degree) => degree * (3.141592653589793 / 180);
+
+  String _normalizeForCompare(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('ё', 'е')
+        .replaceAll(RegExp(r'[^a-zа-я0-9]'), '');
+  }
+
+  String _creatorInitial(String? name) {
+    final trimmed = name?.trim() ?? '';
+    if (trimmed.isEmpty) return '?';
+    return trimmed.substring(0, 1).toUpperCase();
   }
 
   @override
@@ -199,249 +244,333 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
         }
 
         if (state is EventsLoaded) {
-          _filterEvents(state.events, _searchController.text);
+          if (!identical(_allEvents, state.events)) {
+            _allEvents = state.events;
+            _filterEvents(_allEvents, _searchController.text);
+          }
 
           return RefreshIndicator(
             onRefresh: () async {
               context.read<EventBloc>().add(const EventsLoadRequested());
             },
-            child: ListView(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: MediaQuery.of(context).padding.top + 8,
-                bottom: 8,
-              ),
-              children: <Widget>[
-                // Search bar
-                TextField(
-                  controller: _searchController,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (context, animation, secondaryAnimation) =>
-                            BlocProvider(
-                              create: (context) => EventBloc(),
-                              child: SearchScreen(
-                                initialQuery: _searchController.text,
-                              ),
-                            ),
-                        transitionsBuilder:
-                            (context, animation, secondaryAnimation, child) {
-                              const begin = Offset(0.0, 1.0);
-                              const end = Offset.zero;
-                              final curve = Curves.easeOutCubic;
-                              final curvedAnimation = curve.transform(
-                                animation.value,
-                              );
-                              final tween = Tween(begin: begin, end: end);
-                              final offsetAnimation = tween.animate(
-                                AlwaysStoppedAnimation(curvedAnimation),
-                              );
-
-                              return SlideTransition(
-                                position: offsetAnimation,
-                                child: child,
-                              );
-                            },
-                        transitionDuration: const Duration(milliseconds: 280),
-                      ),
-                    );
-                  },
-                  onChanged: (query) {
-                    setState(() {
-                      _filterEvents(state.events, query);
-                    });
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Поиск событий...',
-                    hintStyle: const TextStyle(
-                      color: Color(0xFFB0B0B0),
-                      fontSize: 16,
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      color: Color(0xFF5E60CE),
-                      size: 22,
-                    ),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            color: Color(0xFF5E60CE),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _filterEvents(state.events, '');
-                              });
-                            },
-                          )
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(
-                        color: Color(0xFFE8E8E8),
-                        width: 1.5,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(
-                        color: Color(0xFFE8E8E8),
-                        width: 1.5,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF5E60CE),
-                        width: 2,
-                      ),
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFFFAFAFA),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                  ),
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[Color(0xFFF3F5FF), Color(0xFFFAFBFF)],
                 ),
-                const SizedBox(height: 12),
-
-                // City selector and Filters in one row
-                Row(
-                  children: [
-                    // City selector
-                    GestureDetector(
-                      onTap: _showCityBottomSheet,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+              ),
+              child: ListView(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: MediaQuery.of(context).padding.top + 8,
+                  bottom: 16,
+                ),
+                children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: const Color(0xFFDCE3FF)),
+                      boxShadow: const <BoxShadow>[
+                        BoxShadow(
+                          color: Color(0x10000000),
+                          blurRadius: 16,
+                          offset: Offset(0, 8),
                         ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5F6FA),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.location_on_outlined,
-                              color: Color(0xFF5E60CE),
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _selectedCity,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF4A4D6A),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Row(
+                          children: <Widget>[
+                            const Expanded(
+                              child: Text(
+                                'Афиша города',
+                                style: TextStyle(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF2F3662),
+                                  height: 1.15,
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.expand_more,
-                              color: Color(0xFF9E9E9E),
-                              size: 18,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEEF2FF),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  const Icon(
+                                    Icons.event_outlined,
+                                    size: 14,
+                                    color: Color(0xFF4C5BAA),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${_filteredEvents.length}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF42509C),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Filters
-                    Expanded(
-                      child: EventFiltersWidget(
-                        initialFilters: _currentFilters,
-                        onFiltersChanged: _handleFiltersChanged,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: _searchController,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              PageRouteBuilder(
+                                pageBuilder:
+                                    (context, animation, secondaryAnimation) =>
+                                        BlocProvider(
+                                          create: (context) => EventBloc(),
+                                          child: SearchScreen(
+                                            initialQuery:
+                                                _searchController.text,
+                                          ),
+                                        ),
+                                transitionsBuilder:
+                                    (
+                                      context,
+                                      animation,
+                                      secondaryAnimation,
+                                      child,
+                                    ) {
+                                      const begin = Offset(0.0, 1.0);
+                                      const end = Offset.zero;
+                                      final curve = Curves.easeOutCubic;
+                                      final curvedAnimation = curve.transform(
+                                        animation.value,
+                                      );
+                                      final tween = Tween(
+                                        begin: begin,
+                                        end: end,
+                                      );
+                                      final offsetAnimation = tween.animate(
+                                        AlwaysStoppedAnimation(curvedAnimation),
+                                      );
 
-                // Carousel section
-                if (state.events.isNotEmpty) ...[
+                                      return SlideTransition(
+                                        position: offsetAnimation,
+                                        child: child,
+                                      );
+                                    },
+                                transitionDuration: const Duration(
+                                  milliseconds: 280,
+                                ),
+                              ),
+                            );
+                          },
+                          onChanged: (query) {
+                            setState(() {
+                              _filterEvents(_allEvents, query);
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Поиск событий...',
+                            hintStyle: const TextStyle(
+                              color: Color(0xFF8D95BF),
+                              fontSize: 14,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: Color(0xFF5965D8),
+                              size: 20,
+                            ),
+                            suffixIcon: _searchController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    color: const Color(0xFF5E60CE),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() {
+                                        _filterEvents(_allEvents, '');
+                                      });
+                                    },
+                                  )
+                                : null,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(
+                                color: Color(0xFF5965D8),
+                                width: 1.4,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white.withValues(alpha: 0.9),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 14,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: <Widget>[
+                            GestureDetector(
+                              onTap: _showCityBottomSheet,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFECF1FF),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    const Icon(
+                                      Icons.location_on_outlined,
+                                      color: Color(0xFF5E60CE),
+                                      size: 17,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      _selectedCity,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF3C467E),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Icon(
+                                      Icons.expand_more,
+                                      color: Color(0xFF8F96B8),
+                                      size: 17,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: EventFiltersWidget(
+                                initialFilters: _currentFilters,
+                                onFiltersChanged: _handleFiltersChanged,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Carousel section
+                  if (state.events.isNotEmpty) ...[
+                    Text(
+                      'Популярные события',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF4A4D6A),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    EventCarousel(
+                      events: state.events,
+                      onEventSelected: (event) {
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    BlocProvider(
+                                      create: (context) => EventBloc(),
+                                      child: RealEventDetailScreen(
+                                        eventId: event.id,
+                                      ),
+                                    ),
+                            transitionsBuilder:
+                                (
+                                  context,
+                                  animation,
+                                  secondaryAnimation,
+                                  child,
+                                ) {
+                                  const begin = Offset(0.0, 1.0);
+                                  const end = Offset.zero;
+                                  final curve = Curves.easeOutCubic;
+                                  final curvedAnimation = curve.transform(
+                                    animation.value,
+                                  );
+                                  final tween = Tween(begin: begin, end: end);
+                                  final offsetAnimation = tween.animate(
+                                    AlwaysStoppedAnimation(curvedAnimation),
+                                  );
+
+                                  return SlideTransition(
+                                    position: offsetAnimation,
+                                    child: child,
+                                  );
+                                },
+                            transitionDuration: const Duration(
+                              milliseconds: 280,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // Regular events list
                   Text(
-                    'Популярные события',
+                    'Все события',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF4A4D6A),
+                      color: const Color(0xFF323B69),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  EventCarousel(
-                    events: state.events,
-                    onEventSelected: (event) {
-                      Navigator.push(
-                        context,
-                        PageRouteBuilder(
-                          pageBuilder:
-                              (context, animation, secondaryAnimation) =>
-                                  BlocProvider(
-                                    create: (context) => EventBloc(),
-                                    child: RealEventDetailScreen(
-                                      eventId: event.id,
-                                    ),
-                                  ),
-                          transitionsBuilder:
-                              (context, animation, secondaryAnimation, child) {
-                                const begin = Offset(0.0, 1.0);
-                                const end = Offset.zero;
-                                final curve = Curves.easeOutCubic;
-                                final curvedAnimation = curve.transform(
-                                  animation.value,
-                                );
-                                final tween = Tween(begin: begin, end: end);
-                                final offsetAnimation = tween.animate(
-                                  AlwaysStoppedAnimation(curvedAnimation),
-                                );
 
-                                return SlideTransition(
-                                  position: offsetAnimation,
-                                  child: child,
-                                );
-                              },
-                          transitionDuration: const Duration(milliseconds: 280),
+                  if (_filteredEvents.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Text(
+                          _searchController.text.isEmpty
+                              ? 'Пока нет событий. Добавьте своё!'
+                              : 'События не найдены',
+                          textAlign: TextAlign.center,
                         ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                ],
-
-                // Regular events list
-                Text(
-                  'Все события',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF4A4D6A),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                if (_filteredEvents.isEmpty)
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Text(
-                        _searchController.text.isEmpty
-                            ? 'Пока нет событий. Добавьте своё!'
-                            : 'События не найдены',
-                        textAlign: TextAlign.center,
                       ),
-                    ),
-                  )
-                else
-                  ...(_filteredEvents.map((EventModel event) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _buildEventCard(context, event),
-                    );
-                  }).toList()),
-              ],
+                    )
+                  else
+                    ...(_filteredEvents.map((EventModel event) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildEventCard(context, event),
+                      );
+                    }).toList()),
+                ],
+              ),
             ),
           );
         }
@@ -490,339 +619,267 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
           ),
         );
       },
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(28),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: const Color(0xFFD8DFFC), width: 1),
           boxShadow: const <BoxShadow>[
             BoxShadow(
               color: Color(0x14000000),
               blurRadius: 20,
-              offset: Offset(0, 18),
+              offset: Offset(0, 14),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            // Изображение события
-            if (event.imageUrl != null)
-              ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
-                child: CachedNetworkImage(
-                  imageUrl: event.imageUrl!,
-                  height: 180,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    height: 180,
-                    color: Colors.grey.shade200,
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) {
-                    LoggerService.error(
-                      'Error loading feed event image: $url, error: $error',
-                    );
-                    return Container(
-                      height: 180,
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(28),
+                topRight: Radius.circular(28),
+              ),
+              child: SizedBox(
+                height: 170,
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    if (event.imageUrl != null)
+                      CachedNetworkImage(
+                        imageUrl: event.imageUrl!,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: Colors.grey.shade200,
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) {
+                          LoggerService.error(
+                            'Error loading feed event image: $url, error: $error',
+                          );
+                          return Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: <Color>[
+                                  categoryColor.withValues(alpha: 0.45),
+                                  categoryColor.withValues(alpha: 0.2),
+                                ],
+                              ),
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.image_not_supported,
+                                size: 48,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    else
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: <Color>[
+                              categoryColor.withValues(alpha: 0.45),
+                              categoryColor.withValues(alpha: 0.2),
+                            ],
+                          ),
+                        ),
+                      ),
+                    Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [
-                            categoryColor.withValues(alpha: 0.3),
-                            categoryColor.withValues(alpha: 0.1),
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: <Color>[
+                            Colors.black.withValues(alpha: 0.12),
+                            Colors.black.withValues(alpha: 0.54),
                           ],
                         ),
                       ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_not_supported,
-                          size: 48,
-                          color: Colors.grey,
+                    ),
+                    Positioned(
+                      left: 14,
+                      top: 14,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          categoryName,
+                          style: TextStyle(
+                            color: categoryColor,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
-
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Категория
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
                     ),
-                    decoration: BoxDecoration(
-                      color: categoryColor.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Text(
-                      categoryName,
-                      style: TextStyle(
-                        color: categoryColor,
-                        fontWeight: FontWeight.w600,
+                    Positioned(
+                      right: 14,
+                      top: 14,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFF2F355E,
+                          ).withValues(alpha: 0.82),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          formattedTime,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
+                  ],
+                ),
+              ),
+            ),
 
-                  // Название
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
                   Text(
                     event.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: const Color(0xFF2F355E),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 10),
 
-                  // Время
-                  Row(
-                    children: <Widget>[
-                      const Icon(
-                        Icons.schedule,
-                        size: 18,
-                        color: Color(0xFF5E60CE),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          formattedTime,
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-
-                  // Место
                   Row(
                     children: <Widget>[
                       const Icon(
                         Icons.place_outlined,
-                        size: 18,
+                        size: 16,
                         color: Color(0xFF5E60CE),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 5),
                       Expanded(
                         child: Text(
                           event.location,
-                          style: theme.textTheme.bodyMedium,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: const Color(0xFF666E99),
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                  // Участники и организатор
-                  // Debug: временное логирование
-                  Builder(
-                    builder: (context) {
-                      LoggerService.debug('🔍 [EventCard] Событие: ${event.title}');
-                      LoggerService.debug(
-                        '🔍 [EventCard] participantsCount: ${event.participantsCount}',
-                      );
-                      LoggerService.debug(
-                        '🔍 [EventCard] previewParticipants.length: ${event.previewParticipants.length}',
-                      );
-                      if (event.previewParticipants.isNotEmpty) {
-                        LoggerService.debug(
-                          '🔍 [EventCard] Первый участник: ${event.previewParticipants[0].user.displayName}',
-                        );
-                        LoggerService.debug(
-                          '🔍 [EventCard] Первый участник photoUrl: ${event.previewParticipants[0].user.photoUrl}',
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                  if (event.participantsCount > 0)
-                    Row(
-                      children: <Widget>[
-                        // Аватарки участников (до 5 штук)
-                        if (event.previewParticipants.isNotEmpty)
-                          SizedBox(
-                            width:
-                                event.previewParticipants.take(5).length *
-                                    18.0 +
-                                14,
-                            height: 28,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: List<Widget>.generate(
-                                event.previewParticipants.take(5).length,
-                                (int index) {
-                                  final participant =
-                                      event.previewParticipants[index];
-                                  return Positioned(
-                                    left: index * 18.0,
-                                    child: participant.user.photoUrl != null
-                                        ? CachedNetworkImage(
-                                            imageUrl:
-                                                participant.user.photoUrl!,
-                                            imageBuilder:
-                                                (context, imageProvider) =>
-                                                    CircleAvatar(
-                                                      radius: 14,
-                                                      backgroundImage:
-                                                          imageProvider,
-                                                      backgroundColor:
-                                                          Colors.white,
-                                                    ),
-                                            placeholder: (context, url) =>
-                                                CircleAvatar(
-                                                  radius: 14,
-                                                  backgroundColor: categoryColor
-                                                      .withValues(alpha: 0.3),
-                                                  child: const SizedBox(
-                                                    width: 12,
-                                                    height: 12,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                          color: Colors.white,
-                                                        ),
-                                                  ),
-                                                ),
-                                            errorWidget:
-                                                (
-                                                  context,
-                                                  url,
-                                                  error,
-                                                ) => CircleAvatar(
-                                                  radius: 14,
-                                                  backgroundColor: categoryColor
-                                                      .withValues(
-                                                        alpha: 0.7 - index * 0.1,
-                                                      ),
-                                                  child: Text(
-                                                    participant
-                                                        .user
-                                                        .displayName[0]
-                                                        .toUpperCase(),
-                                                    style: const TextStyle(
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                                ),
-                                          )
-                                        : CircleAvatar(
-                                            radius: 14,
-                                            backgroundColor: categoryColor
-                                                .withValues(alpha: 0.7 - index * 0.1),
-                                            child: Text(
-                                              participant.user.displayName[0]
-                                                  .toUpperCase(),
-                                              style: const TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                  );
-                                },
-                              ),
-                            ),
-                          )
-                        else
-                          // Показываем иконку, если нет аватарок
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: categoryColor.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.group,
-                              size: 16,
-                              color: categoryColor,
-                            ),
-                          ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            event.participantsCount == 1
-                                ? '${event.participantsCount} участник'
-                                : event.participantsCount < 5
-                                ? '${event.participantsCount} участника'
-                                : '${event.participantsCount} участников',
-                            style: theme.textTheme.bodyMedium,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: <Widget>[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F6FF),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          event.participantsCount == 1
+                              ? '1 участник'
+                              : '${event.participantsCount} участников',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF4A5393),
                           ),
                         ),
-                      ],
-                    ),
-
-                  // Организатор
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 18,
+                        color: Color(0xFF6974BB),
+                      ),
+                    ],
+                  ),
                   if (event.creatorName != null) ...[
-                    const SizedBox(height: 12),
-                    const Divider(),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     Row(
-                      children: [
+                      children: <Widget>[
                         if (event.creatorPhotoUrl != null)
                           CachedNetworkImage(
                             imageUrl: event.creatorPhotoUrl!,
                             imageBuilder: (context, imageProvider) =>
                                 CircleAvatar(
-                                  radius: 16,
+                                  radius: 13,
                                   backgroundImage: imageProvider,
                                 ),
                             placeholder: (context, url) => const CircleAvatar(
-                              radius: 16,
+                              radius: 13,
+                              backgroundColor: Color(0xFFE9EEFF),
                               child: SizedBox(
-                                width: 16,
-                                height: 16,
+                                width: 10,
+                                height: 10,
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                                  strokeWidth: 1.8,
+                                  color: Color(0xFF5965D8),
                                 ),
                               ),
                             ),
                             errorWidget: (context, url, error) => CircleAvatar(
-                              radius: 16,
-                              backgroundColor: categoryColor,
+                              radius: 13,
+                              backgroundColor: const Color(0xFFE9EEFF),
                               child: Text(
-                                event.creatorName![0].toUpperCase(),
+                                _creatorInitial(event.creatorName),
                                 style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                  color: Color(0xFF5965D8),
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
                           )
                         else
                           CircleAvatar(
-                            radius: 16,
-                            backgroundColor: categoryColor,
+                            radius: 13,
+                            backgroundColor: const Color(0xFFE9EEFF),
                             child: Text(
-                              event.creatorName![0].toUpperCase(),
+                              _creatorInitial(event.creatorName),
                               style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                                color: Color(0xFF5965D8),
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 7),
                         Expanded(
                           child: Text(
-                            event.creatorName!,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: Colors.grey.shade600,
+                            'Организатор: ${event.creatorName!}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF7A81A8),
+                              fontWeight: FontWeight.w600,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -884,5 +941,425 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
       default:
         return const Color(0xFF5E60CE);
     }
+  }
+}
+
+class _CitySelection {
+  const _CitySelection({
+    required this.cityName,
+    this.latitude,
+    this.longitude,
+    this.address,
+  });
+
+  final String cityName;
+  final double? latitude;
+  final double? longitude;
+  final String? address;
+}
+
+class _CitySuggestion {
+  const _CitySuggestion({
+    required this.cityName,
+    required this.address,
+    this.latitude,
+    this.longitude,
+    this.fromApi = false,
+  });
+
+  final String cityName;
+  final String address;
+  final double? latitude;
+  final double? longitude;
+  final bool fromApi;
+}
+
+class _CityPickerSheet extends StatefulWidget {
+  const _CityPickerSheet({
+    required this.cityOptions,
+    required this.selectedCity,
+  });
+
+  final List<String> cityOptions;
+  final String selectedCity;
+
+  @override
+  State<_CityPickerSheet> createState() => _CityPickerSheetState();
+}
+
+class _CityPickerSheetState extends State<_CityPickerSheet> {
+  late final TextEditingController _citySearchController;
+  final GeocodingService _geocodingService = GeocodingService();
+  Timer? _debounce;
+
+  String _query = '';
+  bool _isSearching = false;
+  int _requestId = 0;
+  List<_CitySuggestion> _apiSuggestions = const <_CitySuggestion>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _citySearchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _citySearchController.dispose();
+    super.dispose();
+  }
+
+  String _normalizeForCompare(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('ё', 'е')
+        .replaceAll(RegExp(r'[^a-zа-я0-9]'), '');
+  }
+
+  String _cityNameFromAddress(String address) {
+    final parts = address
+        .split(',')
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return address;
+
+    if (_normalizeForCompare(parts.first) == 'россия' && parts.length > 1) {
+      return parts[1];
+    }
+
+    return parts.first;
+  }
+
+  Future<void> _searchRussianCities(String rawQuery) async {
+    final query = rawQuery.trim();
+
+    if (query.length < 2) {
+      if (!mounted) return;
+      setState(() {
+        _apiSuggestions = const <_CitySuggestion>[];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    final int requestId = ++_requestId;
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      final List<GeocodingResult> results = await _geocodingService
+          .searchAddresses('$query, Россия');
+
+      if (!mounted || requestId != _requestId) return;
+
+      final Set<String> dedupe = <String>{};
+      final List<_CitySuggestion> parsed = <_CitySuggestion>[];
+
+      for (final result in results) {
+        final cityName = _cityNameFromAddress(result.address);
+        final dedupeKey =
+            '${_normalizeForCompare(cityName)}:${result.latitude.toStringAsFixed(4)}:${result.longitude.toStringAsFixed(4)}';
+        if (dedupe.contains(dedupeKey)) continue;
+        dedupe.add(dedupeKey);
+
+        parsed.add(
+          _CitySuggestion(
+            cityName: cityName,
+            address: result.address,
+            latitude: result.latitude,
+            longitude: result.longitude,
+            fromApi: true,
+          ),
+        );
+      }
+
+      setState(() {
+        _apiSuggestions = parsed;
+        _isSearching = false;
+      });
+    } catch (_) {
+      if (!mounted || requestId != _requestId) return;
+      setState(() {
+        _apiSuggestions = const <_CitySuggestion>[];
+        _isSearching = false;
+      });
+    }
+  }
+
+  void _onQueryChanged(String value) {
+    setState(() {
+      _query = value;
+    });
+
+    _debounce?.cancel();
+    _debounce = Timer(
+      const Duration(milliseconds: 350),
+      () => _searchRussianCities(value),
+    );
+  }
+
+  List<_CitySuggestion> _localSuggestions() {
+    final normalizedQuery = _normalizeForCompare(_query);
+    final Iterable<String> filtered = widget.cityOptions.where((city) {
+      if (_query.trim().isEmpty) return true;
+      return _normalizeForCompare(city).contains(normalizedQuery);
+    });
+
+    return filtered
+        .map(
+          (city) => _CitySuggestion(
+            cityName: city,
+            address: city == 'Все города'
+                ? 'Показывать события по всей России'
+                : city,
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<_CitySuggestion> local = _localSuggestions();
+    final List<_CitySuggestion> suggestions = _query.trim().isEmpty
+        ? local
+        : <_CitySuggestion>[..._apiSuggestions, ...local];
+
+    return SafeArea(
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 120),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: FractionallySizedBox(
+          heightFactor: 0.78,
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[Color(0xFFF6F8FF), Color(0xFFFFFFFF)],
+              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: <Widget>[
+                const SizedBox(height: 10),
+                Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD7DDFB),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: <Widget>[
+                      const Expanded(
+                        child: Text(
+                          'Города России',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF2F355E),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: TextField(
+                    controller: _citySearchController,
+                    onChanged: _onQueryChanged,
+                    decoration: InputDecoration(
+                      hintText: 'Начните вводить город: Москва, Тверь, Омск...',
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Color(0xFF5965D8),
+                      ),
+                      suffixIcon: _query.trim().isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _citySearchController.clear();
+                                _onQueryChanged('');
+                              },
+                            ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFDDE3FF)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFDDE3FF)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF5965D8),
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                if (_isSearching)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                Expanded(
+                  child: suggestions.isNotEmpty
+                      ? ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                          itemCount: suggestions.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 8),
+                          itemBuilder: (context, index) {
+                            final suggestion = suggestions[index];
+                            final isSelected =
+                                suggestion.cityName == widget.selectedCity;
+
+                            return Material(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: () {
+                                  FocusScope.of(context).unfocus();
+                                  Navigator.pop(
+                                    context,
+                                    _CitySelection(
+                                      cityName: suggestion.cityName,
+                                      latitude: suggestion.latitude,
+                                      longitude: suggestion.longitude,
+                                      address: suggestion.address,
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? const Color(0xFFB9C6FF)
+                                          : const Color(0xFFE3E8FF),
+                                    ),
+                                    boxShadow: const <BoxShadow>[
+                                      BoxShadow(
+                                        color: Color(0x08000000),
+                                        blurRadius: 8,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    children: <Widget>[
+                                      Container(
+                                        width: 30,
+                                        height: 30,
+                                        decoration: BoxDecoration(
+                                          color: suggestion.fromApi
+                                              ? const Color(0xFFEAF0FF)
+                                              : const Color(0xFFF1F3FA),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          suggestion.fromApi
+                                              ? Icons.location_city
+                                              : Icons.location_on_outlined,
+                                          size: 16,
+                                          color: const Color(0xFF5965D8),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: <Widget>[
+                                            Text(
+                                              suggestion.cityName,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: isSelected
+                                                    ? FontWeight.w800
+                                                    : FontWeight.w700,
+                                                color: const Color(0xFF2F355E),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              suggestion.address,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF7D85B0),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (isSelected)
+                                        const Icon(
+                                          Icons.check_circle,
+                                          color: Color(0xFF5E60CE),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                          children: <Widget>[
+                            ListTile(
+                              contentPadding: const EdgeInsets.all(0),
+                              leading: const Icon(
+                                Icons.search_off,
+                                color: Color(0xFF8790BD),
+                              ),
+                              title: const Text('Город не найден'),
+                              subtitle: const Text(
+                                'Проверьте написание или введите другой запрос',
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

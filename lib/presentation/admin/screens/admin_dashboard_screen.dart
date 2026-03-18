@@ -22,10 +22,7 @@ class AdminDashboardScreen extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: <Color>[
-                      Color(0xFF5E60CE),
-                      Color(0xFF9370DB),
-                    ],
+                    colors: <Color>[Color(0xFF5E60CE), Color(0xFF9370DB)],
                   ),
                 ),
                 child: Center(
@@ -90,10 +87,11 @@ class AdminDashboardScreen extends StatelessWidget {
                   subtitle: 'Проверка и одобрение мероприятий',
                   icon: Icons.event_available_rounded,
                   gradientColors: const [Color(0xFF5E60CE), Color(0xFF9370DB)],
-                  badge: '5',
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const EventModerationScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const EventModerationScreen(),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -103,7 +101,6 @@ class AdminDashboardScreen extends StatelessWidget {
                   subtitle: 'Рассмотрение пользовательских жалоб',
                   icon: Icons.report_problem_rounded,
                   gradientColors: const [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
-                  badge: '12',
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const ReportsScreen()),
@@ -116,42 +113,10 @@ class AdminDashboardScreen extends StatelessWidget {
                   subtitle: 'Список и статусы всех участников',
                   icon: Icons.people_rounded,
                   gradientColors: const [Color(0xFF4ECDC4), Color(0xFF44A08D)],
-                  badge: '1,234',
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const UsersListScreen()),
                   ),
-                ),
-                const SizedBox(height: 32),
-                const Text(
-                  'Статистика',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF4A4D6A),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        title: 'Активных событий',
-                        value: '128',
-                        icon: Icons.event,
-                        color: const Color(0xFF5E60CE),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildStatCard(
-                        title: 'Пользователей',
-                        value: '1.2K',
-                        icon: Icons.people,
-                        color: const Color(0xFF4ECDC4),
-                      ),
-                    ),
-                  ],
                 ),
                 const SizedBox(height: 100),
               ]),
@@ -227,11 +192,12 @@ class AdminDashboardScreen extends StatelessWidget {
             ),
             if (badge != null)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: gradientColors,
-                  ),
+                  gradient: LinearGradient(colors: gradientColors),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -251,51 +217,6 @@ class AdminDashboardScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildStatCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 20,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF9E9E9E),
-            ),
-          ),
-        ],
       ),
     );
   }

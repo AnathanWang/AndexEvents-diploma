@@ -157,100 +157,122 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
               top: MediaQuery.of(context).padding.top + 8,
               left: 16,
               right: 16,
-              child: Opacity(
-                opacity: 0.85,
-                child: TextField(
-                  controller: _searchController,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (context, animation, secondaryAnimation) =>
-                            BlocProvider(
-                              create: (context) => EventBloc(),
-                              child: SearchScreen(
-                                initialQuery: _searchController.text,
-                              ),
-                            ),
-                        transitionsBuilder:
-                            (context, animation, secondaryAnimation, child) {
-                              const begin = Offset(0.0, 1.0);
-                              const end = Offset.zero;
-                              final curve = Curves.easeOutCubic;
-                              final curvedAnimation = curve.transform(
-                                animation.value,
-                              );
-                              final tween = Tween(begin: begin, end: end);
-                              final offsetAnimation = tween.animate(
-                                AlwaysStoppedAnimation(curvedAnimation),
-                              );
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFFE2E7FF),
+                        width: 1,
+                      ),
+                      boxShadow: const <BoxShadow>[
+                        BoxShadow(
+                          color: Color(0x18000000),
+                          blurRadius: 18,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    BlocProvider(
+                                      create: (context) => EventBloc(),
+                                      child: SearchScreen(
+                                        initialQuery: _searchController.text,
+                                      ),
+                                    ),
+                            transitionsBuilder:
+                                (
+                                  context,
+                                  animation,
+                                  secondaryAnimation,
+                                  child,
+                                ) {
+                                  const begin = Offset(0.0, 1.0);
+                                  const end = Offset.zero;
+                                  final curve = Curves.easeOutCubic;
+                                  final curvedAnimation = curve.transform(
+                                    animation.value,
+                                  );
+                                  final tween = Tween(begin: begin, end: end);
+                                  final offsetAnimation = tween.animate(
+                                    AlwaysStoppedAnimation(curvedAnimation),
+                                  );
 
-                              return SlideTransition(
-                                position: offsetAnimation,
-                                child: child,
-                              );
-                            },
-                        transitionDuration: const Duration(milliseconds: 280),
+                                  return SlideTransition(
+                                    position: offsetAnimation,
+                                    child: child,
+                                  );
+                                },
+                            transitionDuration: const Duration(
+                              milliseconds: 280,
+                            ),
+                          ),
+                        );
+                      },
+                      onChanged: (query) {
+                        setState(() {
+                          _filterEvents(events, query);
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Поиск по карте',
+                        hintStyle: const TextStyle(
+                          color: Color(0xFF8D95BF),
+                          fontSize: 15,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Color(0xFF5965D8),
+                          size: 20,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                color: const Color(0xFF5965D8),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _filterEvents(events, '');
+                                  });
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF5965D8),
+                            width: 1.6,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.9),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                       ),
-                    );
-                  },
-                  onChanged: (query) {
-                    setState(() {
-                      _filterEvents(events, query);
-                    });
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Поиск событий...',
-                    hintStyle: const TextStyle(
-                      color: Color(0xFFB0B0B0),
-                      fontSize: 16,
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      color: Color(0xFF5E60CE),
-                      size: 22,
-                    ),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            color: Color(0xFF5E60CE),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _filterEvents(events, '');
-                              });
-                            },
-                          )
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(
-                        color: Color(0xFFE8E8E8),
-                        width: 1.5,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(
-                        color: Color(0xFFE8E8E8),
-                        width: 1.5,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF5E60CE),
-                        width: 2,
-                      ),
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFFFAFAFA),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
                     ),
                   ),
-                ),
+                ],
               ),
             ),
 
@@ -265,14 +287,18 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                 children: [
                   // My location button
                   Material(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    elevation: 4,
+                    color: Colors.white.withValues(alpha: 0.88),
+                    borderRadius: BorderRadius.circular(14),
+                    elevation: 2,
                     child: InkWell(
                       onTap: _centerOnUserLocation,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                       child: Container(
                         padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFDCE2FF)),
+                        ),
                         child: const Icon(
                           Icons.my_location,
                           color: Color(0xFF5E60CE),
@@ -284,9 +310,9 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                   const SizedBox(height: 8),
                   // Zoom in button
                   Material(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    elevation: 4,
+                    color: Colors.white.withValues(alpha: 0.88),
+                    borderRadius: BorderRadius.circular(14),
+                    elevation: 2,
                     child: InkWell(
                       onTap: () {
                         _mapController?.moveCamera(
@@ -297,9 +323,13 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                           ),
                         );
                       },
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                       child: Container(
                         padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFDCE2FF)),
+                        ),
                         child: const Icon(
                           Icons.add,
                           color: Color(0xFF5E60CE),
@@ -311,9 +341,9 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                   const SizedBox(height: 8),
                   // Zoom out button
                   Material(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    elevation: 4,
+                    color: Colors.white.withValues(alpha: 0.88),
+                    borderRadius: BorderRadius.circular(14),
+                    elevation: 2,
                     child: InkWell(
                       onTap: () {
                         _mapController?.moveCamera(
@@ -324,9 +354,13 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                           ),
                         );
                       },
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                       child: Container(
                         padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFDCE2FF)),
+                        ),
                         child: const Icon(
                           Icons.remove,
                           color: Color(0xFF5E60CE),
@@ -345,12 +379,15 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
               Positioned(
                 bottom: 20,
                 left: 16,
-                child: FloatingActionButton(
+                child: FloatingActionButton.extended(
                   onPressed: _restoreSheet,
-                  backgroundColor: const Color(0xFF5E60CE),
-                  mini: true,
+                  backgroundColor: const Color(0xFF2F355E),
                   elevation: 8,
-                  child: const Icon(Icons.arrow_upward, size: 20),
+                  icon: const Icon(Icons.view_agenda_rounded, size: 18),
+                  label: const Text(
+                    'Список',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
 
@@ -364,12 +401,13 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
               snapSizes: const [0.0, 0.25, 0.95],
               builder: (context, scrollController) {
                 return Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.95),
                     borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
+                      top: Radius.circular(28),
                     ),
-                    boxShadow: [
+                    border: Border.all(color: const Color(0xFFDCE3FF)),
+                    boxShadow: const [
                       BoxShadow(
                         color: Color(0x1A000000),
                         blurRadius: 20,
@@ -410,13 +448,23 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'События рядом',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF4A4D6A),
-                                  ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEAF0FF),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'События рядом',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF2F355E),
+                                    ),
+                              ),
                             ),
                             Text(
                               '${_filteredEvents.length}',
@@ -469,6 +517,10 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
   Widget _buildEventCard(EventModel event, BuildContext context) {
     final categoryColor = _getCategoryColor(event.category);
     final categoryName = _getCategoryName(event.category);
+    final formattedTime = DateFormat(
+      'd MMM, HH:mm',
+      'ru',
+    ).format(event.dateTime);
 
     return GestureDetector(
       onTap: () {
@@ -485,8 +537,15 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200, width: 1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFDDE3FF), width: 1),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x10000000),
+              blurRadius: 12,
+              offset: Offset(0, 8),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -494,17 +553,17 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
             if (event.imageUrl != null)
               ClipRRect(
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
+                  topLeft: Radius.circular(20),
+                  bottomLeft: Radius.circular(20),
                 ),
                 child: CachedNetworkImage(
                   imageUrl: event.imageUrl!,
-                  width: 100,
-                  height: 100,
+                  width: 108,
+                  height: 108,
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(
-                    width: 100,
-                    height: 100,
+                    width: 108,
+                    height: 108,
                     color: Colors.grey.shade200,
                     child: const Center(
                       child: CircularProgressIndicator(strokeWidth: 2),
@@ -512,8 +571,8 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                   ),
                   errorWidget: (context, url, error) {
                     return Container(
-                      width: 100,
-                      height: 100,
+                      width: 108,
+                      height: 108,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
@@ -535,8 +594,8 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
               )
             else
               Container(
-                width: 100,
-                height: 100,
+                width: 108,
+                height: 108,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -545,8 +604,8 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                     ],
                   ),
                   borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    bottomLeft: Radius.circular(16),
+                    topLeft: Radius.circular(20),
+                    bottomLeft: Radius.circular(20),
                   ),
                 ),
               ),
@@ -554,93 +613,79 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
             // Event info
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Category badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: categoryColor.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        categoryName,
-                        style: TextStyle(
-                          color: categoryColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                    Row(
+                      children: <Widget>[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: categoryColor.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            categoryName,
+                            style: TextStyle(
+                              color: categoryColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
-                      ),
+                        const Spacer(),
+                        Text(
+                          formattedTime,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF8088B6),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
 
-                    // Title
                     Text(
                       event.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF4A4D6A),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF2F355E),
                       ),
                     ),
 
-                    // Date and location
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.schedule,
-                              size: 12,
-                              color: Color(0xFF9E9E9E),
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                DateFormat(
-                                  'd MMM, HH:mm',
-                                  'ru',
-                                ).format(event.dateTime),
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Color(0xFF9E9E9E),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
+                    Row(
+                      children: <Widget>[
+                        const Icon(
+                          Icons.place_outlined,
+                          size: 13,
+                          color: Color(0xFF7C85B5),
                         ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.place_outlined,
-                              size: 12,
-                              color: Color(0xFF9E9E9E),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            event.location,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF7C85B5),
+                              fontWeight: FontWeight.w600,
                             ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                event.location,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Color(0xFF9E9E9E),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 18,
+                          color: Color(0xFF6974BB),
                         ),
                       ],
                     ),

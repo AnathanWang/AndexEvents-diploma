@@ -19,13 +19,7 @@ import '../../profile/screens/user_profile_screen.dart';
 import '../../profile/widgets/photo_gallery_sheet.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
 
-enum _ProfileMatchFilter {
-  mutual,
-  incoming,
-  liked,
-  skipped,
-  postponed,
-}
+enum _ProfileMatchFilter { mutual, incoming, liked, skipped, postponed }
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.events, required this.matches});
@@ -105,8 +99,9 @@ class _ProfileScreenState extends State<ProfileScreen>
           break;
         case _ProfileMatchFilter.postponed:
           // "Отложил" = SUPER_LIKE (свайп вверх "подумаю")
-          users =
-              await _userService.getUsersByMatchAction(action: 'SUPER_LIKE');
+          users = await _userService.getUsersByMatchAction(
+            action: 'SUPER_LIKE',
+          );
           break;
       }
 
@@ -164,10 +159,14 @@ class _ProfileScreenState extends State<ProfileScreen>
             curve: Curves.easeOutCubic,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: selected ? const Color(0xFF5965D8) : const Color(0xFFF2F4FF),
+              color: selected
+                  ? const Color(0xFF5965D8)
+                  : const Color(0xFFF2F4FF),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
-                color: selected ? const Color(0xFF5965D8) : const Color(0xFFD8DEFA),
+                color: selected
+                    ? const Color(0xFF5965D8)
+                    : const Color(0xFFD8DEFA),
               ),
             ),
             child: Text(
@@ -325,6 +324,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  bool _canAccessModeratorPanel(UserModel user) {
+    final role = user.role?.trim().toUpperCase();
+    return role == 'ADMIN' || role == 'MODERATOR';
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -362,6 +366,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         }
 
         _ensureLoaded(user);
+        final canAccessModeratorPanel = _canAccessModeratorPanel(user);
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -438,87 +443,85 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              _buildAnimatedSection(
-                start: 0.36,
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AdminDashboardScreen(),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: <Color>[
-                          Color(0xFF2F365F),
-                          Color(0xFF4650A8),
+              if (canAccessModeratorPanel)
+                _buildAnimatedSection(
+                  start: 0.36,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AdminDashboardScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: <Color>[Color(0xFF2F365F), Color(0xFF4650A8)],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: const <BoxShadow>[
+                          BoxShadow(
+                            color: Color(0x14000000),
+                            blurRadius: 16,
+                            offset: Offset(0, 10),
+                          ),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: const <BoxShadow>[
-                        BoxShadow(
-                          color: Color(0x14000000),
-                          blurRadius: 16,
-                          offset: Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.14),
-                            shape: BoxShape.circle,
+                      child: Row(
+                        children: <Widget>[
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.14),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.admin_panel_settings_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.admin_panel_settings_rounded,
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  'Панель модератора',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Управление событиями и пользователями',
+                                  style: TextStyle(
+                                    color: Color(0xFFDFE5FF),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
                             color: Colors.white,
-                            size: 24,
+                            size: 20,
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                'Панель модератора',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                'Управление событиями и пользователями',
-                                style: TextStyle(
-                                  color: Color(0xFFDFE5FF),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(
-                          Icons.arrow_forward_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
               const SizedBox(height: 100),
             ],
           ),
@@ -537,7 +540,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     final hasGender = user.gender != null && user.gender != 'Не указывать';
     final hasBio = user.bio != null && user.bio!.trim().isNotEmpty;
     final visibleInterests = user.interests.take(6).toList();
-    final hiddenInterestsCount = user.interests.length - visibleInterests.length;
+    final hiddenInterestsCount =
+        user.interests.length - visibleInterests.length;
 
     return Container(
       decoration: BoxDecoration(
@@ -580,19 +584,20 @@ class _ProfileScreenState extends State<ProfileScreen>
                               ? CachedNetworkImage(
                                   imageUrl: user.coverImageUrl!.trim(),
                                   fit: BoxFit.cover,
-                                  errorWidget: (context, url, error) => Container(
-                                    decoration: const BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: <Color>[
-                                          Color(0xFF5E60CE),
-                                          Color(0xFF8F7CFF),
-                                          Color(0xFF49A3FF),
-                                        ],
+                                  errorWidget: (context, url, error) =>
+                                      Container(
+                                        decoration: const BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: <Color>[
+                                              Color(0xFF5E60CE),
+                                              Color(0xFF8F7CFF),
+                                              Color(0xFF49A3FF),
+                                            ],
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
                                 )
                               : Container(
                                   decoration: const BoxDecoration(
@@ -677,7 +682,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                           color: const Color(0xFF5E60CE),
                         ),
                         child: ClipOval(
-                          child: (user.photoUrl != null && user.photoUrl!.isNotEmpty)
+                          child:
+                              (user.photoUrl != null &&
+                                  user.photoUrl!.isNotEmpty)
                               ? CachedNetworkImage(
                                   imageUrl: user.photoUrl!.trim(),
                                   fit: BoxFit.cover,
@@ -776,7 +783,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ],
                     ),
                   ],
-                  if (user.socialLinks != null && user.socialLinks!.isNotEmpty) ...<Widget>[
+                  if (user.socialLinks != null &&
+                      user.socialLinks!.isNotEmpty) ...<Widget>[
                     const SizedBox(height: 12),
                     SizedBox(
                       height: 34,
@@ -785,7 +793,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                         itemCount: user.socialLinks!.entries.length,
                         separatorBuilder: (_, __) => const SizedBox(width: 8),
                         itemBuilder: (context, index) {
-                          final entry = user.socialLinks!.entries.elementAt(index);
+                          final entry = user.socialLinks!.entries.elementAt(
+                            index,
+                          );
                           return InkWell(
                             onTap: () {
                               CustomNotification.show(
@@ -804,7 +814,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: const Color(0xFFD9DEF8)),
+                                border: Border.all(
+                                  color: const Color(0xFFD9DEF8),
+                                ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -833,7 +845,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: () => _openEditProfile(context),
-                          icon: const Icon(Icons.auto_fix_high_rounded, size: 16),
+                          icon: const Icon(
+                            Icons.auto_fix_high_rounded,
+                            size: 16,
+                          ),
                           label: const Text('Изменить'),
                           style: FilledButton.styleFrom(
                             backgroundColor: const Color(0xFF5965D8),
@@ -846,7 +861,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: _openPrivacySettings,
-                          icon: const Icon(Icons.shield_moon_outlined, size: 16),
+                          icon: const Icon(
+                            Icons.shield_moon_outlined,
+                            size: 16,
+                          ),
                           label: const Text('Приватность'),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 11),

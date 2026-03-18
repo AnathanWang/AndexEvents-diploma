@@ -14,6 +14,7 @@ class UserModel {
   final Map<String, dynamic>? socialLinks;
   final int? age;
   final String? gender;
+  final String? role;
   final double? lastLatitude;
   final double? lastLongitude;
   final DateTime? lastLocationUpdate;
@@ -34,6 +35,7 @@ class UserModel {
     this.socialLinks,
     this.age,
     this.gender,
+    this.role,
     this.lastLatitude,
     this.lastLongitude,
     this.lastLocationUpdate,
@@ -89,14 +91,19 @@ class UserModel {
       socialLinks: json['socialLinks'] as Map<String, dynamic>?,
       age: json['age'] as int?,
       gender: json['gender'] as String?,
+      role: json['role'] as String?,
       lastLatitude: (json['lastLatitude'] as num?)?.toDouble(),
       lastLongitude: (json['lastLongitude'] as num?)?.toDouble(),
-        lastLocationUpdate: json['lastLocationUpdate'] != null
+      lastLocationUpdate: json['lastLocationUpdate'] != null
           ? DateTime.parse(json['lastLocationUpdate'] as String)
           : null,
       isOnboardingCompleted: json['isOnboardingCompleted'] as bool? ?? false,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'] as String) : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : null,
     );
   }
 
@@ -114,6 +121,7 @@ class UserModel {
       'socialLinks': socialLinks,
       'age': age,
       'gender': gender,
+      'role': role,
       'lastLatitude': lastLatitude,
       'lastLongitude': lastLongitude,
       'lastLocationUpdate': lastLocationUpdate?.toIso8601String(),
@@ -136,6 +144,7 @@ class UserModel {
     Map<String, dynamic>? socialLinks,
     int? age,
     String? gender,
+    String? role,
     double? lastLatitude,
     double? lastLongitude,
     DateTime? lastLocationUpdate,
@@ -156,6 +165,7 @@ class UserModel {
       socialLinks: socialLinks ?? this.socialLinks,
       age: age ?? this.age,
       gender: gender ?? this.gender,
+      role: role ?? this.role,
       lastLatitude: lastLatitude ?? this.lastLatitude,
       lastLongitude: lastLongitude ?? this.lastLongitude,
       lastLocationUpdate: lastLocationUpdate ?? this.lastLocationUpdate,
