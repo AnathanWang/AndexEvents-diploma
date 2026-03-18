@@ -92,6 +92,9 @@ public class AuthFilter extends OncePerRequestFilter {
 
             if (uid != null && !uid.isBlank()) {
                 String userId = userLookupRepository.findUserIdByFirebaseUid(uid).orElse(null);
+                if (userId == null && email != null && !email.isBlank()) {
+                    userId = userLookupRepository.findUserIdByEmail(email).orElse(null);
+                }
                 request.setAttribute(ATTR, new AuthContext(uid, email, userId));
             }
 

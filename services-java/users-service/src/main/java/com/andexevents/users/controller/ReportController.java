@@ -62,9 +62,9 @@ public class ReportController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<ReportDto>>> getReports(HttpServletRequest request) {
         AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
-        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+        if (auth == null || auth.uid() == null || auth.uid().isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("Unauthorized: User ID not found"));
+                    .body(ApiResponse.error("Unauthorized: User identity not found"));
         }
 
         List<ReportDto> reports = reportService.getAllReports();

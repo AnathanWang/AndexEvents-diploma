@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class AppConfig {
@@ -17,7 +16,14 @@ class AppConfig {
       return 'https://api.andexevents.com/api';
     }
 
-    if (Platform.isAndroid) {
+    if (kIsWeb) {
+      // Web не поддерживает dart:io Platform; используем URL текущего хоста.
+      final scheme = Uri.base.scheme.isEmpty ? 'http' : Uri.base.scheme;
+      final host = Uri.base.host.isEmpty ? 'localhost' : Uri.base.host;
+      return '$scheme://$host/api';
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
       // Для Android эмулятора
       return 'http://10.0.2.2/api';
     }

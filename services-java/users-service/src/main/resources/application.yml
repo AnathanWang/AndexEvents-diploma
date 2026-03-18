@@ -41,6 +41,12 @@ app:
         pattern: /api/users/me/location
       - method: GET
         pattern: /api/users/matches
+      - method: GET
+        pattern: /api/users/reports
+      - method: POST
+        pattern: /api/users/reports
+      - method: PUT
+        pattern: /api/users/reports/*
 
 springdoc:
   api-docs:

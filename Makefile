@@ -1,4 +1,4 @@
-.PHONY: all help build run test lint docker-up docker-down clean
+.PHONY: all help build run test lint docker-up docker-down clean admin-web-run admin-web-build
 
 all: help
 
@@ -21,6 +21,10 @@ help:
 	@echo "  test          Run all tests"
 	@echo "  test-go       Run Go tests"
 	@echo "  test-java     Run Java tests"
+	@echo ""
+	@echo "Flutter Web Admin:"
+	@echo "  admin-web-run   Run Flutter Web admin app"
+	@echo "  admin-web-build Build Flutter Web admin app"
 	@echo ""
 	@echo "Docker:"
 	@echo "  docker-up     Start all services"
@@ -74,6 +78,12 @@ docker-build:
 
 docker-logs:
 	$(DOCKER_COMPOSE) logs -f
+
+admin-web-run:
+	flutter run -d chrome --target lib/main_admin_web.dart
+
+admin-web-build:
+	flutter build web --target lib/main_admin_web.dart
 
 docker-clean:
 	$(DOCKER_COMPOSE) down -v --remove-orphans
