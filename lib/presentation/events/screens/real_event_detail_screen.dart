@@ -153,7 +153,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 8,
                   ),
                 ],
@@ -171,7 +171,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 8,
                     ),
                   ],
@@ -191,7 +191,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 8,
                     ),
                   ],
@@ -218,8 +218,8 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              categoryColor.withOpacity(0.7),
-                              categoryColor.withOpacity(0.5),
+                              categoryColor.withValues(alpha: 0.7),
+                              categoryColor.withValues(alpha: 0.5),
                             ],
                           ),
                         ),
@@ -235,8 +235,8 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            categoryColor.withOpacity(0.7),
-                            categoryColor.withOpacity(0.5),
+                            categoryColor.withValues(alpha: 0.7),
+                            categoryColor.withValues(alpha: 0.5),
                           ],
                         ),
                       ),
@@ -253,7 +253,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withOpacity(0.7),
+                          Colors.black.withValues(alpha: 0.7),
                         ],
                       ),
                     ),
@@ -279,7 +279,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: categoryColor.withOpacity(0.1),
+                          color: categoryColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -298,8 +298,8 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: event.price == 0
-                              ? Colors.green.withOpacity(0.1)
-                              : Colors.orange.withOpacity(0.1),
+                              ? Colors.green.withValues(alpha: 0.1)
+                              : Colors.orange.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -474,7 +474,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                           // Matches Button
                           Container(
                             decoration: BoxDecoration(
-                              color: categoryColor.withOpacity(0.1),
+                              color: categoryColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Material(
@@ -656,7 +656,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 20,
               offset: const Offset(0, -4),
             ),
@@ -686,7 +686,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.white.withOpacity(0.7),
+                        Colors.white.withValues(alpha: 0.7),
                       ),
                     ),
                   )
@@ -713,7 +713,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF5E60CE).withOpacity(0.1),
+                color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: const Color(0xFF5E60CE), size: 20),

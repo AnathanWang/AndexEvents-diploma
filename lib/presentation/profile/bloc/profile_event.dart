@@ -17,6 +17,7 @@ class ProfileLoadRequested extends ProfileEvent {
 class ProfileUpdateRequested extends ProfileEvent {
   final String? displayName;
   final String? photoUrl;
+  final String? coverImageUrl;
   final List<String>? photos;
   final String? bio;
   final List<String>? interests;
@@ -25,6 +26,7 @@ class ProfileUpdateRequested extends ProfileEvent {
   const ProfileUpdateRequested({
     this.displayName,
     this.photoUrl,
+    this.coverImageUrl,
     this.photos,
     this.bio,
     this.interests,
@@ -35,6 +37,7 @@ class ProfileUpdateRequested extends ProfileEvent {
   List<Object?> get props => [
     displayName,
     photoUrl,
+    coverImageUrl,
     photos,
     bio,
     interests,
@@ -50,4 +53,24 @@ class ProfilePhotoUpdateRequested extends ProfileEvent {
 
   @override
   List<Object?> get props => [photoPath];
+}
+
+/// Загрузить дополнительное фото профиля
+class AdditionalPhotoUploadRequested extends ProfileEvent {
+  final String photoPath;
+
+  const AdditionalPhotoUploadRequested(this.photoPath);
+
+  @override
+  List<Object?> get props => [photoPath];
+}
+
+/// Удалить дополнительное фото профиля
+class AdditionalPhotoDeleteRequested extends ProfileEvent {
+  final String photoUrl;
+
+  const AdditionalPhotoDeleteRequested(this.photoUrl);
+
+  @override
+  List<Object?> get props => [photoUrl];
 }

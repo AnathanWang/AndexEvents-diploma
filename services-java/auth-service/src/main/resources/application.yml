@@ -1,0 +1,41 @@
+server:
+  port: ${SERVER_PORT:8083}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/andexevents}
+    username: ${SPRING_DATASOURCE_USERNAME:andexevents}
+    password: ${SPRING_DATASOURCE_PASSWORD:andexevents_dev_password}
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+    default-schema: auth
+    schemas: auth
+    create-schemas: true
+  jpa:
+    properties:
+      hibernate:
+        default_schema: auth
+
+app:
+  auth:
+    firebaseProjectId: ${FIREBASE_PROJECT_ID:}
+    firebaseJwksUrl: ${FIREBASE_JWKS_URL:}
+    requiredPaths:
+      - method: GET
+        pattern: /api/auth/me
+      - method: POST
+        pattern: /api/auth/validate
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui

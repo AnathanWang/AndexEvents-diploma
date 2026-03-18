@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/logger_service.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import 'register_screen.dart';
+import 'setup_profile_screen.dart';
+import 'forgot_password_screen.dart';
+import '../../home/home_shell.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -28,10 +32,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() {
-    print('DEBUG: _handleLogin called, _isLoading: $_isLoading');
+    LoggerService.debug('DEBUG: _handleLogin called, _isLoading: $_isLoading');
     
     if (_formKey.currentState?.validate() ?? false) {
-      print('DEBUG: Form validated, sending AuthLoginRequested');
+      LoggerService.debug('DEBUG: Form validated, sending AuthLoginRequested');
       
       // Отправляем событие входа в AuthBloc
       context.read<AuthBloc>().add(
@@ -41,14 +45,18 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } else {
-      print('DEBUG: Form validation failed');
+      LoggerService.debug('DEBUG: Form validation failed');
     }
   }
 
   void _navigateToRegister() {
+    LoggerService.debug('🔵 [LoginScreen] Нажата кнопка регистрации');
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (BuildContext context) => const RegisterScreen(),
+        builder: (BuildContext context) {
+          LoggerService.debug('🔵 [LoginScreen] Открываем RegisterScreen');
+          return const RegisterScreen();
+        },
       ),
     );
   }
@@ -67,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
     
     return BlocListener<AuthBloc, AuthState>(
       listener: (BuildContext context, AuthState state) {
-        print('DEBUG: AuthState changed to: ${state.runtimeType}');
+        LoggerService.debug('DEBUG: AuthState changed to: ${state.runtimeType}');
         
         if (state is AuthLoading) {
           setState(() => _isLoading = true);
@@ -81,8 +89,16 @@ class _LoginScreenState extends State<LoginScreen> {
         
         // При успешной аутентификации навигация через andex_app.dart
         if (state is AuthAuthenticated) {
-          print('DEBUG: AuthAuthenticated received');
-          // Навигация через andex_app.dart - ничего не делаем здесь
+          LoggerService.debug('DEBUG: AuthAuthenticated received, навигация к ${state.isOnboardingCompleted ? "HomeShell" : "SetupProfileScreen"}');
+          // Переходим к правильному экрану в зависимости от статуса onboarding
+          final destination = state.isOnboardingCompleted 
+              ? const HomeShell()
+              : const SetupProfileScreen();
+          
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute<void>(builder: (context) => destination),
+            (route) => false, // Удаляем все предыдущие routes
+          );
         }
       },
       child: Scaffold(
@@ -205,7 +221,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {
-                      // TODO: Восстановление пароля
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const ForgotPasswordScreen(),
+                        ),
+                      );
                     },
                     child: const Text(
                       'Забыли пароль?',
@@ -280,22 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     side: const BorderSide(color: Color(0xFFE0E0E0)),
                   ),
                 ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: Вход через Apple
-                  },
-                  icon: const Icon(Icons.apple, size: 24),
-                  label: const Text('Войти через Apple'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF4A4D6A),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    side: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                ),
+
                 const SizedBox(height: 32),
                 
                 // Ссылка на регистрацию

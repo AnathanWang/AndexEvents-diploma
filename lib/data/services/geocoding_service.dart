@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../../config/map_config.dart';
+import '../../core/services/logger_service.dart';
 
 class GeocodingResult {
   final String address;
@@ -18,8 +19,15 @@ class GeocodingService {
   final Dio _dio = Dio();
   final String _baseUrl = 'https://geocode-maps.yandex.ru/1.x/';
 
+  /// Checks if the Yandex API key is configured
+  bool get _hasApiKey => MapConfig.yandexApiKey.isNotEmpty;
+
   /// Получить адрес по координатам (reverse geocoding)
   Future<String?> getAddressFromCoordinates(double latitude, double longitude) async {
+    if (!_hasApiKey) {
+      LoggerService.warning('[GeocodingService] Yandex API key not configured (YANDEX_API_KEY)');
+      return null;
+    }
     try {
       final response = await _dio.get(
         _baseUrl,
@@ -50,7 +58,7 @@ class GeocodingService {
       }
       return null;
     } catch (e) {
-      print('Reverse geocoding error: $e');
+      LoggerService.error('[GeocodingService] Reverse geocoding error', e);
       return null;
     }
   }
@@ -58,6 +66,10 @@ class GeocodingService {
   /// Поиск адресов (forward geocoding)
   Future<List<GeocodingResult>> searchAddresses(String query) async {
     if (query.isEmpty) return [];
+    if (!_hasApiKey) {
+      LoggerService.warning('[GeocodingService] Yandex API key not configured (YANDEX_API_KEY)');
+      return [];
+    }
 
     try {
       final response = await _dio.get(
@@ -90,7 +102,7 @@ class GeocodingService {
       }
       return [];
     } catch (e) {
-      print('Geocoding search error: $e');
+      LoggerService.error('[GeocodingService] Search error', e);
       return [];
     }
   }

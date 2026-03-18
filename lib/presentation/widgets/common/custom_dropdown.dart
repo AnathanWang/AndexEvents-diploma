@@ -15,7 +15,7 @@ class CustomDropdown<T> extends StatelessWidget {
   final bool showBottomSheetCount;
 
   const CustomDropdown({
-    Key? key,
+    super.key,
     required this.label,
     this.value,
     required this.items,
@@ -27,7 +27,7 @@ class CustomDropdown<T> extends StatelessWidget {
     this.itemStyle,
     this.useBottomSheet = false,
     this.showBottomSheetCount = true,
-  }) : super(key: key);
+  });
 
   String _labelForItem(DropdownMenuItem<T> item) {
     final child = item.child;
@@ -120,7 +120,7 @@ class CustomDropdown<T> extends StatelessWidget {
                           separatorBuilder: (_, __) => Divider(
                             height: 1,
                             thickness: 1,
-                            color: colorScheme.outlineVariant.withOpacity(0.35),
+                            color: colorScheme.outlineVariant.withValues(alpha: 0.35),
                           ),
                           itemBuilder: (ctx, index) {
                             final item = items[index];
@@ -213,7 +213,7 @@ class CustomDropdown<T> extends StatelessWidget {
     }
 
     return DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       items: items,
       onChanged: onChanged,
       borderRadius: borderRadius,

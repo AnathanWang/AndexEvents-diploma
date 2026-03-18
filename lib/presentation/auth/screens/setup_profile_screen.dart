@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:async';
 import '../../../data/services/user_service.dart';
+import '../../../data/services/auth_service.dart';
 import 'setup_interests_screen.dart';
 import '../../widgets/common/custom_dropdown.dart';
 
@@ -66,9 +68,21 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
         // Загружаем фото если выбрано
         if (_profileImage != null) {
           try {
-            photoUrl = await _userService.uploadProfilePhoto(_profileImage!);
+            photoUrl = await _userService.uploadProfilePhoto(_profileImage!)
+                .timeout(
+              const Duration(seconds: 30),
+              onTimeout: () {
+                throw TimeoutException('Загрузка фото заняла слишком много времени');
+              },
+            );
           } catch (photoError) {
             // Не прерываем процесс, продолжаем без фото
+            if (!mounted) return;
+            CustomNotification.show(
+              context,
+              'Не удалось загрузить фото, продолжаем без него',
+              isError: true,
+            );
           }
         }
 
@@ -77,21 +91,25 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
           photoUrl: photoUrl,
           age: int.tryParse(_ageController.text),
           gender: _selectedGender,
+        ).timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            throw TimeoutException('Обновление профиля заняло слишком много времени');
+          },
         );
 
-        if (mounted) {
-          setState(() => _isLoading = false);
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (BuildContext context) => const SetupInterestsScreen(),
-            ),
-          );
-        }
+        if (!mounted) return;
+
+        setState(() => _isLoading = false);
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (BuildContext context) => const SetupInterestsScreen(),
+          ),
+        );
       } catch (e) {
-        if (mounted) {
-          setState(() => _isLoading = false);
-          CustomNotification.show(context, 'Ошибка: $e', isError: true);
-        }
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        CustomNotification.show(context, 'Ошибка: $e', isError: true);
       }
     }
   }
@@ -104,16 +122,50 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
     );
   }
 
+  Future<bool> _handleBackPress() async {
+    // Показываем диалог подтверждения выхода
+    final bool? shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Выйти?'),
+        content: const Text('Вы уверены что хотите выйти? Прогресс настройки профиля не будет сохранен.'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Выйти', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      // Выполняем logout
+      await AuthService().signOut();
+      return true;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (didPop) return;
+        await _handleBackPress();
+      },
+      child: Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _handleBackPress,
         ),
         actions: <Widget>[
           TextButton(
@@ -196,7 +248,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                           height: 120,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFF5E60CE).withOpacity(0.1),
+                            color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
                             image: _profileImage != null
                                 ? DecorationImage(
                                     image: FileImage(_profileImage!),
@@ -378,6 +430,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
           ),
         ),
       ),
-    );
+      ), // Scaffold
+    ); // PopScope
   }
 }

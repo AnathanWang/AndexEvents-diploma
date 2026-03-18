@@ -136,7 +136,7 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                                 backgroundColor: Colors.transparent,
                                 selectedColor: const Color(
                                   0xFF5E60CE,
-                                ).withOpacity(0.2),
+                                ).withValues(alpha: 0.2),
                                 labelStyle: TextStyle(
                                   color: isSelected
                                       ? const Color(0xFF5E60CE)
@@ -182,7 +182,7 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                                 backgroundColor: Colors.transparent,
                                 selectedColor: const Color(
                                   0xFF5E60CE,
-                                ).withOpacity(0.2),
+                                ).withValues(alpha: 0.2),
                                 labelStyle: TextStyle(
                                   color: isSelected
                                       ? const Color(0xFF5E60CE)
@@ -227,7 +227,7 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                                 backgroundColor: Colors.transparent,
                                 selectedColor: const Color(
                                   0xFF5E60CE,
-                                ).withOpacity(0.2),
+                                ).withValues(alpha: 0.2),
                                 labelStyle: TextStyle(
                                   color: isSelected
                                       ? const Color(0xFF5E60CE)

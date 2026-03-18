@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/services/logger_service.dart';
 import '../../widgets/common/custom_dropdown.dart';
 import '../../widgets/common/custom_notification.dart';
 import '../../../data/models/event_model.dart';
@@ -149,7 +150,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
           isError: true,
         );
       }
-      print('Image picker error: $e');
+      LoggerService.error('Image picker error: $e');
     }
   }
 

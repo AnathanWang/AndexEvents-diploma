@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../../core/services/logger_service.dart';
 import '../../../data/services/geocoding_service.dart';
 
 class MapLocationPicker extends StatefulWidget {
@@ -62,13 +63,13 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          print('Location permissions are denied');
+          LoggerService.debug('Location permissions are denied');
           return;
         }
       }
       
       if (permission == LocationPermission.deniedForever) {
-        print('Location permissions are permanently denied');
+        LoggerService.debug('Location permissions are permanently denied');
         return;
       }
 
@@ -92,7 +93,7 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
         ),
       );
     } catch (e) {
-      print('Error getting user location: $e');
+      LoggerService.error('Error getting user location: $e');
     }
   }
 
@@ -174,7 +175,7 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
         });
       }
     } catch (e) {
-      print('Error getting address: $e');
+      LoggerService.error('Error getting address: $e');
       if (mounted) {
         setState(() {
           _selectedAddress = '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';

@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/utils/image_utils.dart';
+import '../../core/config/app_config.dart';
+import '../../core/auth/id_token_provider.dart';
+import '../../core/services/logger_service.dart';
 
 /// Сервис загрузки фото на бэкенд
 class LocalStorageService {
@@ -25,8 +29,7 @@ class LocalStorageService {
     }
   }
   static final LocalStorageService _instance = LocalStorageService._internal();
-  final SupabaseClient _supabase = Supabase.instance.client;
-  final String _backendUrl = 'http://localhost:3000'; // или AppConfig.backendUrl
+  final IdTokenProvider _idTokenProvider = const IdTokenProvider();
 
   factory LocalStorageService() {
     return _instance;
@@ -34,78 +37,46 @@ class LocalStorageService {
 
   LocalStorageService._internal();
 
+  static String _normalizeUploadUrl(String rawUrl) {
+    try {
+      final uploadUri = Uri.parse(rawUrl);
+      final host = uploadUri.host.toLowerCase();
+      final isLoopbackHost =
+          host == 'localhost' || host == '127.0.0.1' || host == '0.0.0.0';
+
+      if (!isLoopbackHost) {
+        return rawUrl;
+      }
+
+      final apiUri = Uri.parse(AppConfig.baseUrl);
+      if (apiUri.host.isEmpty) {
+        return rawUrl;
+      }
+
+      return uploadUri
+          .replace(
+            scheme: apiUri.scheme.isEmpty ? 'http' : apiUri.scheme,
+            host: apiUri.host,
+            port: apiUri.hasPort ? apiUri.port : null,
+          )
+          .toString();
+    } catch (_) {
+      return rawUrl;
+    }
+  }
+
   /// Загрузить фото события на бэкенд
   Future<String> uploadEventPhoto(
     String filePath, {
     Function(double)? onProgress,
   }) async {
-    try {
-      print('🔵 [UploadService] Начинаем загрузку фото события на бэкенд...');
-
-      // Сжимаем изображение
-      final originalFile = File(filePath);
-      final compressedFile = await ImageUtils.compressImage(originalFile);
-
-      final fileSize = await compressedFile.length();
-      if (fileSize > 10 * 1024 * 1024) {
-        throw Exception(
-          'Файл слишком большой (макс. 10MB, ваш файл ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB)',
-        );
-      }
-
-      // Получаем токен доступа
-      final token = _supabase.auth.currentSession?.accessToken;
-      if (token == null) {
-        throw Exception('Пользователь не авторизован');
-      }
-
-      // Создаем multipart request с указанием бакета
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$_backendUrl/api/upload?bucket=events'),
-      );
-
-      // Добавляем токен авторизации
-      request.headers['Authorization'] = 'Bearer $token';
-
-      // Добавляем файл с явным MIME type для iOS совместимости
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'file',
-          compressedFile.path,
-          contentType: http.MediaType.parse(_getMimeType(compressedFile.path)),
-        ),
-      );
-
-      onProgress?.call(0.5);
-      print('🔵 [UploadService] Отправляем файл на сервер...');
-
-      // Отправляем запрос
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
-
-      onProgress?.call(1.0);
-
-      if (response.statusCode != 200) {
-        print('🔴 [UploadService] Ошибка сервера: ${response.statusCode}');
-        print('🔴 [UploadService] Ответ: $responseBody');
-        throw Exception('Ошибка загрузки на сервер: ${response.statusCode}');
-      }
-
-      // Парсим ответ
-      final Map<String, dynamic> jsonResponse = _parseJson(responseBody);
-      final fileUrl = jsonResponse['fileUrl'] as String?;
-
-      if (fileUrl == null) {
-        throw Exception('Сервер не вернул URL файла');
-      }
-
-      print('🟢 [UploadService] Фото события успешно загружено: $fileUrl');
-      return fileUrl;
-    } catch (e) {
-      print('🔴 [UploadService] Ошибка при загрузке фото события: $e');
-      rethrow;
-    }
+    return _uploadFile(
+      filePath,
+      bucket: 'events',
+      fileDescription: 'фото события',
+      maxSizeBytes: 10 * 1024 * 1024,
+      onProgress: onProgress,
+    );
   }
 
   /// Загрузить фото профиля на бэкенд
@@ -113,22 +84,96 @@ class LocalStorageService {
     String filePath, {
     Function(double)? onProgress,
   }) async {
+    return _uploadFile(
+      filePath,
+      bucket: 'avatars',
+      fileDescription: 'фото профиля',
+      maxSizeBytes: 5 * 1024 * 1024,
+      onProgress: onProgress,
+    );
+  }
+
+  /// Загрузить дополнительное фото профиля на бэкенд
+  Future<String> uploadAdditionalPhoto(
+    String filePath, {
+    Function(double)? onProgress,
+  }) async {
+    return _uploadFile(
+      filePath,
+      bucket: 'photos',
+      fileDescription: 'дополнительное фото профиля',
+      maxSizeBytes: 5 * 1024 * 1024,
+      onProgress: onProgress,
+    );
+  }
+
+  Future<String> uploadCoverPhoto(
+    String filePath, {
+    Function(double)? onProgress,
+  }) async {
+    return _uploadFile(
+      filePath,
+      // Upload-service currently allows only avatars/events/photos buckets.
+      bucket: 'photos',
+      fileDescription: 'обложка профиля',
+      maxSizeBytes: 6 * 1024 * 1024,
+      onProgress: onProgress,
+    );
+  }
+
+  /// Удалить дополнительное фото профиля на бэкенде
+  Future<void> deletePhoto(String photoUrl) async {
     try {
-      print('🔵 [UploadService] Начинаем загрузку фото профиля на бэкенд...');
+      final token = await _idTokenProvider.getIdToken();
+      if (token == null) {
+        throw Exception('Пользователь не авторизован');
+      }
+
+      final uri = Uri.parse(
+        '${AppConfig.baseUrl}/upload?bucket=photos&url=${Uri.encodeComponent(photoUrl)}',
+      );
+
+      final response = await http.delete(
+        uri,
+        headers: <String, String>{
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        LoggerService.error('[UploadService] Ошибка удаления фото: ${response.statusCode}');
+        throw Exception('Ошибка удаления фото: ${response.statusCode}');
+      }
+    } catch (e) {
+      LoggerService.error('[UploadService] Ошибка при удалении фото: $e');
+      rethrow;
+    }
+  }
+
+  Future<String> _uploadFile(
+    String filePath, {
+    required String bucket,
+    required String fileDescription,
+    required int maxSizeBytes,
+    Function(double)? onProgress,
+  }) async {
+    try {
+      LoggerService.info('[UploadService] Начинаем загрузку $fileDescription на бэкенд...');
 
       // Сжимаем изображение
       final originalFile = File(filePath);
       final compressedFile = await ImageUtils.compressImage(originalFile);
 
       final fileSize = await compressedFile.length();
-      if (fileSize > 5 * 1024 * 1024) {
+      if (fileSize > maxSizeBytes) {
         throw Exception(
-          'Файл слишком большой (макс. 5MB, ваш файл ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB)',
+          'Файл слишком большой (макс. ${maxSizeBytes / 1024 / 1024}MB, ваш файл ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB)',
         );
       }
 
       // Получаем токен доступа
-      final token = _supabase.auth.currentSession?.accessToken;
+      final token = await _idTokenProvider.getIdToken();
       if (token == null) {
         throw Exception('Пользователь не авторизован');
       }
@@ -136,7 +181,7 @@ class LocalStorageService {
       // Создаем multipart request с указанием бакета
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('$_backendUrl/api/upload?bucket=avatars'),
+        Uri.parse('${AppConfig.baseUrl}/upload?bucket=$bucket'),
       );
 
       // Добавляем токен авторизации
@@ -147,12 +192,12 @@ class LocalStorageService {
         await http.MultipartFile.fromPath(
           'file',
           compressedFile.path,
-          contentType: http.MediaType.parse(_getMimeType(compressedFile.path)),
+          contentType: MediaType.parse(_getMimeType(compressedFile.path)),
         ),
       );
 
       onProgress?.call(0.5);
-      print('🔵 [UploadService] Отправляем файл на сервер...');
+      LoggerService.info('[UploadService] Отправляем файл на сервер...');
 
       // Отправляем запрос
       final response = await request.send();
@@ -161,8 +206,8 @@ class LocalStorageService {
       onProgress?.call(1.0);
 
       if (response.statusCode != 200) {
-        print('🔴 [UploadService] Ошибка сервера: ${response.statusCode}');
-        print('🔴 [UploadService] Ответ: $responseBody');
+        LoggerService.error('[UploadService] Ошибка сервера: ${response.statusCode}');
+        LoggerService.debug('[UploadService] Ответ: $responseBody');
         throw Exception('Ошибка загрузки на сервер: ${response.statusCode}');
       }
 
@@ -174,25 +219,22 @@ class LocalStorageService {
         throw Exception('Сервер не вернул URL файла');
       }
 
-      print('🟢 [UploadService] Фото профиля успешно загружено: $fileUrl');
-      return fileUrl;
+      final normalizedUrl = _normalizeUploadUrl(fileUrl);
+      LoggerService.info('[UploadService] $fileDescription успешно загружено: $normalizedUrl');
+      return normalizedUrl;
     } catch (e) {
-      print('🔴 [UploadService] Ошибка при загрузке фото профиля: $e');
+      LoggerService.error('[UploadService] Ошибка при загрузке $fileDescription: $e');
       rethrow;
     }
   }
 
-  /// Простой парсер JSON
+  /// Парсинг JSON ответа сервера
   Map<String, dynamic> _parseJson(String jsonString) {
     try {
-      // Пытаемся вытянуть URL из ответа
-      final urlMatch = RegExp(r'"fileUrl"\s*:\s*"([^"]+)"').firstMatch(jsonString);
-      if (urlMatch != null) {
-        return {'fileUrl': urlMatch.group(1)};
-      }
-      throw Exception('Ошибка парсинга ответа сервера');
+      final decoded = jsonDecode(jsonString) as Map<String, dynamic>;
+      return decoded;
     } catch (e) {
-      print('🔴 [UploadService] Ошибка парсинга: $e');
+      LoggerService.error('[UploadService] Ошибка парсинга', e);
       throw Exception('Ошибка парсинга ответа сервера: $e');
     }
   }

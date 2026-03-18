@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
+import '../../../core/services/logger_service.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../bloc/profile_bloc.dart';
@@ -11,6 +12,8 @@ import '../bloc/profile_state.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/user_service.dart';
 import '../../widgets/common/custom_notification.dart';
+import 'privacy_settings_screen.dart';
+import '../widgets/photo_gallery_sheet.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -23,15 +26,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _bioController = TextEditingController();
+  final GlobalKey _avatarPreviewKey = GlobalKey();
+  final Map<String, GlobalKey> _photoPreviewKeys = <String, GlobalKey>{};
 
   Map<String, String> _socialLinks = {};
 
   File? _newProfileImage;
-  List<File> _newPhotos = [];
+  File? _newCoverImage;
+  final List<File> _newPhotos = [];
   List<String> _existingPhotos = [];
   UserModel? _currentUser;
   bool _isLoading = false;
   bool _isInitialLoad = true;
+  bool _showInSearch = true;
+  bool _showVisitedEvents = true;
+  bool _matchNotifications = true;
 
   final List<String> _allInterests = <String>[
     'Спорт',
@@ -107,11 +116,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           isError: true,
         );
       }
-      print('Image picker error: $e');
+      LoggerService.error('Image picker error: $e');
     }
   }
 
-  Future<void> _pickPhotos() async {
+  Future<void> _pickCoverImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1800,
+        maxHeight: 1200,
+        imageQuality: 86,
+      );
+
+      if (image != null && mounted) {
+        setState(() {
+          _newCoverImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted && e.toString().contains('multiple_request')) {
+        CustomNotification.show(
+          context,
+          'Операция отменена. Попробуйте еще раз',
+          isError: true,
+        );
+      }
+      LoggerService.error('Cover image picker error: $e');
+    }
+  }
+
+  Future<void> _pickAdditionalPhotos() async {
     try {
       final ImagePicker picker = ImagePicker();
       final List<XFile> images = await picker.pickMultiImage(
@@ -151,7 +187,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           isError: true,
         );
       }
-      print('Image picker error: $e');
+      LoggerService.error('Image picker error: $e');
     }
   }
 
@@ -165,6 +201,271 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() {
       _newPhotos.removeAt(index);
     });
+  }
+
+  GlobalKey _previewKeyFor(String path) {
+    return _photoPreviewKeys.putIfAbsent(path, () => GlobalKey());
+  }
+
+  Rect? _rectForKey(GlobalKey key) {
+    final keyContext = key.currentContext;
+    if (keyContext == null) return null;
+    final renderObject = keyContext.findRenderObject();
+    if (renderObject is! RenderBox) return null;
+    final offset = renderObject.localToGlobal(Offset.zero);
+    return offset & renderObject.size;
+  }
+
+  String? _currentAvatarPath(UserModel? user) {
+    if (_newProfileImage != null) return _newProfileImage!.path;
+    final photoUrl = user?.photoUrl?.trim();
+    if (photoUrl != null && photoUrl.isNotEmpty) return photoUrl;
+    return null;
+  }
+
+  List<String> _additionalPhotoPaths() {
+    return <String>[
+      ..._existingPhotos,
+      ..._newPhotos.map((photo) => photo.path),
+    ];
+  }
+
+  List<String> _galleryOrderedPhotos(UserModel? user) {
+    final ordered = <String>[];
+    final avatarPath = _currentAvatarPath(user);
+    if (avatarPath != null && avatarPath.isNotEmpty) {
+      ordered.add(avatarPath);
+    }
+
+    for (final path in _additionalPhotoPaths()) {
+      if (!ordered.contains(path)) {
+        ordered.add(path);
+      }
+    }
+
+    return ordered;
+  }
+
+  Future<void> _openPhotoGallery({
+    required UserModel? user,
+    required Rect? sourceRect,
+    int initialIndex = 0,
+  }) async {
+    final orderedPhotos = _galleryOrderedPhotos(user);
+    if (orderedPhotos.isEmpty) return;
+
+    final mainPhoto = _currentAvatarPath(user);
+    final extraPhotos = List<String>.from(orderedPhotos);
+    if (mainPhoto != null && extraPhotos.isNotEmpty && extraPhotos.first == mainPhoto) {
+      extraPhotos.removeAt(0);
+    }
+
+    await Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierColor: Colors.transparent,
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return PhotoGallerySheet(
+            photos: extraPhotos,
+            mainPhotoUrl: mainPhoto,
+            initialIndex: initialIndex,
+            initialAvatarSize: sourceRect?.width ?? 120,
+            sourceRect: sourceRect,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 10),
+        reverseTransitionDuration: const Duration(milliseconds: 180),
+      ),
+    );
+  }
+
+  Widget _buildPhotoPreview(String path) {
+    final isNetworkImage =
+        path.startsWith('http://') || path.startsWith('https://');
+
+    if (isNetworkImage) {
+      return CachedNetworkImage(
+        imageUrl: path,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => const Center(
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: const Color(0xFFF3F4F8),
+          alignment: Alignment.center,
+          child: const Icon(Icons.broken_image_outlined),
+        ),
+      );
+    }
+
+    return Image.file(
+      File(path),
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Container(
+        color: const Color(0xFFF3F4F8),
+        alignment: Alignment.center,
+        child: const Icon(Icons.broken_image_outlined),
+      ),
+    );
+  }
+
+  Widget _buildAdditionalPhotosSection(UserModel? user) {
+    final photoPaths = _additionalPhotoPaths();
+    final canAddMore = photoPaths.length < 5;
+    final orderedPhotos = _galleryOrderedPhotos(user);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F8FC),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              const Expanded(
+                child: Text(
+                  'Дополнительные фото',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF4A4D6A),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${photoPaths.length}/5',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF5E60CE),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 0.9,
+            ),
+            itemCount: photoPaths.length + (canAddMore ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == photoPaths.length) {
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _pickAdditionalPhotos,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: const Color(0xFF5E60CE).withValues(alpha: 0.22),
+                        ),
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Icon(
+                            Icons.add_photo_alternate_outlined,
+                            color: Color(0xFF5E60CE),
+                            size: 24,
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Фото',
+                            style: TextStyle(
+                              color: Color(0xFF5E60CE),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              final path = photoPaths[index];
+              final previewKey = _previewKeyFor(path);
+              final galleryIndex = orderedPhotos.indexOf(path);
+              final isExisting = index < _existingPhotos.length;
+
+              return GestureDetector(
+                onTap: () => _openPhotoGallery(
+                  user: user,
+                  sourceRect: _rectForKey(previewKey),
+                  initialIndex: galleryIndex < 0 ? 0 : galleryIndex,
+                ),
+                child: Container(
+                  key: previewKey,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: <Widget>[
+                        _buildPhotoPreview(path),
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: GestureDetector(
+                            onTap: () {
+                              if (isExisting) {
+                                _removeExistingPhoto(index);
+                              } else {
+                                _removeNewPhoto(index - _existingPhotos.length);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _saveProfile() async {
@@ -188,9 +489,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         // Загружаем дополнительные фото
         List<String> uploadedPhotoUrls = List.from(_existingPhotos);
         for (final photo in _newPhotos) {
-          final url = await userService.uploadProfilePhoto(photo);
+          final url = await userService.uploadAdditionalPhoto(photo);
           uploadedPhotoUrls.add(url);
         }
+
+        String? newCoverUrl;
+        if (_newCoverImage != null) {
+          newCoverUrl = await userService.uploadCoverPhoto(_newCoverImage!);
+        }
+
+        if (!mounted) return;
 
         // Обновляем профиль со всеми данными
         context.read<ProfileBloc>().add(
@@ -198,16 +506,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             displayName: _nameController.text.trim(),
             bio: _bioController.text.trim(),
             photoUrl: newPhotoUrl,
+            coverImageUrl: newCoverUrl,
             photos: uploadedPhotoUrls,
             interests: _selectedInterests,
             socialLinks: _socialLinks.isNotEmpty ? _socialLinks : null,
           ),
         );
       } catch (e) {
+        if (!mounted) return;
         setState(() => _isLoading = false);
-        if (mounted) {
-          CustomNotification.error(context, 'Ошибка загрузки фото: $e');
-        }
+        CustomNotification.error(context, 'Ошибка загрузки фото: $e');
       }
     }
   }
@@ -315,6 +623,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  Future<void> _openPrivacySettings() async {
+    final result = await Navigator.of(context).push<Map<String, bool>>(
+      MaterialPageRoute<Map<String, bool>>(
+        builder: (context) => PrivacySettingsScreen(
+          showInSearch: _showInSearch,
+          showVisitedEvents: _showVisitedEvents,
+          matchNotifications: _matchNotifications,
+        ),
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _showInSearch = result['showInSearch'] ?? _showInSearch;
+      _showVisitedEvents =
+          result['showVisitedEvents'] ?? _showVisitedEvents;
+      _matchNotifications =
+          result['matchNotifications'] ?? _matchNotifications;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<ProfileBloc, ProfileState>(
@@ -329,18 +659,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               _isInitialLoad = false;
             });
           }
-          // Если было реальное обновление - закрываем экран и показываем сообщение
+          // Если было реальное обновление - закрываем экран с success result
           else if (_isLoading) {
             setState(() => _isLoading = false);
-            final navigatorContext = Navigator.of(context).context;
-            Navigator.of(context).pop();
-            // Показываем уведомление на предыдущем экране
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              CustomNotification.success(
-                navigatorContext,
-                'Профиль успешно обновлен!',
-              );
-            });
+            // Pop with result=true so the parent screen can show the notification
+            Navigator.of(context).pop(true);
           } else {
             setState(() => _isLoading = false);
           }
@@ -371,6 +694,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ),
             centerTitle: true,
+            actions: <Widget>[
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Color(0xFF4A4D6A)),
+                onSelected: (value) {
+                  if (value == 'privacy') {
+                    _openPrivacySettings();
+                  }
+                },
+                itemBuilder: (context) => const <PopupMenuEntry<String>>[
+                  PopupMenuItem<String>(
+                    value: 'privacy',
+                    child: Row(
+                      children: <Widget>[
+                        Icon(Icons.shield_outlined),
+                        SizedBox(width: 12),
+                        Text('Настройки приватности'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           body: _isLoading && user == null
               ? const Center(child: CircularProgressIndicator())
@@ -379,22 +724,99 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: ListView(
                     padding: const EdgeInsets.all(24.0),
                     children: <Widget>[
+                      // Обложка профиля
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: SizedBox(
+                          height: 140,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: <Widget>[
+                              if (_newCoverImage != null)
+                                Image.file(_newCoverImage!, fit: BoxFit.cover)
+                              else if (user?.coverImageUrl != null &&
+                                  user!.coverImageUrl!.isNotEmpty)
+                                CachedNetworkImage(
+                                  imageUrl: user.coverImageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorWidget: (context, url, error) =>
+                                      const DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: <Color>[
+                                          Color(0xFF5E60CE),
+                                          Color(0xFF9370DB),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else
+                                const DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: <Color>[
+                                        Color(0xFF5E60CE),
+                                        Color(0xFF9370DB),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              Align(
+                                alignment: Alignment.bottomRight,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(10),
+                                  child: OutlinedButton.icon(
+                                    onPressed: _pickCoverImage,
+                                    icon: const Icon(Icons.wallpaper_outlined, size: 16),
+                                    label: const Text('Фон'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      side: const BorderSide(color: Colors.white),
+                                      backgroundColor:
+                                          Colors.black.withValues(alpha: 0.28),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
                       // Фото профиля
                       Center(
                         child: GestureDetector(
-                          onTap: _pickImage,
+                          onTap: () => _openPhotoGallery(
+                            user: user,
+                            sourceRect: _rectForKey(_avatarPreviewKey),
+                          ),
                           child: Stack(
                             children: <Widget>[
                               _newProfileImage != null
-                                  ? CircleAvatar(
-                                      radius: 60,
-                                      backgroundImage: FileImage(
-                                        _newProfileImage!,
+                                  ? Container(
+                                      key: _avatarPreviewKey,
+                                      width: 120,
+                                      height: 120,
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: ClipOval(
+                                        child: Image.file(
+                                          _newProfileImage!,
+                                          fit: BoxFit.cover,
+                                        ),
                                       ),
                                     )
                                   : (user?.photoUrl != null &&
                                         user!.photoUrl!.isNotEmpty)
                                   ? Container(
+                                      key: _avatarPreviewKey,
                                       width: 120,
                                       height: 120,
                                       decoration: BoxDecoration(
@@ -412,7 +834,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                             ),
                                           ),
                                           errorWidget: (context, url, error) {
-                                            print(
+                                            LoggerService.error(
                                               '🔴 [EditProfile] Не удалось загрузить аватар: $error',
                                             );
                                             return CircleAvatar(
@@ -439,6 +861,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       ),
                                     )
                                   : CircleAvatar(
+                                      key: _avatarPreviewKey,
                                       radius: 60,
                                       backgroundColor: const Color(0xFF5E60CE),
                                       child: Text(
@@ -478,13 +901,49 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Center(
-                        child: TextButton(
-                          onPressed: _pickImage,
-                          child: const Text('Изменить фото'),
-                        ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          OutlinedButton.icon(
+                            onPressed: _pickImage,
+                            icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                            label: const Text('Аватар'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF5E60CE),
+                              side: BorderSide(
+                                color: const Color(0xFF5E60CE).withValues(alpha: 0.25),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: _pickAdditionalPhotos,
+                            icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
+                            label: const Text('Фото'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF5E60CE),
+                              side: BorderSide(
+                                color: const Color(0xFF5E60CE).withValues(alpha: 0.25),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: _pickCoverImage,
+                            icon: const Icon(Icons.wallpaper_outlined, size: 18),
+                            label: const Text('Фон'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF5E60CE),
+                              side: BorderSide(
+                                color: const Color(0xFF5E60CE).withValues(alpha: 0.25),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 20),
+                      _buildAdditionalPhotosSection(user),
                       const SizedBox(height: 32),
 
                       // Имя
@@ -643,7 +1102,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 _toggleInterest(interest),
                             selectedColor: const Color(
                               0xFF5E60CE,
-                            ).withOpacity(0.2),
+                            ).withValues(alpha: 0.2),
                             checkmarkColor: const Color(0xFF5E60CE),
                             backgroundColor: const Color(0xFFF5F5F5),
                             labelStyle: TextStyle(
@@ -665,65 +1124,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ),
                           );
                         }).toList(),
-                      ),
-                      const SizedBox(height: 32),
-
-                      // Настройки приватности
-                      const Text(
-                        'Приватность',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF4A4D6A),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFFE0E0E0)),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          children: <Widget>[
-                            SwitchListTile(
-                              title: const Text('Показывать в поиске'),
-                              subtitle: const Text(
-                                'Другие пользователи смогут найти вас',
-                              ),
-                              value: true,
-                              activeThumbColor: const Color(0xFF5E60CE),
-                              onChanged: (bool value) {
-                                // TODO: Изменить настройки
-                              },
-                            ),
-                            const Divider(height: 1),
-                            SwitchListTile(
-                              title: const Text(
-                                'Показывать посещенные события',
-                              ),
-                              subtitle: const Text('В вашем профиле'),
-                              value: true,
-                              activeThumbColor: const Color(0xFF5E60CE),
-                              onChanged: (bool value) {
-                                // TODO: Изменить настройки
-                              },
-                            ),
-                            const Divider(height: 1),
-                            SwitchListTile(
-                              title: const Text(
-                                'Получать уведомления о матчах',
-                              ),
-                              subtitle: const Text(
-                                'Когда появляется новое совпадение',
-                              ),
-                              value: true,
-                              activeThumbColor: const Color(0xFF5E60CE),
-                              onChanged: (bool value) {
-                                // TODO: Изменить настройки
-                              },
-                            ),
-                          ],
-                        ),
                       ),
                       const SizedBox(height: 32),
 

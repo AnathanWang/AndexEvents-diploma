@@ -1,0 +1,54 @@
+# Go binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go build cache
+go.sum
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Secrets - NEVER commit these!
+secrets/
+*.pem
+*.key
+*.crt
+firebase-service-account.json
+
+# Build outputs
+bin/
+dist/
+build/
+
+# Test coverage
+coverage.out
+coverage.html
+
+# Vendor (if not using go modules)
+# vendor/
+
+# Temporary files
+tmp/
+temp/

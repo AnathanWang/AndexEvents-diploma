@@ -22,6 +22,8 @@ migrate_working_dir/
 # VS Code which you may wish to be included in version control, so this line
 # is commented out by default.
 #.vscode/
+# But we DO want to ignore launch.json as it contains API keys
+.vscode/launch.json
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -52,6 +54,7 @@ app.*.map.json
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 lib/core/config/firebase_config.dart
+lib/firebase_options.dart
 
 # Backend environment variables
 backend/.env
@@ -78,3 +81,15 @@ MATCHES_REFACTORING_SUMMARY.md
 
 # SVG icons
 Direction Arrow Icon.svg
+backend/dist/
+secrets/firebase-service-account.json
+
+# Root level secrets
+.env
+.env.local
+*.env
+"Andexevents Firebase Admin SDK.json"
+"Andexevents Google Service Info.plist"
+*Firebase*Admin*SDK*.json
+*Google*Service*Info*.plist
+
