@@ -26,10 +26,27 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     ProfileLoadRequested event,
     Emitter<ProfileState> emit,
   ) async {
+    final previousUser = switch (state) {
+      ProfileLoaded(:final user) => user,
+      ProfileUpdating(:final user) => user,
+      ProfileError(:final user?) => user,
+      _ => null,
+    };
+
     emit(const ProfileLoading());
 
     try {
-      final user = await _userService.getCurrentUser();
+      final fetchedUser = await _userService.getCurrentUser();
+      final shouldKeepPreviousCover =
+          (fetchedUser.coverImageUrl == null ||
+              fetchedUser.coverImageUrl!.trim().isEmpty) &&
+          previousUser?.coverImageUrl != null &&
+          previousUser!.coverImageUrl!.trim().isNotEmpty;
+
+      final user = shouldKeepPreviousCover
+          ? fetchedUser.copyWith(coverImageUrl: previousUser.coverImageUrl)
+          : fetchedUser;
+
       final userEvents = await _eventService.getUserEvents(user.id);
       emit(ProfileLoaded(user, userEvents: userEvents));
     } catch (e) {
@@ -52,6 +69,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       await _userService.updateProfile(
         displayName: event.displayName,
         photoUrl: event.photoUrl,
+        coverImageUrl: event.coverImageUrl,
         photos: event.photos,
         bio: event.bio,
         interests: event.interests,
@@ -59,7 +77,19 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       );
 
       // Перезагружаем профиль
-      final updatedUser = await _userService.getCurrentUser();
+      final fetchedUser = await _userService.getCurrentUser();
+      final hasReturnedCover =
+          fetchedUser.coverImageUrl != null &&
+          fetchedUser.coverImageUrl!.trim().isNotEmpty;
+      final shouldUseRequestedCover =
+          event.coverImageUrl != null &&
+          event.coverImageUrl!.trim().isNotEmpty &&
+          !hasReturnedCover;
+
+      final updatedUser = shouldUseRequestedCover
+          ? fetchedUser.copyWith(coverImageUrl: event.coverImageUrl)
+          : fetchedUser;
+
       final userEvents = await _eventService.getUserEvents(updatedUser.id);
       emit(ProfileLoaded(updatedUser, userEvents: userEvents));
     } catch (e) {

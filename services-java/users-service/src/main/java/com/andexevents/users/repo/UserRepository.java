@@ -3,7 +3,6 @@ package com.andexevents.users.repo;
 import com.andexevents.users.model.UserDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -13,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.*;
+import java.util.UUID;
 
 @Repository
 public class UserRepository {
@@ -135,11 +135,13 @@ public class UserRepository {
         double maxLon = userLon + lonChange;
 
         StringBuilder sql = new StringBuilder(
-                "SELECT * FROM users.\"User\" WHERE id <> ? " +
-                        "AND \"isOnboardingCompleted\" = true " +
-                        "AND \"isProfileVisible\" = true " +
-                        "AND \"lastLatitude\" BETWEEN ? AND ? " +
-                        "AND \"lastLongitude\" BETWEEN ? AND ? "
+            "SELECT u.* FROM users.\"User\" u WHERE u.id <> ? " +
+                "AND u.\"isOnboardingCompleted\" = true " +
+                "AND u.\"isProfileVisible\" = true " +
+                "AND u.\"lastLatitude\" BETWEEN ? AND ? " +
+                "AND u.\"lastLongitude\" BETWEEN ? AND ? " +
+                "AND NOT EXISTS (" +
+                "SELECT 1 FROM users.\"UserBlock\" b WHERE (b.\"blockerId\" = ? AND b.\"targetUserId\" = u.id) OR (b.\"blockerId\" = u.id AND b.\"targetUserId\" = ?)) "
         );
 
         List<Object> params = new ArrayList<>();
@@ -148,6 +150,8 @@ public class UserRepository {
         params.add(maxLat);
         params.add(minLon);
         params.add(maxLon);
+        params.add(userId);
+        params.add(userId);
 
         if (minAge != null) {
             sql.append("AND age >= ? ");
@@ -191,6 +195,7 @@ public class UserRepository {
                 rs.getString("email"),
                 rs.getString("displayName"),
                 rs.getString("photoUrl"),
+                rs.getString("coverImageUrl"),
                 photos,
                 rs.getString("bio"),
                 interests,
@@ -226,6 +231,23 @@ public class UserRepository {
                 "UPDATE users.\"User\" SET \"photos\" = array_remove(\"photos\", ?), \"updatedAt\" = NOW() WHERE id = ?",
                 photoUrl,
                 userId
+        );
+    }
+
+    public void blockUser(String blockerId, String targetUserId) {
+        jdbcTemplate.update(
+                "INSERT INTO users.\"UserBlock\" (id, \"blockerId\", \"targetUserId\", \"createdAt\") VALUES (?, ?, ?, NOW()) ON CONFLICT (\"blockerId\", \"targetUserId\") DO NOTHING",
+                UUID.randomUUID().toString(),
+                blockerId,
+                targetUserId
+        );
+    }
+
+    public void unblockUser(String blockerId, String targetUserId) {
+        jdbcTemplate.update(
+                "DELETE FROM users.\"UserBlock\" WHERE \"blockerId\" = ? AND \"targetUserId\" = ?",
+                blockerId,
+                targetUserId
         );
     }
 

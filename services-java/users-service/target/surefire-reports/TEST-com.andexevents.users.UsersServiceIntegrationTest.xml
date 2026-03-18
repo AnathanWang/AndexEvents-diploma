@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.andexevents.users.UsersServiceIntegrationTest" time="10.661" tests="1" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.andexevents.users.UsersServiceIntegrationTest" time="6.425" tests="4" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="25"/>
     <property name="sun.jnu.encoding" value="UTF-8"/>
@@ -16,10 +16,9 @@
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
     <property name="user.country" value="US"/>
     <property name="sun.boot.library.path" value="/opt/homebrew/Cellar/openjdk/25.0.1/libexec/openjdk.jdk/Contents/Home/lib"/>
-    <property name="sun.java.command" value="/Users/nathankarma/Code/andexevents/services-java/users-service/target/surefire/surefirebooter-20260312221302581_3.jar /Users/nathankarma/Code/andexevents/services-java/users-service/target/surefire 2026-03-12T22-13-02_546-jvmRun1 surefire-20260312221302581_1tmp surefire_0-20260312221302581_2tmp"/>
+    <property name="sun.java.command" value="/Users/nathankarma/Code/andexevents/services-java/users-service/target/surefire/surefirebooter-20260317132256111_3.jar /Users/nathankarma/Code/andexevents/services-java/users-service/target/surefire 2026-03-17T13-22-56_075-jvmRun1 surefire-20260317132256111_1tmp surefire_0-20260317132256111_2tmp"/>
     <property name="http.nonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/>
     <property name="jdk.debug" value="release"/>
-    <property name="test" value="UsersServiceIntegrationTest#updateProfile_withSocialLinks_returnsUpdatedUser"/>
     <property name="surefire.test.class.path" value="/Users/nathankarma/Code/andexevents/services-java/users-service/target/test-classes:/Users/nathankarma/Code/andexevents/services-java/users-service/target/classes:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-starter-web/3.3.5/spring-boot-starter-web-3.3.5.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-starter/3.3.5/spring-boot-starter-3.3.5.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot/3.3.5/spring-boot-3.3.5.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-autoconfigure/3.3.5/spring-boot-autoconfigure-3.3.5.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-starter-logging/3.3.5/spring-boot-starter-logging-3.3.5.jar:/Users/nathankarma/.m2/repository/ch/qos/logback/logback-classic/1.5.11/logback-classic-1.5.11.jar:/Users/nathankarma/.m2/repository/ch/qos/logback/logback-core/1.5.11/logback-core-1.5.11.jar:/Users/nathankarma/.m2/repository/org/apache/logging/log4j/log4j-to-slf4j/2.23.1/log4j-to-slf4j-2.23.1.jar:/Users/nathankarma/.m2/repository/org/apache/logging/log4j/log4j-api/2.23.1/log4j-api-2.23.1.jar:/Users/nathankarma/.m2/repository/org/slf4j/jul-to-slf4j/2.0.16/jul-to-slf4j-2.0.16.jar:/Users/nathankarma/.m2/repository/jakarta/annotation/jakarta.annotation-api/2.1.1/jakarta.annotation-api-2.1.1.jar:/Users/nathankarma/.m2/repository/org/yaml/snakeyaml/2.2/snakeyaml-2.2.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-starter-json/3.3.5/spring-boot-starter-json-3.3.5.jar:/Users/nathankarma/.m2/repository/com/fasterxml/jackson/datatype/jackson-datatype-jdk8/2.17.2/jackson-datatype-jdk8-2.17.2.jar:/Users/nathankarma/.m2/repository/com/fasterxml/jackson/datatype/jackson-datatype-jsr310/2.17.2/jackson-datatype-jsr310-2.17.2.jar:/Users/nathankarma/.m2/repository/com/fasterxml/jackson/module/jackson-module-parameter-names/2.17.2/jackson-module-parameter-names-2.17.2.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-starter-tomcat/3.3.5/spring-boot-starter-tomcat-3.3.5.jar:/Users/nathankarma/.m2/repository/org/apache/tomcat/embed/tomcat-embed-core/10.1.31/tomcat-embed-core-10.1.31.jar:/Users/nathankarma/.m2/repository/org/apache/tomcat/embed/tomcat-embed-websocket/10.1.31/tomcat-embed-websocket-10.1.31.jar:/Users/nathankarma/.m2/repository/org/springframework/spring-web/6.1.14/spring-web-6.1.14.jar:/Users/nathankarma/.m2/repository/org/springframework/spring-beans/6.1.14/spring-beans-6.1.14.jar:/Users/nathankarma/.m2/repository/org/springframework/spring-webmvc/6.1.14/spring-webmvc-6.1.14.jar:/Users/nathankarma/.m2/repository/org/springframework/spring-context/6.1.14/spring-context-6.1.14.jar:/Users/nathankarma/.m2/repository/org/springframework/spring-expression/6.1.14/spring-expression-6.1.14.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-starter-validation/3.3.5/spring-boot-starter-validation-3.3.5.jar:/Users/nathankarma/.m2/repository/org/apache/tomcat/embed/tomcat-embed-el/10.1.31/tomcat-embed-el-10.1.31.jar:/Users/nathankarma/.m2/repository/org/hibernate/validator/hibernate-validator/8.0.1.Final/hibernate-validator-8.0.1.Final.jar:/Users/nathankarma/.m2/repository/jakarta/validation/jakarta.validation-api/3.0.2/jakarta.validation-api-3.0.2.jar:/Users/nathankarma/.m2/repository/org/jboss/logging/jboss-logging/3.5.3.Final/jboss-logging-3.5.3.Final.jar:/Users/nathankarma/.m2/repository/com/fasterxml/classmate/1.7.0/classmate-1.7.0.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-starter-actuator/3.3.5/spring-boot-starter-actuator-3.3.5.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-actuator-autoconfigure/3.3.5/spring-boot-actuator-autoconfigure-3.3.5.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-actuator/3.3.5/spring-boot-actuator-3.3.5.jar:/Users/nathankarma/.m2/repository/io/micrometer/micrometer-observation/1.13.6/micrometer-observation-1.13.6.jar:/Users/nathankarma/.m2/repository/io/micrometer/micrometer-commons/1.13.6/micrometer-commons-1.13.6.jar:/Users/nathankarma/.m2/repository/io/micrometer/micrometer-jakarta9/1.13.6/micrometer-jakarta9-1.13.6.jar:/Users/nathankarma/.m2/repository/io/micrometer/micrometer-core/1.13.6/micrometer-core-1.13.6.jar:/Users/nathankarma/.m2/repository/org/hdrhistogram/HdrHistogram/2.2.2/HdrHistogram-2.2.2.jar:/Users/nathankarma/.m2/repository/org/latencyutils/LatencyUtils/2.0.3/LatencyUtils-2.0.3.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-starter-jdbc/3.3.5/spring-boot-starter-jdbc-3.3.5.jar:/Users/nathankarma/.m2/repository/com/zaxxer/HikariCP/5.1.0/HikariCP-5.1.0.jar:/Users/nathankarma/.m2/repository/org/springframework/spring-jdbc/6.1.14/spring-jdbc-6.1.14.jar:/Users/nathankarma/.m2/repository/org/springframework/spring-tx/6.1.14/spring-tx-6.1.14.jar:/Users/nathankarma/.m2/repository/org/postgresql/postgresql/42.7.4/postgresql-42.7.4.jar:/Users/nathankarma/.m2/repository/org/checkerframework/checker-qual/3.42.0/checker-qual-3.42.0.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-starter-security/3.3.5/spring-boot-starter-security-3.3.5.jar:/Users/nathankarma/.m2/repository/org/springframework/spring-aop/6.1.14/spring-aop-6.1.14.jar:/Users/nathankarma/.m2/repository/org/springframework/security/spring-security-config/6.3.4/spring-security-config-6.3.4.jar:/Users/nathankarma/.m2/repository/org/springframework/security/spring-security-core/6.3.4/spring-security-core-6.3.4.jar:/Users/nathankarma/.m2/repository/org/springframework/security/spring-security-crypto/6.3.4/spring-security-crypto-6.3.4.jar:/Users/nathankarma/.m2/repository/org/springframework/security/spring-security-web/6.3.4/spring-security-web-6.3.4.jar:/Users/nathankarma/.m2/repository/com/auth0/java-jwt/4.4.0/java-jwt-4.4.0.jar:/Users/nathankarma/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.17.2/jackson-databind-2.17.2.jar:/Users/nathankarma/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.17.2/jackson-annotations-2.17.2.jar:/Users/nathankarma/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.17.2/jackson-core-2.17.2.jar:/Users/nathankarma/.m2/repository/com/auth0/jwks-rsa/0.22.1/jwks-rsa-0.22.1.jar:/Users/nathankarma/.m2/repository/com/google/guava/guava/32.1.1-jre/guava-32.1.1-jre.jar:/Users/nathankarma/.m2/repository/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1.jar:/Users/nathankarma/.m2/repository/com/google/guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar:/Users/nathankarma/.m2/repository/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.jar:/Users/nathankarma/.m2/repository/com/google/errorprone/error_prone_annotations/2.18.0/error_prone_annotations-2.18.0.jar:/Users/nathankarma/.m2/repository/com/google/j2objc/j2objc-annotations/2.8/j2objc-annotations-2.8.jar:/Users/nathankarma/.m2/repository/org/flywaydb/flyway-core/10.10.0/flyway-core-10.10.0.jar:/Users/nathankarma/.m2/repository/com/fasterxml/jackson/dataformat/jackson-dataformat-toml/2.17.2/jackson-dataformat-toml-2.17.2.jar:/Users/nathankarma/.m2/repository/com/google/code/gson/gson/2.10.1/gson-2.10.1.jar:/Users/nathankarma/.m2/repository/org/flywaydb/flyway-database-postgresql/10.10.0/flyway-database-postgresql-10.10.0.jar:/Users/nathankarma/.m2/repository/org/springdoc/springdoc-openapi-starter-webmvc-ui/2.6.0/springdoc-openapi-starter-webmvc-ui-2.6.0.jar:/Users/nathankarma/.m2/repository/org/springdoc/springdoc-openapi-starter-webmvc-api/2.6.0/springdoc-openapi-starter-webmvc-api-2.6.0.jar:/Users/nathankarma/.m2/repository/org/springdoc/springdoc-openapi-starter-common/2.6.0/springdoc-openapi-starter-common-2.6.0.jar:/Users/nathankarma/.m2/repository/io/swagger/core/v3/swagger-core-jakarta/2.2.22/swagger-core-jakarta-2.2.22.jar:/Users/nathankarma/.m2/repository/org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0.jar:/Users/nathankarma/.m2/repository/io/swagger/core/v3/swagger-annotations-jakarta/2.2.22/swagger-annotations-jakarta-2.2.22.jar:/Users/nathankarma/.m2/repository/io/swagger/core/v3/swagger-models-jakarta/2.2.22/swagger-models-jakarta-2.2.22.jar:/Users/nathankarma/.m2/repository/com/fasterxml/jackson/dataformat/jackson-dataformat-yaml/2.17.2/jackson-dataformat-yaml-2.17.2.jar:/Users/nathankarma/.m2/repository/org/webjars/swagger-ui/5.17.14/swagger-ui-5.17.14.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-starter-test/3.3.5/spring-boot-starter-test-3.3.5.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-test/3.3.5/spring-boot-test-3.3.5.jar:/Users/nathankarma/.m2/repository/org/springframework/boot/spring-boot-test-autoconfigure/3.3.5/spring-boot-test-autoconfigure-3.3.5.jar:/Users/nathankarma/.m2/repository/com/jayway/jsonpath/json-path/2.9.0/json-path-2.9.0.jar:/Users/nathankarma/.m2/repository/jakarta/xml/bind/jakarta.xml.bind-api/4.0.2/jakarta.xml.bind-api-4.0.2.jar:/Users/nathankarma/.m2/repository/jakarta/activation/jakarta.activation-api/2.1.3/jakarta.activation-api-2.1.3.jar:/Users/nathankarma/.m2/repository/net/minidev/json-smart/2.5.1/json-smart-2.5.1.jar:/Users/nathankarma/.m2/repository/net/minidev/accessors-smart/2.5.1/accessors-smart-2.5.1.jar:/Users/nathankarma/.m2/repository/org/ow2/asm/asm/9.6/asm-9.6.jar:/Users/nathankarma/.m2/repository/org/assertj/assertj-core/3.25.3/assertj-core-3.25.3.jar:/Users/nathankarma/.m2/repository/net/bytebuddy/byte-buddy/1.14.19/byte-buddy-1.14.19.jar:/Users/nathankarma/.m2/repository/org/awaitility/awaitility/4.2.2/awaitility-4.2.2.jar:/Users/nathankarma/.m2/repository/org/hamcrest/hamcrest/2.2/hamcrest-2.2.jar:/Users/nathankarma/.m2/repository/org/junit/jupiter/junit-jupiter/5.10.5/junit-jupiter-5.10.5.jar:/Users/nathankarma/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.10.5/junit-jupiter-api-5.10.5.jar:/Users/nathankarma/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/Users/nathankarma/.m2/repository/org/junit/platform/junit-platform-commons/1.10.5/junit-platform-commons-1.10.5.jar:/Users/nathankarma/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:/Users/nathankarma/.m2/repository/org/junit/jupiter/junit-jupiter-params/5.10.5/junit-jupiter-params-5.10.5.jar:/Users/nathankarma/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.10.5/junit-jupiter-engine-5.10.5.jar:/Users/nathankarma/.m2/repository/org/junit/platform/junit-platform-engine/1.10.5/junit-platform-engine-1.10.5.jar:/Users/nathankarma/.m2/repository/org/mockito/mockito-core/5.11.0/mockito-core-5.11.0.jar:/Users/nathankarma/.m2/repository/net/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar:/Users/nathankarma/.m2/repository/org/objenesis/objenesis/3.3/objenesis-3.3.jar:/Users/nathankarma/.m2/repository/org/mockito/mockito-junit-jupiter/5.11.0/mockito-junit-jupiter-5.11.0.jar:/Users/nathankarma/.m2/repository/org/skyscreamer/jsonassert/1.5.3/jsonassert-1.5.3.jar:/Users/nathankarma/.m2/repository/com/vaadin/external/google/android-json/0.0.20131108.vaadin1/android-json-0.0.20131108.vaadin1.jar:/Users/nathankarma/.m2/repository/org/springframework/spring-core/6.1.14/spring-core-6.1.14.jar:/Users/nathankarma/.m2/repository/org/springframework/spring-jcl/6.1.14/spring-jcl-6.1.14.jar:/Users/nathankarma/.m2/repository/org/springframework/spring-test/6.1.14/spring-test-6.1.14.jar:/Users/nathankarma/.m2/repository/org/xmlunit/xmlunit-core/2.9.1/xmlunit-core-2.9.1.jar:/Users/nathankarma/.m2/repository/org/testcontainers/testcontainers/1.20.4/testcontainers-1.20.4.jar:/Users/nathankarma/.m2/repository/junit/junit/4.13.2/junit-4.13.2.jar:/Users/nathankarma/.m2/repository/org/hamcrest/hamcrest-core/2.2/hamcrest-core-2.2.jar:/Users/nathankarma/.m2/repository/org/slf4j/slf4j-api/2.0.16/slf4j-api-2.0.16.jar:/Users/nathankarma/.m2/repository/org/apache/commons/commons-compress/1.24.0/commons-compress-1.24.0.jar:/Users/nathankarma/.m2/repository/org/rnorth/duct-tape/duct-tape/1.0.8/duct-tape-1.0.8.jar:/Users/nathankarma/.m2/repository/org/jetbrains/annotations/17.0.0/annotations-17.0.0.jar:/Users/nathankarma/.m2/repository/com/github/docker-java/docker-java-api/3.4.0/docker-java-api-3.4.0.jar:/Users/nathankarma/.m2/repository/com/github/docker-java/docker-java-transport-zerodep/3.4.0/docker-java-transport-zerodep-3.4.0.jar:/Users/nathankarma/.m2/repository/com/github/docker-java/docker-java-transport/3.4.0/docker-java-transport-3.4.0.jar:/Users/nathankarma/.m2/repository/net/java/dev/jna/jna/5.13.0/jna-5.13.0.jar:/Users/nathankarma/.m2/repository/org/testcontainers/junit-jupiter/1.20.4/junit-jupiter-1.20.4.jar:/Users/nathankarma/.m2/repository/org/testcontainers/postgresql/1.20.4/postgresql-1.20.4.jar:/Users/nathankarma/.m2/repository/org/testcontainers/jdbc/1.20.4/jdbc-1.20.4.jar:/Users/nathankarma/.m2/repository/org/testcontainers/database-commons/1.20.4/database-commons-1.20.4.jar:"/>
     <property name="sun.cpu.endian" value="little"/>
     <property name="user.home" value="/Users/nathankarma"/>
@@ -29,14 +28,14 @@
     <property name="java.home" value="/opt/homebrew/Cellar/openjdk/25.0.1/libexec/openjdk.jdk/Contents/Home"/>
     <property name="file.separator" value="/"/>
     <property name="basedir" value="/Users/nathankarma/Code/andexevents/services-java/users-service"/>
-    <property name="java.vm.compressedOopsMode" value="Non-zero based"/>
+    <property name="java.vm.compressedOopsMode" value="Zero based"/>
     <property name="line.separator" value="&#10;"/>
     <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
     <property name="java.specification.name" value="Java Platform API Specification"/>
     <property name="FILE_LOG_CHARSET" value="UTF-8"/>
     <property name="java.awt.headless" value="true"/>
     <property name="apple.awt.application.name" value="ForkedBooter"/>
-    <property name="surefire.real.class.path" value="/Users/nathankarma/Code/andexevents/services-java/users-service/target/surefire/surefirebooter-20260312221302581_3.jar"/>
+    <property name="surefire.real.class.path" value="/Users/nathankarma/Code/andexevents/services-java/users-service/target/surefire/surefirebooter-20260317132256111_3.jar"/>
     <property name="api.version" value="1.44"/>
     <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
     <property name="ftp.nonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/>
@@ -48,19 +47,20 @@
     <property name="java.runtime.name" value="OpenJDK Runtime Environment"/>
     <property name="file.encoding" value="UTF-8"/>
     <property name="java.vm.name" value="OpenJDK 64-Bit Server VM"/>
+    <property name="skipTests" value="false"/>
     <property name="java.vendor.version" value="Homebrew"/>
     <property name="localRepository" value="/Users/nathankarma/.m2/repository"/>
     <property name="java.vendor.url.bug" value="https://github.com/Homebrew/homebrew-core/issues"/>
     <property name="java.io.tmpdir" value="/var/folders/wb/jwsmqp5j56ndf5m62_l143v00000gn/T/"/>
-    <property name="catalina.home" value="/private/var/folders/wb/jwsmqp5j56ndf5m62_l143v00000gn/T/tomcat.0.15762038080352474658"/>
+    <property name="catalina.home" value="/private/var/folders/wb/jwsmqp5j56ndf5m62_l143v00000gn/T/tomcat.0.16537996254538476455"/>
     <property name="com.zaxxer.hikari.pool_number" value="1"/>
     <property name="java.version" value="25.0.1"/>
     <property name="user.dir" value="/Users/nathankarma/Code/andexevents/services-java/users-service"/>
     <property name="os.arch" value="aarch64"/>
     <property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
-    <property name="PID" value="10162"/>
+    <property name="PID" value="77755"/>
     <property name="CONSOLE_LOG_CHARSET" value="UTF-8"/>
-    <property name="catalina.base" value="/private/var/folders/wb/jwsmqp5j56ndf5m62_l143v00000gn/T/tomcat.0.15762038080352474658"/>
+    <property name="catalina.base" value="/private/var/folders/wb/jwsmqp5j56ndf5m62_l143v00000gn/T/tomcat.0.16537996254538476455"/>
     <property name="native.encoding" value="UTF-8"/>
     <property name="java.library.path" value="/Users/nathankarma/Library/Java/Extensions:/Library/Java/Extensions:/Network/Library/Java/Extensions:/System/Library/Java/Extensions:/usr/lib/java:."/>
     <property name="java.vm.info" value="mixed mode, sharing"/>
@@ -73,32 +73,32 @@
     <property name="java.class.version" value="69.0"/>
     <property name="LOGGED_APPLICATION_NAME" value="[users-service] "/>
   </properties>
-  <testcase name="updateProfile_withSocialLinks_returnsUpdatedUser" classname="com.andexevents.users.UsersServiceIntegrationTest" time="0.213">
-    <system-out><![CDATA[22:13:03.251 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
-22:13:03.254 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
-22:13:03.264 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 1.20.4
-22:13:03.492 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Environment variables, system properties and defaults. Resolved dockerHost=unix:///var/run/docker.sock
-22:13:03.492 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
-22:13:03.504 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  <testcase name="updateLocation_and_updateProfile_and_matches_work" classname="com.andexevents.users.UsersServiceIntegrationTest" time="0.233">
+    <system-out><![CDATA[13:22:56.413 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+13:22:56.415 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+13:22:56.425 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 1.20.4
+13:22:56.607 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Environment variables, system properties and defaults. Resolved dockerHost=unix:///var/run/docker.sock
+13:22:56.608 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+13:22:56.617 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
   Server Version: 29.1.5
   API Version: 1.52
   Operating System: Docker Desktop
-  Total Memory: 7836 MB
+  Total Memory: 3918 MB
   Labels: 
     com.docker.desktop.address=unix:///Users/nathankarma/Library/Containers/com.docker.docker/Data/docker-cli.sock
-22:13:03.599 [main] INFO tc.testcontainers/ryuk:0.11.0 -- Creating container for image: testcontainers/ryuk:0.11.0
-22:13:03.925 [main] INFO tc.testcontainers/ryuk:0.11.0 -- Container testcontainers/ryuk:0.11.0 is starting: a85db94245ecd5f75022bc3842c64621047e474e3242deeaa58297e3fe739331
-22:13:04.210 [main] INFO tc.testcontainers/ryuk:0.11.0 -- Container testcontainers/ryuk:0.11.0 started in PT0.611409S
-22:13:04.214 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
-22:13:04.214 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
-22:13:04.215 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
-22:13:04.215 [main] INFO tc.postgis/postgis:16-3.4 -- Creating container for image: postgis/postgis:16-3.4
-22:13:04.264 [main] INFO tc.postgis/postgis:16-3.4 -- Container postgis/postgis:16-3.4 is starting: 36b156eacab56336001bbc3213d3c9cbadefa69647c5d338def3f493fd74d2a1
-22:13:04.397 [main] WARN tc.postgis/postgis:16-3.4 -- The architecture 'amd64' for image 'postgis/postgis:16-3.4' (ID sha256:44126d872ac91993766c341e369c539e8196614321765d36a6f1bab0419a5fa5) does not match the Docker server architecture 'arm64'. This will cause the container to execute much more slowly due to emulation and may lead to timeout failures.
-22:13:10.634 [main] INFO tc.postgis/postgis:16-3.4 -- Container postgis/postgis:16-3.4 started in PT6.41933S
-22:13:10.635 [main] INFO tc.postgis/postgis:16-3.4 -- Container is started (JDBC URL: jdbc:postgresql://localhost:55231/test?loggerLevel=OFF)
-22:13:10.813 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.andexevents.users.UsersServiceIntegrationTest]: UsersServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
-22:13:10.929 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.andexevents.users.UsersServiceApplication for test class com.andexevents.users.UsersServiceIntegrationTest
+13:22:56.688 [main] INFO tc.testcontainers/ryuk:0.11.0 -- Creating container for image: testcontainers/ryuk:0.11.0
+13:22:56.874 [main] INFO tc.testcontainers/ryuk:0.11.0 -- Container testcontainers/ryuk:0.11.0 is starting: 6b1ea8085b9bcdd4178e5f0ba38ece67403da3fd0d1bae073783140e1d07941b
+13:22:57.011 [main] INFO tc.testcontainers/ryuk:0.11.0 -- Container testcontainers/ryuk:0.11.0 started in PT0.322894S
+13:22:57.013 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+13:22:57.013 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+13:22:57.013 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+13:22:57.014 [main] INFO tc.postgis/postgis:16-3.4 -- Creating container for image: postgis/postgis:16-3.4
+13:22:57.040 [main] INFO tc.postgis/postgis:16-3.4 -- Container postgis/postgis:16-3.4 is starting: 3fbb54394bb483a685dc7da2e5291cfd0396a684e5e7981b7aa63c8476f10770
+13:22:57.139 [main] WARN tc.postgis/postgis:16-3.4 -- The architecture 'amd64' for image 'postgis/postgis:16-3.4' (ID sha256:44126d872ac91993766c341e369c539e8196614321765d36a6f1bab0419a5fa5) does not match the Docker server architecture 'arm64'. This will cause the container to execute much more slowly due to emulation and may lead to timeout failures.
+13:23:00.185 [main] INFO tc.postgis/postgis:16-3.4 -- Container postgis/postgis:16-3.4 started in PT3.171515S
+13:23:00.186 [main] INFO tc.postgis/postgis:16-3.4 -- Container is started (JDBC URL: jdbc:postgresql://localhost:57725/test?loggerLevel=OFF)
+13:23:00.228 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.andexevents.users.UsersServiceIntegrationTest]: UsersServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+13:23:00.286 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.andexevents.users.UsersServiceApplication for test class com.andexevents.users.UsersServiceIntegrationTest
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -109,41 +109,43 @@
 
  :: Spring Boot ::                (v3.3.5)
 
-2026-03-12T22:13:11.115+03:00  INFO 10162 --- [users-service] [           main] c.a.users.UsersServiceIntegrationTest    : Starting UsersServiceIntegrationTest using Java 25.0.1 with PID 10162 (started by nathankarma in /Users/nathankarma/Code/andexevents/services-java/users-service)
-2026-03-12T22:13:11.116+03:00  INFO 10162 --- [users-service] [           main] c.a.users.UsersServiceIntegrationTest    : No active profile set, falling back to 1 default profile: "default"
-2026-03-12T22:13:12.252+03:00  INFO 10162 --- [users-service] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 0 (http)
-2026-03-12T22:13:12.260+03:00  INFO 10162 --- [users-service] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2026-03-12T22:13:12.260+03:00  INFO 10162 --- [users-service] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.31]
-2026-03-12T22:13:12.287+03:00  INFO 10162 --- [users-service] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
-2026-03-12T22:13:12.288+03:00  INFO 10162 --- [users-service] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1164 ms
-2026-03-12T22:13:12.416+03:00  INFO 10162 --- [users-service] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2026-03-12T22:13:12.526+03:00  INFO 10162 --- [users-service] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@58be583e
-2026-03-12T22:13:12.526+03:00  INFO 10162 --- [users-service] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-2026-03-12T22:13:12.547+03:00  INFO 10162 --- [users-service] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://localhost:55231/test (PostgreSQL 16.4)
-2026-03-12T22:13:12.576+03:00  INFO 10162 --- [users-service] [           main] o.f.core.internal.database.base.Schema   : Creating schema "users" ...
-2026-03-12T22:13:12.593+03:00  INFO 10162 --- [users-service] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table "users"."flyway_schema_history" ...
-2026-03-12T22:13:12.679+03:00  INFO 10162 --- [users-service] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema "users": null
-2026-03-12T22:13:12.687+03:00  INFO 10162 --- [users-service] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "users" to version "1 - init"
-2026-03-12T22:13:12.691+03:00  WARN 10162 --- [users-service] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: extension "postgis" already exists, skipping (SQL State: 42710 - Error Code: 0)
-2026-03-12T22:13:12.739+03:00  INFO 10162 --- [users-service] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "users" to version "2 - firebase uid"
-2026-03-12T22:13:12.742+03:00  WARN 10162 --- [users-service] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: column "supabaseUid" of relation "User" already exists, skipping (SQL State: 42701 - Error Code: 0)
-2026-03-12T22:13:12.752+03:00  WARN 10162 --- [users-service] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: relation "User_supabaseUid_key" already exists, skipping (SQL State: 42P07 - Error Code: 0)
-2026-03-12T22:13:12.753+03:00  WARN 10162 --- [users-service] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: relation "User_supabaseUid_idx" already exists, skipping (SQL State: 42P07 - Error Code: 0)
-2026-03-12T22:13:12.759+03:00  INFO 10162 --- [users-service] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "users" to version "3 - add reports"
-2026-03-12T22:13:12.773+03:00  INFO 10162 --- [users-service] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 3 migrations to schema "users", now at version v3 (execution time 00:00.069s)
-2026-03-12T22:13:12.919+03:00  WARN 10162 --- [users-service] [           main] .s.s.UserDetailsServiceAutoConfiguration : 
+2026-03-17T13:23:00.501+03:00  INFO 77755 --- [users-service] [           main] c.a.users.UsersServiceIntegrationTest    : Starting UsersServiceIntegrationTest using Java 25.0.1 with PID 77755 (started by nathankarma in /Users/nathankarma/Code/andexevents/services-java/users-service)
+2026-03-17T13:23:00.502+03:00  INFO 77755 --- [users-service] [           main] c.a.users.UsersServiceIntegrationTest    : No active profile set, falling back to 1 default profile: "default"
+2026-03-17T13:23:01.395+03:00  INFO 77755 --- [users-service] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 0 (http)
+2026-03-17T13:23:01.400+03:00  INFO 77755 --- [users-service] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-03-17T13:23:01.400+03:00  INFO 77755 --- [users-service] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.31]
+2026-03-17T13:23:01.427+03:00  INFO 77755 --- [users-service] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-03-17T13:23:01.427+03:00  INFO 77755 --- [users-service] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 919 ms
+2026-03-17T13:23:01.525+03:00  INFO 77755 --- [users-service] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-03-17T13:23:01.622+03:00  INFO 77755 --- [users-service] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@15c96f24
+2026-03-17T13:23:01.622+03:00  INFO 77755 --- [users-service] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-03-17T13:23:01.648+03:00  INFO 77755 --- [users-service] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://localhost:57725/test (PostgreSQL 16.4)
+2026-03-17T13:23:01.674+03:00  INFO 77755 --- [users-service] [           main] o.f.core.internal.database.base.Schema   : Creating schema "users" ...
+2026-03-17T13:23:01.689+03:00  INFO 77755 --- [users-service] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table "users"."flyway_schema_history" ...
+2026-03-17T13:23:01.767+03:00  INFO 77755 --- [users-service] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema "users": null
+2026-03-17T13:23:01.774+03:00  INFO 77755 --- [users-service] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "users" to version "1 - init"
+2026-03-17T13:23:01.777+03:00  WARN 77755 --- [users-service] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: extension "postgis" already exists, skipping (SQL State: 42710 - Error Code: 0)
+2026-03-17T13:23:01.817+03:00  INFO 77755 --- [users-service] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "users" to version "2 - firebase uid"
+2026-03-17T13:23:01.819+03:00  WARN 77755 --- [users-service] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: column "supabaseUid" of relation "User" already exists, skipping (SQL State: 42701 - Error Code: 0)
+2026-03-17T13:23:01.828+03:00  WARN 77755 --- [users-service] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: relation "User_supabaseUid_key" already exists, skipping (SQL State: 42P07 - Error Code: 0)
+2026-03-17T13:23:01.829+03:00  WARN 77755 --- [users-service] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: relation "User_supabaseUid_idx" already exists, skipping (SQL State: 42P07 - Error Code: 0)
+2026-03-17T13:23:01.835+03:00  INFO 77755 --- [users-service] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "users" to version "3 - add reports"
+2026-03-17T13:23:01.845+03:00  INFO 77755 --- [users-service] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "users" to version "4 - add photos"
+2026-03-17T13:23:01.853+03:00  INFO 77755 --- [users-service] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "users" to version "5 - add cover and blocks"
+2026-03-17T13:23:01.862+03:00  INFO 77755 --- [users-service] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 5 migrations to schema "users", now at version v5 (execution time 00:00.063s)
+2026-03-17T13:23:01.978+03:00  WARN 77755 --- [users-service] [           main] .s.s.UserDetailsServiceAutoConfiguration : 
 
-Using generated security password: 093c30b8-252b-4197-b7ff-8354d3cd54c6
+Using generated security password: 56ad010a-93e4-4d57-a063-ff6139ff80d0
 
 This generated password is for development use only. Your security configuration must be updated before running your application in production.
 
-2026-03-12T22:13:12.924+03:00  INFO 10162 --- [users-service] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
-2026-03-12T22:13:13.034+03:00  INFO 10162 --- [users-service] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
-2026-03-12T22:13:13.212+03:00  INFO 10162 --- [users-service] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 55334 (http) with context path '/'
-2026-03-12T22:13:13.220+03:00  INFO 10162 --- [users-service] [           main] c.a.users.UsersServiceIntegrationTest    : Started UsersServiceIntegrationTest in 2.221 seconds (process running for 10.401)
-2026-03-12T22:13:13.378+03:00  INFO 10162 --- [users-service] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-03-12T22:13:13.379+03:00  INFO 10162 --- [users-service] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2026-03-12T22:13:13.379+03:00  INFO 10162 --- [users-service] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 0 ms
+2026-03-17T13:23:01.982+03:00  INFO 77755 --- [users-service] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2026-03-17T13:23:02.078+03:00  INFO 77755 --- [users-service] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-03-17T13:23:02.229+03:00  INFO 77755 --- [users-service] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 57777 (http) with context path '/'
+2026-03-17T13:23:02.237+03:00  INFO 77755 --- [users-service] [           main] c.a.users.UsersServiceIntegrationTest    : Started UsersServiceIntegrationTest in 1.866 seconds (process running for 6.089)
+2026-03-17T13:23:02.372+03:00  INFO 77755 --- [users-service] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-03-17T13:23:02.373+03:00  INFO 77755 --- [users-service] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-03-17T13:23:02.373+03:00  INFO 77755 --- [users-service] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 0 ms
 ]]></system-out>
     <system-err><![CDATA[WARNING: A Java agent has been loaded dynamically (/Users/nathankarma/.m2/repository/net/bytebuddy/byte-buddy-agent/1.14.19/byte-buddy-agent-1.14.19.jar)
 WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
@@ -151,4 +153,7 @@ WARNING: If a serviceability tool is not in use, please run with -Djdk.instrumen
 WARNING: Dynamic loading of agents will be disallowed by default in a future release
 ]]></system-err>
   </testcase>
+  <testcase name="updateProfile_withSocialLinks_returnsUpdatedUser" classname="com.andexevents.users.UsersServiceIntegrationTest" time="0.019"/>
+  <testcase name="createUser_thenMe_returnsUser" classname="com.andexevents.users.UsersServiceIntegrationTest" time="0.012"/>
+  <testcase name="createUser_duplicateEmailDifferentUid_returns409" classname="com.andexevents.users.UsersServiceIntegrationTest" time="0.012"/>
 </testsuite>

@@ -10,6 +10,7 @@ public record UserDto(
         String email,
         String displayName,
         String photoUrl,
+        String coverImageUrl,
         List<String> photos,
         String bio,
         List<String> interests,

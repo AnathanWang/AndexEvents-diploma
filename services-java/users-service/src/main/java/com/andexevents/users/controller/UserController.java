@@ -72,6 +72,7 @@ public class UserController {
         UserService.UpdateProfileRequest update = new UserService.UpdateProfileRequest(
                 body.displayName(),
                 body.photoUrl(),
+                null,
             null,
                 body.bio(),
                 body.age(),
@@ -163,6 +164,30 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ok(updated));
     }
 
+    @PostMapping("/me/blocks")
+    public ResponseEntity<ApiResponse<Void>> blockUser(HttpServletRequest request, @RequestBody BlockRequest body) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Unauthorized: User ID not found"));
+        }
+
+        userService.blockUser(auth.userId(), body.targetUserId());
+        return ResponseEntity.ok(ApiResponse.okMessage("User blocked"));
+    }
+
+    @DeleteMapping("/me/blocks")
+    public ResponseEntity<ApiResponse<Void>> unblockUser(HttpServletRequest request, @RequestBody BlockRequest body) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Unauthorized: User ID not found"));
+        }
+
+        userService.unblockUser(auth.userId(), body.targetUserId());
+        return ResponseEntity.ok(ApiResponse.okMessage("User unblocked"));
+    }
+
     public record CreateUserRequest(String displayName, String photoUrl) {
     }
 
@@ -184,5 +209,8 @@ public class UserController {
     }
 
     public record RemovePhotoRequest(String photoUrl) {
+    }
+
+    public record BlockRequest(String targetUserId) {
     }
 }

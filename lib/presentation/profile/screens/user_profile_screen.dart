@@ -7,9 +7,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/event_model.dart';
 import '../../../data/services/event_service.dart';
+import '../../../data/services/user_service.dart';
 import '../../events/bloc/event_bloc.dart';
 import '../../events/screens/real_event_detail_screen.dart';
 import '../widgets/photo_gallery_sheet.dart';
+import '../../../core/services/logger_service.dart';
 // import '../../../data/services/friend_service.dart'; // Removed FriendService
 
 class UserProfileScreen extends StatefulWidget {
@@ -69,21 +71,57 @@ class UserProfileScreen extends StatefulWidget {
 class _UserProfileScreenState extends State<UserProfileScreen> {
   final GlobalKey _avatarKey = GlobalKey();
   late final EventService _eventService;
+  final UserService _userService = UserService();
+  UserModel? _liveUser;
 
   bool _eventsLoading = false;
   String? _eventsError;
   List<EventModel> _creatorEvents = <EventModel>[];
   List<EventModel> _participatedEvents = <EventModel>[];
 
+  UserModel? get _user => _liveUser ?? widget.user;
+
+  ({String text, Color color}) _presenceState() {
+    final lastActive = _user?.lastLocationUpdate ?? _user?.updatedAt;
+    if (lastActive == null) {
+      return (text: 'Был(а) недавно', color: const Color(0xFF9E9E9E));
+    }
+
+    final diff = DateTime.now().difference(lastActive.toLocal());
+    if (diff.inMinutes <= 5) {
+      return (text: 'Онлайн', color: Colors.green);
+    }
+    return (text: 'Был(а) недавно', color: const Color(0xFF9E9E9E));
+  }
+
   @override
   void initState() {
     super.initState();
     _eventService = widget.eventService ?? EventService();
+    _liveUser = widget.user;
+    _refreshUser();
     _loadRecentEvents();
   }
 
+  Future<void> _refreshUser() async {
+    final id = widget.user?.id;
+    if (id == null || id.isEmpty) return;
+
+    try {
+      final fresh = await _userService.getUserById(id);
+      if (!mounted) return;
+      setState(() {
+        _liveUser = fresh;
+      });
+    } catch (e) {
+      LoggerService.warning(
+        '🟡 [UserProfileScreen] Не удалось обновить пользователя по id: $e',
+      );
+    }
+  }
+
   Future<void> _loadRecentEvents() async {
-    final userId = widget.user?.id;
+    final userId = _user?.id;
     if (userId == null || userId.isEmpty) return;
 
     setState(() {
@@ -135,18 +173,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       children: <Widget>[
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF4A4D6A),
-            ),
-          ),
+          child: _buildSectionBadge(title: title, icon: Icons.event_available),
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 118,
+          height: 124,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -156,11 +187,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               return GestureDetector(
                 onTap: () => _openEventDetails(event.id),
                 child: Padding(
-                  padding: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.only(right: 10),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(18),
                     child: SizedBox(
-                      width: 160,
+                      width: 172,
                       child: Stack(
                         fit: StackFit.expand,
                         children: <Widget>[
@@ -198,7 +229,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 13,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w700,
                                     height: 1.2,
                                   ),
@@ -210,7 +241,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.92),
-                                    fontSize: 11,
+                                    fontSize: 11.5,
                                   ),
                                 ),
                               ],
@@ -234,7 +265,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 20),
         child: SizedBox(
-          height: 60,
+          height: 72,
           child: Center(child: CircularProgressIndicator()),
         ),
       );
@@ -243,26 +274,29 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     if (_eventsError != null) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Text(
-          'Не удалось загрузить события',
-          style: const TextStyle(
-            fontSize: 14,
-            color: Color(0xFF9E9E9E),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F9FF),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E6FA)),
+          ),
+          child: const Text(
+            'Не удалось загрузить события',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF7C84AF),
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       );
     }
 
     if (_creatorEvents.isEmpty && _participatedEvents.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20),
-        child: Text(
-          'Пользователь пока не участвовал в событиях',
-          style: TextStyle(
-            fontSize: 14,
-            color: Color(0xFF9E9E9E),
-          ),
-        ),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: _buildSoftInfoCard('Пользователь пока не участвовал в событиях'),
       );
     }
 
@@ -291,7 +325,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
 
   Map<String, String> _normalizedSocialLinks() {
-    final links = widget.user?.socialLinks ?? <String, dynamic>{};
+    final links = _user?.socialLinks ?? <String, dynamic>{};
     final normalized = <String, String>{};
 
     links.forEach((key, value) {
@@ -409,14 +443,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F5F5),
+          color: const Color(0xFFF8F9FF),
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E6FA)),
         ),
         child: const Row(
           children: <Widget>[
             Icon(
               Icons.lock_outline,
-              color: Color(0xFF9E9E9E),
+              color: Color(0xFF7C84AF),
             ),
             SizedBox(width: 12),
             Expanded(
@@ -439,12 +474,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F5F5),
+          color: const Color(0xFFF8F9FF),
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E6FA)),
         ),
         child: const Row(
           children: <Widget>[
-            Icon(Icons.info_outline, color: Color(0xFF9E9E9E)),
+            Icon(Icons.info_outline, color: Color(0xFF7C84AF)),
             SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -471,7 +507,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Material(
-            color: const Color(0xFFF5F5F5),
+            color: const Color(0xFFF8F9FF),
             borderRadius: BorderRadius.circular(16),
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
@@ -514,7 +550,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF4A4D6A),
+                              color: Color(0xFF3F4677),
                             ),
                           ),
                         ],
@@ -537,17 +573,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final presence = _presenceState();
+
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F6FF),
       body: CustomScrollView(
         slivers: <Widget>[
           // App Bar
           SliverAppBar(
-            expandedHeight: 200,
+            expandedHeight: 186,
             pinned: true,
             leading: Container(
               margin: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.white.withValues(alpha: 0.92),
                 shape: BoxShape.circle,
                 boxShadow: <BoxShadow>[
                   BoxShadow(
@@ -565,7 +604,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               Container(
                 margin: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Colors.white.withValues(alpha: 0.92),
                   shape: BoxShape.circle,
                   boxShadow: <BoxShadow>[
                     BoxShadow(
@@ -613,16 +652,25 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: <Color>[
-                      const Color(0xFF5E60CE).withValues(alpha: 0.92),
-                      const Color(0xFF9370DB).withValues(alpha: 0.88),
-                    ],
-                  ),
-                ),
+                decoration:
+                    (_user?.coverImageUrl != null &&
+                        _user!.coverImageUrl!.trim().isNotEmpty)
+                    ? BoxDecoration(
+                        image: DecorationImage(
+                          image: NetworkImage(_user!.coverImageUrl!.trim()),
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: <Color>[
+                            const Color(0xFF4E5CD1).withValues(alpha: 0.94),
+                            const Color(0xFF7A74E8).withValues(alpha: 0.90),
+                          ],
+                        ),
+                      ),
                 child: Stack(
                   children: <Widget>[
                     Positioned.fill(
@@ -641,7 +689,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       ),
                     ),
                     Center(
-                      child: GestureDetector(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 18),
+                        child: GestureDetector(
                         onTap: _openPhotosGallery,
                         child: Stack(
                           clipBehavior: Clip.none,
@@ -671,6 +721,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           ],
                         ),
                       ),
+                      ),
                     ),
                   ],
                 ),
@@ -686,150 +737,84 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 // Имя и статус
                 Padding(
                   padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: Text(
-                              widget.userName,
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF4A4D6A),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: const <BoxShadow>[
+                        BoxShadow(
+                          color: Color(0x12000000),
+                          blurRadius: 14,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: Text(
+                                widget.userName,
+                                style: const TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF2F355E),
+                                ),
                               ),
                             ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                Icon(Icons.circle, color: Colors.green, size: 8),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Онлайн',
-                                  style: TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12,
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: presence.color.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(Icons.circle, color: presence.color, size: 8),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    presence.text,
+                                    style: TextStyle(
+                                      color: presence.color,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (_user?.age != null)
+                          Text(
+                            '${_user!.age} лет',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: Color(0xFF7F88B3),
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      if (widget.user?.age != null)
+                        const SizedBox(height: 10),
                         Text(
-                          '${widget.user!.age} лет',
+                          _user?.bio?.isNotEmpty == true
+                              ? _user!.bio!
+                              : 'Еще не заполнена биография',
                           style: const TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF9E9E9E),
+                            fontSize: 15,
+                            color: Color(0xFF444A73),
+                            height: 1.45,
                           ),
                         ),
-                      const SizedBox(height: 12),
-                      Text(
-                        widget.user?.bio?.isNotEmpty == true
-                            ? widget.user!.bio!
-                            : 'Еще не заполнена биография',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          color: Color(0xFF4A4D6A),
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Статистика
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: _buildStatCard(
-                          widget.user?.interests.length.toString() ?? '0',
-                          'Интересов',
-                          Icons.favorite,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      if (widget.matchPercentage != null)
-                        Expanded(
-                          child: _buildStatCard(
-                            '${widget.matchPercentage}%',
-                            'Совпадение',
-                            Icons.favorite_border,
-                          ),
-                        )
-                      else
-                        Expanded(
-                          child: _buildStatCard('—', 'Совпадение', Icons.favorite_border),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                
-                // Интересы
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    'Интересы',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF4A4D6A),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: widget.user?.interests.isNotEmpty == true
-                      ? Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: widget.user!.interests.map((String interest) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF5E60CE)
-                                    .withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: const Color(0xFF5E60CE)
-                                      .withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Text(
-                                interest,
-                                style: const TextStyle(
-                                  color: Color(0xFF5E60CE),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        )
-                      : const Text(
-                          'Интересы не указаны',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF9E9E9E),
-                          ),
-                        ),
-                ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 
                 // Общие интересы
                 Padding(
@@ -837,10 +822,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF5E60CE).withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(16),
+                      color: const Color(0xFFF6F8FF),
+                      borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                        color: const Color(0xFF5E60CE).withValues(alpha: 0.2),
+                        color: const Color(0xFFDEE4FF),
                       ),
                     ),
                     child: Row(
@@ -848,13 +833,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
+                            color: const Color(0xFFE7ECFF),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
                             Icons.favorite,
-                            color: Color(0xFF5E60CE),
-                            size: 24,
+                            color: Color(0xFF5A66D8),
+                            size: 22,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -865,17 +850,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               Text(
                                 'У вас ${widget.commonInterests.length} общих интереса',
                                 style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF4A4D6A),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF2F355E),
                                 ),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
                                 widget.commonInterests.join(', '),
                                 style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF9E9E9E),
+                                  fontSize: 13.5,
+                                  color: Color(0xFF7F88B3),
                                 ),
                               ),
                             ],
@@ -888,15 +873,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 const SizedBox(height: 24),
                 
                 // Недавние события
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    'Недавние события',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF4A4D6A),
-                    ),
+                  child: _SectionTitleRow(
+                    title: 'Недавние события',
+                    icon: Icons.schedule_rounded,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -917,38 +898,24 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  Widget _buildStatCard(String value, String label, IconData icon) {
+  Widget _buildSectionBadge({required String title, required IconData icon}) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 20,
-            offset: Offset(0, 4),
-          ),
-        ],
+        color: const Color(0xFFF5F7FF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFDFE5FF)),
       ),
-      child: Column(
+      child: Row(
         children: <Widget>[
-          Icon(icon, color: const Color(0xFF5E60CE), size: 24),
-          const SizedBox(height: 8),
+          Icon(icon, size: 16, color: const Color(0xFF5A66D8)),
+          const SizedBox(width: 8),
           Text(
-            value,
+            title,
             style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF4A4D6A),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF9E9E9E),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF2F355E),
             ),
           ),
         ],
@@ -956,15 +923,61 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
+  Widget _buildSoftInfoCard(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E6FA)),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 14,
+          color: Color(0xFF7C84AF),
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _SectionTitleRow({required String title, required IconData icon}) {
+    return Row(
+      children: <Widget>[
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8EDFF),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Icon(icon, size: 17, color: const Color(0xFF5A66D8)),
+        ),
+        const SizedBox(width: 9),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF2F355E),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _openPhotosGallery() {
-    if (widget.user == null) return;
+    final user = _user;
+    if (user == null) return;
     
     final allPhotos = <String>[];
-    if (widget.user!.photoUrl?.isNotEmpty == true) {
-      allPhotos.add(widget.user!.photoUrl!);
+    if (user.photoUrl?.isNotEmpty == true) {
+      allPhotos.add(user.photoUrl!);
     }
     allPhotos.addAll(
-      widget.user!.photos.where((p) => p != widget.user!.photoUrl),
+      user.photos.where((p) => p != user.photoUrl),
     );
 
     if (allPhotos.isEmpty) return;
@@ -977,8 +990,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         barrierColor: Colors.transparent,
         pageBuilder: (context, animation, secondaryAnimation) {
           return PhotoGallerySheet(
-            photos: widget.user!.photos,
-            mainPhotoUrl: widget.user!.photoUrl,
+            photos: user.photos,
+            mainPhotoUrl: user.photoUrl,
             initialAvatarSize: 124,
             sourceRect: avatarRect,
           );
@@ -999,7 +1012,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Widget _buildAvatarPhoto() {
-    final photoUrl = widget.user?.photoUrl;
+    final photoUrl = _user?.photoUrl;
     if (photoUrl != null && photoUrl.isNotEmpty) {
       return Image.network(
         photoUrl,
@@ -1045,13 +1058,36 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               child: const Text('Отмена'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
-                CustomNotification.show(
-                  context,
-                  '${widget.userName} заблокирован',
-                  duration: const Duration(seconds: 2),
-                );
+
+                final targetId = _user?.id;
+                if (targetId == null || targetId.isEmpty) {
+                  CustomNotification.show(
+                    context,
+                    'Не удалось определить пользователя',
+                    isError: true,
+                  );
+                  return;
+                }
+
+                try {
+                  await _userService.blockUser(targetId);
+                  if (!mounted) return;
+                  CustomNotification.show(
+                    context,
+                    '${widget.userName} заблокирован',
+                    duration: const Duration(seconds: 2),
+                  );
+                  Navigator.of(context).pop(true);
+                } catch (e) {
+                  if (!mounted) return;
+                  CustomNotification.show(
+                    context,
+                    'Не удалось заблокировать: $e',
+                    isError: true,
+                  );
+                }
               },
               child: const Text(
                 'Заблокировать',
@@ -1076,7 +1112,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       builder: (BuildContext context) {
         return ReportDialog(
           reporterId: currentUserId,
-          targetUserId: widget.user?.id,
+          targetUserId: _user?.id,
         );
       },
     );

@@ -128,6 +128,34 @@ class UserService {
     }
   }
 
+  Future<String> uploadCoverPhoto(File photoFile) async {
+    try {
+      LoggerService.info('[UserService] Начинаем загрузку обложки профиля...');
+      LoggerService.info('[UserService] Размер файла: ${photoFile.lengthSync()} bytes');
+
+      final url = await _storageService.uploadCoverPhoto(
+        photoFile.path,
+        onProgress: (progress) {
+          LoggerService.debug(
+            '[UserService] Cover upload progress: ${(progress * 100).toStringAsFixed(1)}%',
+          );
+        },
+      );
+
+      LoggerService.info('[UserService] Обложка профиля успешно загружена: $url');
+      return url;
+    } on TimeoutException {
+      LoggerService.error('[UserService] Таймаут при загрузке обложки');
+      rethrow;
+    } on SocketException catch (e) {
+      LoggerService.error('[UserService] Ошибка подключения при загрузке обложки: $e');
+      rethrow;
+    } catch (e) {
+      LoggerService.error('[UserService] Ошибка при загрузке обложки: $e');
+      rethrow;
+    }
+  }
+
   /// Удалить фото профиля
   Future<void> deleteAdditionalPhoto(String photoUrl) async {
     try {
@@ -144,6 +172,7 @@ class UserService {
   Future<void> updateProfile({
     String? displayName,
     String? photoUrl,
+    String? coverImageUrl,
     List<String>? photos,
     String? bio,
     int? age,
@@ -163,6 +192,7 @@ class UserService {
       final Map<String, dynamic> body = {};
       if (displayName != null) body['displayName'] = displayName;
       if (photoUrl != null) body['photoUrl'] = photoUrl;
+      if (coverImageUrl != null) body['coverImageUrl'] = coverImageUrl;
       if (photos != null) body['photos'] = photos;
       if (bio != null) body['bio'] = bio;
       if (age != null) body['age'] = age;
@@ -175,6 +205,12 @@ class UserService {
 
       final url = '${AppConfig.baseUrl}/users/me';
       LoggerService.debug('[UserService] PUT $url');
+      LoggerService.debug(
+        '[UserService] updateProfile payload keys: ${body.keys.toList()}',
+      );
+      LoggerService.debug(
+        '[UserService] updateProfile coverImageUrl: ${body['coverImageUrl']}',
+      );
 
       final response = await http
           .put(
@@ -266,7 +302,16 @@ class UserService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return UserModel.fromJson(data['data'] as Map<String, dynamic>);
+        final userJson = data['data'] as Map<String, dynamic>;
+        LoggerService.debug(
+          '[UserService] GET /users/me raw coverImageUrl: ${userJson['coverImageUrl']}',
+        );
+
+        final user = UserModel.fromJson(userJson);
+        LoggerService.debug(
+          '[UserService] GET /users/me normalized coverImageUrl: ${user.coverImageUrl}',
+        );
+        return user;
       } else {
         throw Exception('Не удалось получить профиль');
       }
@@ -361,6 +406,41 @@ class UserService {
     } catch (e) {
       LoggerService.error('[UserService] Ошибка при получении пользователей', e);
       throw Exception('Ошибка получения пользователей: $e');
+    }
+  }
+
+  /// Получить пользователя по id
+  Future<UserModel> getUserById(String userId) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.baseUrl}/users/$userId'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(AppConfig.receiveTimeout);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final userJson = data['data'] as Map<String, dynamic>;
+        return UserModel.fromJson(userJson);
+      }
+
+      throw Exception('Не удалось получить пользователя: ${response.statusCode}');
+    } on TimeoutException {
+      throw Exception('Таймаут при получении пользователя');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error loading user by id ($userId)', e);
+      rethrow;
     }
   }
 
@@ -637,6 +717,44 @@ class UserService {
       throw Exception('Не удалось подключиться к API: ${e.message}');
     } catch (e) {
       LoggerService.error('[UserService] Error sending super like', e);
+      rethrow;
+    }
+  }
+
+  Future<void> blockUser(String targetUserId) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('${AppConfig.baseUrl}/users/me/blocks'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: json.encode({'targetUserId': targetUserId}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        LoggerService.info('[UserService] User blocked: $targetUserId');
+      } else if (response.statusCode == 400) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        throw Exception(data['message'] ?? 'Некорректный запрос');
+      } else if (response.statusCode == 401) {
+        throw Exception('Истекла сессия авторизации');
+      } else {
+        throw Exception('Ошибка блокировки пользователя: ${response.statusCode}');
+      }
+    } on TimeoutException {
+      throw Exception('Таймаут при блокировке пользователя');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error blocking user', e);
       rethrow;
     }
   }

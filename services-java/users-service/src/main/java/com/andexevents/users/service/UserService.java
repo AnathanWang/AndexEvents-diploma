@@ -43,6 +43,7 @@ public class UserService {
 
         if (req.displayName() != null) updates.put("displayName", req.displayName());
         if (req.photoUrl() != null) updates.put("photoUrl", req.photoUrl());
+        if (req.coverImageUrl() != null) updates.put("coverImageUrl", req.coverImageUrl());
         if (req.photos() != null) updates.put("photos", req.photos().toArray(new String[0]));
         if (req.bio() != null) updates.put("bio", req.bio());
         if (req.age() != null) updates.put("age", req.age());
@@ -87,9 +88,27 @@ public class UserService {
         return userRepository.findById(userId).orElseThrow();
     }
 
+    public void blockUser(String userId, String targetUserId) {
+        if (targetUserId == null || targetUserId.isBlank()) {
+            throw new BadRequestException("targetUserId is required");
+        }
+        if (userId.equals(targetUserId)) {
+            throw new BadRequestException("Cannot block yourself");
+        }
+        userRepository.blockUser(userId, targetUserId);
+    }
+
+    public void unblockUser(String userId, String targetUserId) {
+        if (targetUserId == null || targetUserId.isBlank()) {
+            throw new BadRequestException("targetUserId is required");
+        }
+        userRepository.unblockUser(userId, targetUserId);
+    }
+
     public record UpdateProfileRequest(
             String displayName,
             String photoUrl,
+            String coverImageUrl,
             List<String> photos,
             String bio,
             Integer age,
@@ -102,6 +121,12 @@ public class UserService {
 
     public static class ConflictException extends RuntimeException {
         public ConflictException(String message) {
+            super(message);
+        }
+    }
+
+    public static class BadRequestException extends RuntimeException {
+        public BadRequestException(String message) {
             super(message);
         }
     }

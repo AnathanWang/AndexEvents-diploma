@@ -37,6 +37,34 @@ class LocalStorageService {
 
   LocalStorageService._internal();
 
+  static String _normalizeUploadUrl(String rawUrl) {
+    try {
+      final uploadUri = Uri.parse(rawUrl);
+      final host = uploadUri.host.toLowerCase();
+      final isLoopbackHost =
+          host == 'localhost' || host == '127.0.0.1' || host == '0.0.0.0';
+
+      if (!isLoopbackHost) {
+        return rawUrl;
+      }
+
+      final apiUri = Uri.parse(AppConfig.baseUrl);
+      if (apiUri.host.isEmpty) {
+        return rawUrl;
+      }
+
+      return uploadUri
+          .replace(
+            scheme: apiUri.scheme.isEmpty ? 'http' : apiUri.scheme,
+            host: apiUri.host,
+            port: apiUri.hasPort ? apiUri.port : null,
+          )
+          .toString();
+    } catch (_) {
+      return rawUrl;
+    }
+  }
+
   /// Загрузить фото события на бэкенд
   Future<String> uploadEventPhoto(
     String filePath, {
@@ -75,6 +103,20 @@ class LocalStorageService {
       bucket: 'photos',
       fileDescription: 'дополнительное фото профиля',
       maxSizeBytes: 5 * 1024 * 1024,
+      onProgress: onProgress,
+    );
+  }
+
+  Future<String> uploadCoverPhoto(
+    String filePath, {
+    Function(double)? onProgress,
+  }) async {
+    return _uploadFile(
+      filePath,
+      // Upload-service currently allows only avatars/events/photos buckets.
+      bucket: 'photos',
+      fileDescription: 'обложка профиля',
+      maxSizeBytes: 6 * 1024 * 1024,
       onProgress: onProgress,
     );
   }
@@ -177,8 +219,9 @@ class LocalStorageService {
         throw Exception('Сервер не вернул URL файла');
       }
 
-      LoggerService.info('[UploadService] $fileDescription успешно загружено: $fileUrl');
-      return fileUrl;
+      final normalizedUrl = _normalizeUploadUrl(fileUrl);
+      LoggerService.info('[UploadService] $fileDescription успешно загружено: $normalizedUrl');
+      return normalizedUrl;
     } catch (e) {
       LoggerService.error('[UploadService] Ошибка при загрузке $fileDescription: $e');
       rethrow;

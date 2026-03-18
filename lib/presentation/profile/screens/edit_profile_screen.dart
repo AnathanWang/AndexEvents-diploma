@@ -32,6 +32,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Map<String, String> _socialLinks = {};
 
   File? _newProfileImage;
+  File? _newCoverImage;
   final List<File> _newPhotos = [];
   List<String> _existingPhotos = [];
   UserModel? _currentUser;
@@ -116,6 +117,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         );
       }
       LoggerService.error('Image picker error: $e');
+    }
+  }
+
+  Future<void> _pickCoverImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1800,
+        maxHeight: 1200,
+        imageQuality: 86,
+      );
+
+      if (image != null && mounted) {
+        setState(() {
+          _newCoverImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted && e.toString().contains('multiple_request')) {
+        CustomNotification.show(
+          context,
+          'Операция отменена. Попробуйте еще раз',
+          isError: true,
+        );
+      }
+      LoggerService.error('Cover image picker error: $e');
     }
   }
 
@@ -465,6 +493,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           uploadedPhotoUrls.add(url);
         }
 
+        String? newCoverUrl;
+        if (_newCoverImage != null) {
+          newCoverUrl = await userService.uploadCoverPhoto(_newCoverImage!);
+        }
+
         if (!mounted) return;
 
         // Обновляем профиль со всеми данными
@@ -473,6 +506,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             displayName: _nameController.text.trim(),
             bio: _bioController.text.trim(),
             photoUrl: newPhotoUrl,
+            coverImageUrl: newCoverUrl,
             photos: uploadedPhotoUrls,
             interests: _selectedInterests,
             socialLinks: _socialLinks.isNotEmpty ? _socialLinks : null,
@@ -690,6 +724,71 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: ListView(
                     padding: const EdgeInsets.all(24.0),
                     children: <Widget>[
+                      // Обложка профиля
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: SizedBox(
+                          height: 140,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: <Widget>[
+                              if (_newCoverImage != null)
+                                Image.file(_newCoverImage!, fit: BoxFit.cover)
+                              else if (user?.coverImageUrl != null &&
+                                  user!.coverImageUrl!.isNotEmpty)
+                                CachedNetworkImage(
+                                  imageUrl: user.coverImageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorWidget: (context, url, error) =>
+                                      const DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: <Color>[
+                                          Color(0xFF5E60CE),
+                                          Color(0xFF9370DB),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else
+                                const DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: <Color>[
+                                        Color(0xFF5E60CE),
+                                        Color(0xFF9370DB),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              Align(
+                                alignment: Alignment.bottomRight,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(10),
+                                  child: OutlinedButton.icon(
+                                    onPressed: _pickCoverImage,
+                                    icon: const Icon(Icons.wallpaper_outlined, size: 16),
+                                    label: const Text('Фон'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      side: const BorderSide(color: Colors.white),
+                                      backgroundColor:
+                                          Colors.black.withValues(alpha: 0.28),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
                       // Фото профиля
                       Center(
                         child: GestureDetector(
@@ -822,6 +921,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             onPressed: _pickAdditionalPhotos,
                             icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
                             label: const Text('Фото'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF5E60CE),
+                              side: BorderSide(
+                                color: const Color(0xFF5E60CE).withValues(alpha: 0.25),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: _pickCoverImage,
+                            icon: const Icon(Icons.wallpaper_outlined, size: 18),
+                            label: const Text('Фон'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFF5E60CE),
                               side: BorderSide(
