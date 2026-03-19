@@ -6,6 +6,7 @@ import com.andexevents.users.auth.AuthFilter;
 import com.andexevents.users.model.ReportDto;
 import com.andexevents.users.model.UserDto;
 import com.andexevents.users.service.ReportService;
+import com.andexevents.users.service.UserSanctionService;
 import com.andexevents.users.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -20,10 +21,16 @@ import java.util.Map;
 public class ReportController {
     private final ReportService reportService;
     private final UserService userService;
+    private final UserSanctionService userSanctionService;
 
-    public ReportController(ReportService reportService, UserService userService) {
+    public ReportController(
+            ReportService reportService,
+            UserService userService,
+            UserSanctionService userSanctionService
+    ) {
         this.reportService = reportService;
         this.userService = userService;
+        this.userSanctionService = userSanctionService;
     }
 
     /**
@@ -45,9 +52,18 @@ public class ReportController {
                     .body(ApiResponse.error("Report reason is required"));
         }
 
+        String effectiveReporterId = body.reporterId() != null ? body.reporterId() : auth.userId();
+
+        try {
+            userSanctionService.assertCanSubmitReport(effectiveReporterId);
+        } catch (UserSanctionService.ForbiddenException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+
         try {
             ReportDto report = reportService.createReport(
-                    body.reporterId() != null ? body.reporterId() : auth.userId(),
+                    effectiveReporterId,
                     body.targetUserId(),
                     body.targetEventId(),
                     body.reason(),

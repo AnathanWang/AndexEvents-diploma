@@ -964,6 +964,46 @@ class UserService {
     }
   }
 
+  Future<List<UserSanctionModel>> getMySanctions() async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.baseUrl}/users/me/sanctions'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final rows = data['data'] as List<dynamic>? ?? const <dynamic>[];
+        return rows
+            .map((row) => UserSanctionModel.fromJson(row as Map<String, dynamic>))
+            .toList();
+      }
+
+      if (response.statusCode == 401) {
+        throw Exception('Истекла сессия авторизации');
+      }
+
+      throw Exception('Ошибка загрузки моих санкций: ${response.statusCode}');
+    } on TimeoutException {
+      throw Exception('Таймаут при загрузке моих санкций');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error loading my sanctions', e);
+      rethrow;
+    }
+  }
+
   Future<void> createUserSanction({
     required String targetUserId,
     required String type,

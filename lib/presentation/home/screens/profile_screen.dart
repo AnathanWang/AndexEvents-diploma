@@ -4,6 +4,7 @@ import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/models/user_sanction_model.dart';
 import '../../profile/bloc/profile_bloc.dart';
 import '../../profile/bloc/profile_event.dart';
 import '../../profile/bloc/profile_state.dart';
@@ -44,6 +45,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool _showInSearch = true;
   bool _showVisitedEvents = true;
   bool _matchNotifications = true;
+  String? _sanctionsLoadedForUserId;
+  List<UserSanctionModel> _activeSanctions = <UserSanctionModel>[];
 
   final Map<_ProfileMatchFilter, List<MatchPreview>> _matchesByFilter =
       <_ProfileMatchFilter, List<MatchPreview>>{};
@@ -137,7 +140,92 @@ class _ProfileScreenState extends State<ProfileScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _loadMatchesFor(_filter, currentUser);
+      _loadMySanctions(currentUser.id);
     });
+  }
+
+  Future<void> _loadMySanctions(String userId) async {
+    if (_sanctionsLoadedForUserId == userId) return;
+    _sanctionsLoadedForUserId = userId;
+
+    try {
+      final sanctions = await _userService.getMySanctions();
+      if (!mounted) return;
+      setState(() {
+        _activeSanctions = sanctions.where((s) => s.isActive).toList();
+      });
+    } catch (e) {
+      LoggerService.warning('[ProfileScreen] Failed to load my sanctions: $e');
+    }
+  }
+
+  Widget _buildSanctionsBanner() {
+    if (_activeSanctions.isEmpty) return const SizedBox.shrink();
+
+    String formatType(String type) {
+      switch (type.toUpperCase()) {
+        case 'WARNING':
+          return 'Предупреждение';
+        case 'MUTE':
+          return 'Ограничение общения';
+        case 'EVENT_CREATE_BAN':
+          return 'Запрет на создание событий';
+        case 'FULL_BAN':
+          return 'Полная блокировка действий';
+        default:
+          return type;
+      }
+    }
+
+    final first = _activeSanctions.first;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3E6),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFD9B3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.gavel_rounded, color: Color(0xFFD16A3A), size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Активные ограничения аккаунта',
+                style: TextStyle(
+                  color: Color(0xFF8B4D24),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            formatType(first.type),
+            style: const TextStyle(
+              color: Color(0xFF8B4D24),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            first.reason,
+            style: const TextStyle(color: Color(0xFF9C643E), fontSize: 12),
+          ),
+          if (_activeSanctions.length > 1) ...[
+            const SizedBox(height: 6),
+            Text(
+              'И ещё активных ограничений: ${_activeSanctions.length - 1}',
+              style: const TextStyle(color: Color(0xFF9C643E), fontSize: 12),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _buildMatchFilterChips(UserModel currentUser) {
@@ -384,6 +472,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                 start: 0.0,
                 child: _buildProfileCard(context, user, theme),
               ),
+              if (_activeSanctions.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildAnimatedSection(start: 0.06, child: _buildSanctionsBanner()),
+              ],
               const SizedBox(height: 20),
               _buildAnimatedSection(
                 start: 0.12,
@@ -451,7 +543,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const AdminDashboardScreen(),
+                          builder: (_) => AdminDashboardScreen(
+                            userRole: user.role ?? 'UNKNOWN',
+                          ),
                         ),
                       );
                     },
@@ -489,12 +583,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                             ),
                           ),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
                                 Text(
-                                  'Панель модератора',
+                                  canAccessModeratorPanel &&
+                                          (user.role ?? '').trim().toUpperCase() ==
+                                              'ADMIN'
+                                      ? 'Панель администратора'
+                                      : 'Панель модератора',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -503,7 +601,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                                 ),
                                 SizedBox(height: 2),
                                 Text(
-                                  'Управление событиями и пользователями',
+                                  (user.role ?? '').trim().toUpperCase() ==
+                                          'ADMIN'
+                                      ? 'События, пользователи, санкции и аудит'
+                                      : 'Модерация событий и жалоб на них',
                                   style: TextStyle(
                                     color: Color(0xFFDFE5FF),
                                     fontSize: 12,

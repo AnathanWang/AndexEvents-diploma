@@ -8,6 +8,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -99,6 +100,30 @@ public class UserSanctionRepository {
                 revokedByUserId,
                 sanctionId
         );
+    }
+
+    public boolean hasActiveSanction(String targetUserId, String... types) {
+        if (types == null || types.length == 0) {
+            return false;
+        }
+
+        String placeholders = String.join(",", Arrays.stream(types).map(t -> "CAST(? AS users.\"UserSanctionType\")").toList());
+
+        String sql = """
+                SELECT COUNT(*)
+                FROM users."UserSanction"
+                WHERE "targetUserId" = ?
+                  AND "revokedAt" IS NULL
+                  AND ("expiresAt" IS NULL OR "expiresAt" > NOW())
+                  AND "type" IN (
+                """ + placeholders + ")";
+
+        Object[] params = new Object[types.length + 1];
+        params[0] = targetUserId;
+        System.arraycopy(types, 0, params, 1, types.length);
+
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, params);
+        return count != null && count > 0;
     }
 
     private UserSanctionDto mapRow(ResultSet rs) throws SQLException {

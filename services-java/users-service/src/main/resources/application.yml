@@ -45,6 +45,8 @@ app:
         pattern: /api/users/admin/sanctions/*/revoke
       - method: GET
         pattern: /api/users/me
+      - method: GET
+        pattern: /api/users/me/sanctions
       - method: POST
         pattern: /api/users/me/onboarding
       - method: PUT

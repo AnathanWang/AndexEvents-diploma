@@ -104,6 +104,20 @@ public class UserSanctionService {
         userSanctionRepository.revoke(sanctionId, revokedByUserId);
     }
 
+    public void assertCanSubmitReport(String userId) {
+        boolean blocked = userSanctionRepository.hasActiveSanction(userId, "FULL_BAN", "MUTE");
+        if (blocked) {
+            throw new ForbiddenException("Your account is restricted from submitting reports");
+        }
+    }
+
+    public void assertCanCreateEvent(String userId) {
+        boolean blocked = userSanctionRepository.hasActiveSanction(userId, "FULL_BAN", "EVENT_CREATE_BAN");
+        if (blocked) {
+            throw new ForbiddenException("Your account is restricted from creating events");
+        }
+    }
+
     private String normalizeType(String type) {
         if (type == null) {
             throw new BadRequestException("type is required");
@@ -128,6 +142,12 @@ public class UserSanctionService {
 
     public static class NotFoundException extends RuntimeException {
         public NotFoundException(String message) {
+            super(message);
+        }
+    }
+
+    public static class ForbiddenException extends RuntimeException {
+        public ForbiddenException(String message) {
             super(message);
         }
     }

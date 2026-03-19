@@ -6,6 +6,7 @@ import com.andexevents.events.auth.AuthFilter;
 import com.andexevents.events.model.EventDtos;
 import com.andexevents.events.repo.EventRepository;
 import com.andexevents.events.service.EventService;
+import com.andexevents.events.service.UserSanctionGuardService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,9 +22,11 @@ import java.util.Map;
 @RequestMapping("/api/events")
 public class EventController {
     private final EventService eventService;
+    private final UserSanctionGuardService userSanctionGuardService;
 
-    public EventController(EventService eventService) {
+    public EventController(EventService eventService, UserSanctionGuardService userSanctionGuardService) {
         this.eventService = eventService;
+        this.userSanctionGuardService = userSanctionGuardService;
     }
 
     @PostMapping
@@ -32,6 +35,13 @@ public class EventController {
         if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Unauthorized: User ID not found in database"));
+        }
+
+        try {
+            userSanctionGuardService.assertCanCreateEvent(auth.userId());
+        } catch (UserSanctionGuardService.ForbiddenException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(e.getMessage()));
         }
 
         EventRepository.EventCreateParams params = new EventRepository.EventCreateParams(

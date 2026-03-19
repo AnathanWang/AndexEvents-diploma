@@ -249,6 +249,23 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ok(user));
     }
 
+    @GetMapping("/me/sanctions")
+    public ResponseEntity<ApiResponse<List<UserSanctionDto>>> mySanctions(HttpServletRequest request) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(UNAUTHORIZED_MESSAGE));
+        }
+
+        try {
+            List<UserSanctionDto> sanctions = userSanctionService.getByTargetUser(auth.userId());
+            return ResponseEntity.ok(ApiResponse.ok(sanctions));
+        } catch (UserSanctionService.BadRequestException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<UserDto>> getById(@PathVariable String id) {
         UserDto user = userService.getById(id).orElse(null);
