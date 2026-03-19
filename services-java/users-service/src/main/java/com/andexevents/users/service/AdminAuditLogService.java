@@ -27,6 +27,36 @@ public class AdminAuditLogService {
         );
     }
 
+            public void logSanctionCreated(
+                String actorUserId,
+                String targetUserId,
+                String type,
+                String reason,
+                String expiresAt
+            ) {
+            adminAuditLogRepository.insert(
+                actorUserId,
+                targetUserId,
+                "USER_SANCTION_CREATED",
+                Map.of(
+                    "type", type,
+                    "reason", reason,
+                    "expiresAt", expiresAt == null ? "PERMANENT" : expiresAt
+                )
+            );
+            }
+
+            public void logSanctionRevoked(String actorUserId, String targetUserId, String sanctionId) {
+            adminAuditLogRepository.insert(
+                actorUserId,
+                targetUserId,
+                "USER_SANCTION_REVOKED",
+                Map.of(
+                    "sanctionId", sanctionId
+                )
+            );
+            }
+
     public List<AdminAuditLogDto> getRecent(int limit) {
         return adminAuditLogRepository.findRecent(limit);
     }

@@ -8,6 +8,7 @@ import '../../core/config/app_config.dart';
 import '../../core/auth/id_token_provider.dart';
 import '../../core/services/logger_service.dart';
 import '../models/admin_audit_log_model.dart';
+import '../models/user_sanction_model.dart';
 import '../models/user_model.dart';
 import 'local_storage_service.dart';
 
@@ -903,6 +904,143 @@ class UserService {
       throw Exception('Не удалось подключиться к API: ${e.message}');
     } catch (e) {
       LoggerService.error('[UserService] Error loading admin audit logs', e);
+      rethrow;
+    }
+  }
+
+  Future<List<UserSanctionModel>> getAdminSanctions({
+    String? targetUserId,
+    int limit = 200,
+  }) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final query = <String, String>{'limit': '$limit'};
+      if (targetUserId != null && targetUserId.isNotEmpty) {
+        query['targetUserId'] = targetUserId;
+      }
+
+      final uri = Uri.parse(
+        '${AppConfig.baseUrl}/users/admin/sanctions',
+      ).replace(queryParameters: query);
+
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final rows = data['data'] as List<dynamic>? ?? const <dynamic>[];
+        return rows
+            .map((row) => UserSanctionModel.fromJson(row as Map<String, dynamic>))
+            .toList();
+      }
+
+      if (response.statusCode == 401) {
+        throw Exception('Истекла сессия авторизации');
+      }
+
+      if (response.statusCode == 403) {
+        throw Exception('Недостаточно прав для просмотра санкций');
+      }
+
+      throw Exception('Ошибка загрузки санкций: ${response.statusCode}');
+    } on TimeoutException {
+      throw Exception('Таймаут при загрузке санкций');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error loading sanctions', e);
+      rethrow;
+    }
+  }
+
+  Future<void> createUserSanction({
+    required String targetUserId,
+    required String type,
+    required String reason,
+    DateTime? expiresAt,
+  }) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('${AppConfig.baseUrl}/users/admin/sanctions'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: json.encode({
+              'targetUserId': targetUserId,
+              'type': type,
+              'reason': reason,
+              'expiresAt': expiresAt?.toUtc().toIso8601String(),
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        LoggerService.info('[UserService] User sanction created: $targetUserId -> $type');
+        return;
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final message = data['message'] ?? 'Ошибка создания санкции';
+      throw Exception('$message (${response.statusCode})');
+    } on TimeoutException {
+      throw Exception('Таймаут при создании санкции');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error creating user sanction', e);
+      rethrow;
+    }
+  }
+
+  Future<void> revokeUserSanction(String sanctionId) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .put(
+            Uri.parse('${AppConfig.baseUrl}/users/admin/sanctions/$sanctionId/revoke'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        LoggerService.info('[UserService] User sanction revoked: $sanctionId');
+        return;
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final message = data['message'] ?? 'Ошибка отзыва санкции';
+      throw Exception('$message (${response.statusCode})');
+    } on TimeoutException {
+      throw Exception('Таймаут при отзыве санкции');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error revoking user sanction', e);
       rethrow;
     }
   }

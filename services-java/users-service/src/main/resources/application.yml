@@ -38,6 +38,12 @@ app:
       - method: GET
         pattern: /api/users/admin/audit-logs
       - method: GET
+        pattern: /api/users/admin/sanctions
+      - method: POST
+        pattern: /api/users/admin/sanctions
+      - method: PUT
+        pattern: /api/users/admin/sanctions/*/revoke
+      - method: GET
         pattern: /api/users/me
       - method: POST
         pattern: /api/users/me/onboarding

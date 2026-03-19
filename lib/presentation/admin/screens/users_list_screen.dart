@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/models/report_model.dart';
+import '../../../data/models/user_sanction_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/report_service.dart';
 import '../../../data/services/user_service.dart';
@@ -40,15 +41,21 @@ class _UsersListScreenState extends State<UsersListScreen> {
     });
 
     try {
+      final currentUser = await _userService.getCurrentUser();
+      final isAdmin =
+          (currentUser.role ?? '').trim().toUpperCase() == 'ADMIN';
+
+      final activeSanctions = isAdmin
+          ? await _userService.getAdminSanctions(limit: 500)
+          : <UserSanctionModel>[];
+
       final results = await Future.wait<dynamic>([
-        _userService.getCurrentUser(),
         _userService.getUsersForModeration(),
         _reportService.getReports(),
       ]);
 
-      final currentUser = results[0] as UserModel;
-      final users = results[1] as List<UserModel>;
-      final reports = results[2] as List<ReportModel>;
+      final users = results[0] as List<UserModel>;
+      final reports = results[1] as List<ReportModel>;
 
       final Map<String, List<ReportModel>> reportsByUserId =
           <String, List<ReportModel>>{};
@@ -57,6 +64,15 @@ class _UsersListScreenState extends State<UsersListScreen> {
         final target = report.targetUserId;
         if (target == null || target.isEmpty) continue;
         reportsByUserId.putIfAbsent(target, () => <ReportModel>[]).add(report);
+      }
+
+      final Map<String, UserSanctionModel> activeSanctionByUserId =
+          <String, UserSanctionModel>{};
+      for (final sanction in activeSanctions.where((s) => s.isActive)) {
+        final existing = activeSanctionByUserId[sanction.targetUserId];
+        if (existing == null || sanction.createdAt.isAfter(existing.createdAt)) {
+          activeSanctionByUserId[sanction.targetUserId] = sanction;
+        }
       }
 
       final resolved = users
@@ -70,6 +86,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
               user: user,
               reports: userReports,
               pendingReports: pending,
+              activeSanction: activeSanctionByUserId[user.id],
             );
           })
           .toList()
@@ -145,6 +162,195 @@ class _UsersListScreenState extends State<UsersListScreen> {
         return 'MODERATOR';
       default:
         return 'USER';
+    }
+  }
+
+  String _sanctionLabel(UserSanctionModel sanction) {
+    switch (sanction.type.toUpperCase()) {
+      case 'WARNING':
+        return 'WARNING';
+      case 'MUTE':
+        return 'MUTE';
+      case 'EVENT_CREATE_BAN':
+        return 'EVENT BAN';
+      case 'FULL_BAN':
+        return 'FULL BAN';
+      default:
+        return sanction.type;
+    }
+  }
+
+  Future<void> _openSanctionDialog(_ModerationUserItem item) async {
+    final sanction = item.activeSanction;
+    if (sanction != null && sanction.isActive) {
+      final shouldRevoke = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Отозвать санкцию?'),
+          content: Text(
+            'Активная санкция: ${_sanctionLabel(sanction)}\n\nПричина: ${sanction.reason}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Отозвать'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldRevoke == true) {
+        await _revokeSanction(item, sanction.id);
+      }
+      return;
+    }
+
+    String sanctionType = 'WARNING';
+    final reasonController = TextEditingController();
+    final daysController = TextEditingController();
+
+    final shouldApply = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Назначить санкцию'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    initialValue: sanctionType,
+                    items: const [
+                      DropdownMenuItem(value: 'WARNING', child: Text('WARNING')),
+                      DropdownMenuItem(value: 'MUTE', child: Text('MUTE')),
+                      DropdownMenuItem(value: 'EVENT_CREATE_BAN', child: Text('EVENT_CREATE_BAN')),
+                      DropdownMenuItem(value: 'FULL_BAN', child: Text('FULL_BAN')),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setDialogState(() => sanctionType = value);
+                    },
+                    decoration: const InputDecoration(labelText: 'Тип санкции'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: reasonController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Причина',
+                      hintText: 'Опишите нарушение',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: daysController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Срок (дней, пусто = бессрочно)',
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Отмена'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Применить'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (shouldApply == true) {
+      final reason = reasonController.text.trim();
+      final days = int.tryParse(daysController.text.trim());
+      final expiresAt = days != null && days > 0
+          ? DateTime.now().toUtc().add(Duration(days: days))
+          : null;
+      await _applySanction(item, sanctionType, reason, expiresAt);
+    }
+
+    reasonController.dispose();
+    daysController.dispose();
+  }
+
+  Future<void> _applySanction(
+    _ModerationUserItem item,
+    String type,
+    String reason,
+    DateTime? expiresAt,
+  ) async {
+    final id = item.user.id;
+    if (_actionInProgress.contains(id)) return;
+
+    setState(() {
+      _actionInProgress.add(id);
+    });
+
+    try {
+      await _userService.createUserSanction(
+        targetUserId: id,
+        type: type,
+        reason: reason,
+        expiresAt: expiresAt,
+      );
+
+      await _loadUsers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Санкция применена')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка применения санкции: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _actionInProgress.remove(id);
+        });
+      }
+    }
+  }
+
+  Future<void> _revokeSanction(_ModerationUserItem item, String sanctionId) async {
+    final id = item.user.id;
+    if (_actionInProgress.contains(id)) return;
+
+    setState(() {
+      _actionInProgress.add(id);
+    });
+
+    try {
+      await _userService.revokeUserSanction(sanctionId);
+      await _loadUsers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Санкция отозвана')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка отзыва санкции: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _actionInProgress.remove(id);
+        });
+      }
     }
   }
 
@@ -450,6 +656,28 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                         ),
                                       ),
                                     ),
+                                    if (item.activeSanction != null &&
+                                        item.activeSanction!.isActive) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFFF3E6),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          _sanctionLabel(item.activeSanction!),
+                                          style: const TextStyle(
+                                            color: Color(0xFFD16A3A),
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ],
                               ),
@@ -505,6 +733,24 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                   ),
                                 ],
                               ),
+                              if (_isAdmin) ...[
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: inProgress
+                                        ? null
+                                        : () => _openSanctionDialog(item),
+                                    icon: const Icon(Icons.gavel_rounded),
+                                    label: Text(
+                                      item.activeSanction != null &&
+                                              item.activeSanction!.isActive
+                                          ? 'Управление санкцией'
+                                          : 'Назначить санкцию',
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         );
@@ -523,9 +769,11 @@ class _ModerationUserItem {
     required this.user,
     required this.reports,
     required this.pendingReports,
+    this.activeSanction,
   });
 
   final UserModel user;
   final List<ReportModel> reports;
   final int pendingReports;
+  final UserSanctionModel? activeSanction;
 }
