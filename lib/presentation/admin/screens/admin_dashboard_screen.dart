@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:andexevents/presentation/admin/screens/admin_audit_logs_screen.dart';
 import 'package:andexevents/presentation/admin/screens/reports_screen.dart';
 import 'package:andexevents/presentation/admin/screens/users_list_screen.dart';
 import 'package:andexevents/presentation/admin/screens/event_moderation_screen.dart';
@@ -9,11 +10,16 @@ class AdminDashboardScreen extends StatelessWidget {
     this.showBackButton = true,
     this.onLogout,
     this.headerSubtitle,
+    required this.userRole,
   });
 
   final bool showBackButton;
   final VoidCallback? onLogout;
   final String? headerSubtitle;
+  final String userRole;
+
+  bool get _isAdmin => userRole.trim().toUpperCase() == 'ADMIN';
+  bool get _isModerator => userRole.trim().toUpperCase() == 'MODERATOR';
 
   @override
   Widget build(BuildContext context) {
@@ -79,16 +85,18 @@ class AdminDashboardScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          const Row(
+                          Row(
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.admin_panel_settings_rounded,
                                 color: Colors.white,
                                 size: 34,
                               ),
-                              SizedBox(width: 10),
+                              const SizedBox(width: 10),
                               Text(
-                                'Панель модератора',
+                                _isAdmin
+                                    ? 'Панель администратора'
+                                    : 'Панель модератора',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 28,
@@ -120,9 +128,11 @@ class AdminDashboardScreen extends StatelessWidget {
                               ),
                             ),
                           const SizedBox(height: 10),
-                          const Text(
-                            'Управляйте жалобами, событиями и пользователями в одном месте.',
-                            style: TextStyle(
+                          Text(
+                            _isAdmin
+                                ? 'Полный доступ: события, жалобы и управление пользователями.'
+                                : 'Доступ модератора: события и жалобы на события.',
+                            style: const TextStyle(
                               color: Color(0xFFE4E9FF),
                               fontSize: 13,
                             ),
@@ -193,40 +203,79 @@ class AdminDashboardScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    _buildActionCard(
-                      context,
-                      title: 'Жалобы и отчёты',
-                      subtitle: 'Обработка репортов и решений по ним',
-                      icon: Icons.report_problem_rounded,
-                      gradientColors: const [
-                        Color(0xFFFF6B6B),
-                        Color(0xFFFF8E53),
-                      ],
-                      onTap: () => Navigator.push(
+                    if (_isAdmin) ...[
+                      const SizedBox(height: 14),
+                      _buildActionCard(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const ReportsScreen(),
+                        title: 'Жалобы и отчёты',
+                        subtitle: 'Обработка всех репортов и решений по ним',
+                        icon: Icons.report_problem_rounded,
+                        gradientColors: const [
+                          Color(0xFFFF6B6B),
+                          Color(0xFFFF8E53),
+                        ],
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ReportsScreen(),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    _buildActionCard(
-                      context,
-                      title: 'Управление пользователями',
-                      subtitle: 'Просмотр профилей и блокировки нарушителей',
-                      icon: Icons.people_rounded,
-                      gradientColors: const [
-                        Color(0xFF4ECDC4),
-                        Color(0xFF44A08D),
-                      ],
-                      onTap: () => Navigator.push(
+                      const SizedBox(height: 14),
+                      _buildActionCard(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const UsersListScreen(),
+                        title: 'Управление пользователями',
+                        subtitle:
+                            'Просмотр профилей, блокировки и админ-модерация',
+                        icon: Icons.people_rounded,
+                        gradientColors: const [
+                          Color(0xFF4ECDC4),
+                          Color(0xFF44A08D),
+                        ],
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const UsersListScreen(),
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 14),
+                      _buildActionCard(
+                        context,
+                        title: 'Журнал действий',
+                        subtitle: 'Аудит изменений ролей и админ-операций',
+                        icon: Icons.fact_check_rounded,
+                        gradientColors: const [
+                          Color(0xFF5965D8),
+                          Color(0xFF4ECDC4),
+                        ],
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AdminAuditLogsScreen(),
+                          ),
+                        ),
+                      ),
+                    ] else if (_isModerator) ...[
+                      const SizedBox(height: 14),
+                      _buildActionCard(
+                        context,
+                        title: 'Жалобы на события',
+                        subtitle:
+                            'Просмотр и обработка репортов, связанных с событиями',
+                        icon: Icons.flag_rounded,
+                        gradientColors: const [
+                          Color(0xFFFF6B6B),
+                          Color(0xFFFF8E53),
+                        ],
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const EventModerationScreen(),
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 80),
                   ]),
                 ),

@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../core/config/app_config.dart';
 import '../../core/auth/id_token_provider.dart';
 import '../../core/services/logger_service.dart';
+import '../models/admin_audit_log_model.dart';
 import '../models/user_model.dart';
 import 'local_storage_service.dart';
 
@@ -409,6 +410,57 @@ class UserService {
     }
   }
 
+  /// Получить полный список пользователей для модерации
+  Future<List<UserModel>> getUsersForModeration() async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await _with429Retry(
+        () => http
+            .get(
+              Uri.parse('${AppConfig.baseUrl}/users'),
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Content-Type': 'application/json',
+              },
+            )
+            .timeout(AppConfig.receiveTimeout),
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final usersList = json['data'] as List<dynamic>?;
+
+        return usersList
+                ?.map((u) => UserModel.fromJson(u as Map<String, dynamic>))
+                .toList() ??
+            [];
+      }
+
+      if (response.statusCode == 401) {
+        throw Exception('Истекла сессия авторизации');
+      }
+
+      if (response.statusCode == 403) {
+        throw Exception('Недостаточно прав для доступа к модерации');
+      }
+
+      throw Exception(
+        'Ошибка получения пользователей модерации: ${response.statusCode}',
+      );
+    } on TimeoutException {
+      throw Exception('Таймаут при загрузке пользователей модерации');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error loading moderation users', e);
+      rethrow;
+    }
+  }
+
   /// Получить пользователя по id
   Future<UserModel> getUserById(String userId) async {
     try {
@@ -755,6 +807,102 @@ class UserService {
       throw Exception('Не удалось подключиться к API: ${e.message}');
     } catch (e) {
       LoggerService.error('[UserService] Error blocking user', e);
+      rethrow;
+    }
+  }
+
+  Future<void> updateUserRole({
+    required String targetUserId,
+    required String role,
+  }) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .put(
+            Uri.parse('${AppConfig.baseUrl}/users/$targetUserId/role'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: json.encode({'role': role}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        LoggerService.info('[UserService] User role updated: $targetUserId -> $role');
+        return;
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final message = data['message'] ?? 'Ошибка смены роли';
+
+      if (response.statusCode == 401) {
+        throw Exception('Истекла сессия авторизации');
+      }
+
+      if (response.statusCode == 403) {
+        throw Exception('Недостаточно прав для смены роли');
+      }
+
+      throw Exception('$message (${response.statusCode})');
+    } on TimeoutException {
+      throw Exception('Таймаут при смене роли пользователя');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error updating user role', e);
+      rethrow;
+    }
+  }
+
+  Future<List<AdminAuditLogModel>> getAdminAuditLogs({int limit = 100}) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.baseUrl}/users/admin/audit-logs?limit=$limit'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final rows = data['data'] as List<dynamic>? ?? const <dynamic>[];
+        return rows
+            .map(
+              (row) => AdminAuditLogModel.fromJson(
+                row as Map<String, dynamic>,
+              ),
+            )
+            .toList();
+      }
+
+      if (response.statusCode == 401) {
+        throw Exception('Истекла сессия авторизации');
+      }
+
+      if (response.statusCode == 403) {
+        throw Exception('Недостаточно прав для просмотра журнала');
+      }
+
+      throw Exception('Ошибка загрузки журнала: ${response.statusCode}');
+    } on TimeoutException {
+      throw Exception('Таймаут при загрузке журнала');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error loading admin audit logs', e);
       rethrow;
     }
   }

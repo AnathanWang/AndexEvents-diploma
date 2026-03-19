@@ -147,6 +147,55 @@ class ReportService {
     }
   }
 
+  /// Получить жалобы только на события (admin/moderator)
+  Future<List<ReportModel>> getEventReports() async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Пользователь не авторизован');
+      }
+
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.baseUrl}/users/reports/events'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(AppConfig.receiveTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> reportsJson = data['data'] ?? [];
+        return reportsJson
+            .map((json) => ReportModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw ReportAccessDeniedException(
+          _extractErrorMessage(response.body) ??
+              'Недостаточно прав для просмотра жалоб на события.',
+        );
+      }
+
+      throw Exception('Ошибка загрузки жалоб на события: ${response.statusCode}');
+    } on TimeoutException {
+      throw Exception('Таймаут при загрузке жалоб на события');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } on ReportAccessDeniedException catch (e) {
+      LoggerService.warning(
+        '[ReportService] Доступ к жалобам на события отклонен: ${e.message}',
+      );
+      rethrow;
+    } catch (e) {
+      LoggerService.error('[ReportService] Ошибка загрузки жалоб на события', e);
+      rethrow;
+    }
+  }
+
   /// Разрешить жалобу (admin)
   Future<void> resolveReport(String reportId, String resolution) async {
     try {

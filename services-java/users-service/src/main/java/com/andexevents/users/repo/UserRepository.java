@@ -42,6 +42,13 @@ public class UserRepository {
         return rows.stream().findFirst();
     }
 
+    public List<UserDto> findAllForModeration() {
+        return jdbcTemplate.query(
+                "SELECT * FROM users.\"User\" ORDER BY \"createdAt\" DESC",
+                mapper()
+        );
+    }
+
     public Optional<UserDto> findByFirebaseUid(String firebaseUid) {
         List<UserDto> rows = jdbcTemplate.query(
                 "SELECT * FROM users.\"User\" WHERE \"firebaseUid\" = ? OR \"supabaseUid\" = ?",
@@ -249,6 +256,16 @@ public class UserRepository {
                 blockerId,
                 targetUserId
         );
+    }
+
+    public UserDto updateRole(String userId, String role) {
+        jdbcTemplate.update(
+                "UPDATE users.\"User\" SET \"role\" = CAST(? AS users.\"UserRole\"), \"updatedAt\" = NOW() WHERE id = ?",
+                role,
+                userId
+        );
+
+        return findById(userId).orElseThrow();
     }
 
     private Instant toInstant(Object ts) {

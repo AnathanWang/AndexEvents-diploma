@@ -4,7 +4,9 @@ import com.andexevents.users.api.ApiResponse;
 import com.andexevents.users.auth.AuthContext;
 import com.andexevents.users.auth.AuthFilter;
 import com.andexevents.users.model.ReportDto;
+import com.andexevents.users.model.UserDto;
 import com.andexevents.users.service.ReportService;
+import com.andexevents.users.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +19,11 @@ import java.util.Map;
 @RequestMapping("/api/users/reports")
 public class ReportController {
     private final ReportService reportService;
+    private final UserService userService;
 
-    public ReportController(ReportService reportService) {
+    public ReportController(ReportService reportService, UserService userService) {
         this.reportService = reportService;
+        this.userService = userService;
     }
 
     /**
@@ -61,14 +65,42 @@ public class ReportController {
      */
     @GetMapping
     public ResponseEntity<ApiResponse<List<ReportDto>>> getReports(HttpServletRequest request) {
-        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
-        if (auth == null || auth.uid() == null || auth.uid().isBlank()) {
+        UserDto requester = resolveRequester(request);
+        if (requester == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("Unauthorized: User identity not found"));
+                    .body(ApiResponse.error("Unauthorized: User ID not found"));
+        }
+
+        if (!isAdmin(requester)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: admin access required"));
         }
 
         List<ReportDto> reports = reportService.getAllReports();
         return ResponseEntity.ok(ApiResponse.ok(reports));
+    }
+
+    /**
+     * GET /api/users/reports/events — get only event reports (admin/moderator)
+     */
+    @GetMapping("/events")
+    public ResponseEntity<ApiResponse<List<ReportDto>>> getEventReports(HttpServletRequest request) {
+        UserDto requester = resolveRequester(request);
+        if (requester == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Unauthorized: User ID not found"));
+        }
+
+        if (!userService.canModerate(requester)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: moderation access required"));
+        }
+
+        List<ReportDto> eventReports = reportService.getAllReports().stream()
+                .filter(report -> report.targetEventId() != null && !report.targetEventId().isBlank())
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.ok(eventReports));
     }
 
     /**
@@ -80,21 +112,52 @@ public class ReportController {
             @PathVariable String reportId,
             @RequestBody Map<String, String> body
     ) {
-        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
-        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+        UserDto requester = resolveRequester(request);
+        if (requester == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Unauthorized: User ID not found"));
+        }
+
+        var report = reportService.getReportById(reportId).orElse(null);
+        if (report == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Report not found: " + reportId));
+        }
+
+        boolean canResolve = isAdmin(requester)
+                || (userService.canModerate(requester)
+                && report.targetEventId() != null
+                && !report.targetEventId().isBlank());
+
+        if (!canResolve) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: moderation access required"));
         }
 
         String resolution = body.getOrDefault("resolution", "RESOLVED");
 
         try {
-            reportService.resolveReport(reportId, auth.userId(), resolution);
+            reportService.resolveReport(reportId, requester.id(), resolution);
             return ResponseEntity.ok(ApiResponse.okMessage("Report resolved"));
         } catch (ReportService.NotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiResponse.error(e.getMessage()));
         }
+    }
+
+    private UserDto resolveRequester(HttpServletRequest request) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return null;
+        }
+
+        return userService.getById(auth.userId()).orElse(null);
+    }
+
+    private boolean isAdmin(UserDto user) {
+        return user != null
+                && user.role() != null
+                && "ADMIN".equalsIgnoreCase(user.role().trim());
     }
 
     public record CreateReportRequest(

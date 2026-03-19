@@ -20,8 +20,12 @@ class _UsersListScreenState extends State<UsersListScreen> {
   bool _isLoading = true;
   String? _loadError;
   String _search = '';
+  UserModel? _currentUser;
   final Set<String> _actionInProgress = <String>{};
   List<_ModerationUserItem> _users = <_ModerationUserItem>[];
+
+  bool get _isAdmin =>
+      (_currentUser?.role ?? '').trim().toUpperCase() == 'ADMIN';
 
   @override
   void initState() {
@@ -36,7 +40,15 @@ class _UsersListScreenState extends State<UsersListScreen> {
     });
 
     try {
-      final reports = await _reportService.getReports();
+      final results = await Future.wait<dynamic>([
+        _userService.getCurrentUser(),
+        _userService.getUsersForModeration(),
+        _reportService.getReports(),
+      ]);
+
+      final currentUser = results[0] as UserModel;
+      final users = results[1] as List<UserModel>;
+      final reports = results[2] as List<ReportModel>;
 
       final Map<String, List<ReportModel>> reportsByUserId =
           <String, List<ReportModel>>{};
@@ -47,30 +59,29 @@ class _UsersListScreenState extends State<UsersListScreen> {
         reportsByUserId.putIfAbsent(target, () => <ReportModel>[]).add(report);
       }
 
-      final List<Future<_ModerationUserItem?>> tasks = reportsByUserId.entries
-          .map((entry) async {
-            try {
-              final user = await _userService.getUserById(entry.key);
-              final pending = entry.value
-                  .where((r) => r.status.toUpperCase() == 'PENDING')
-                  .length;
-              return _ModerationUserItem(
-                user: user,
-                reports: entry.value,
-                pendingReports: pending,
-              );
-            } catch (_) {
-              return null;
-            }
-          })
-          .toList();
+      final resolved = users
+          .map((user) {
+            final userReports = reportsByUserId[user.id] ?? <ReportModel>[];
+            final pending = userReports
+                .where((r) => r.status.toUpperCase() == 'PENDING')
+                .length;
 
-      final items = await Future.wait(tasks);
-      final resolved = items.whereType<_ModerationUserItem>().toList()
-        ..sort((a, b) => b.pendingReports.compareTo(a.pendingReports));
+            return _ModerationUserItem(
+              user: user,
+              reports: userReports,
+              pendingReports: pending,
+            );
+          })
+          .toList()
+        ..sort((a, b) {
+          final byPending = b.pendingReports.compareTo(a.pendingReports);
+          if (byPending != 0) return byPending;
+          return a.user.email.toLowerCase().compareTo(b.user.email.toLowerCase());
+        });
 
       if (!mounted) return;
       setState(() {
+        _currentUser = currentUser;
         _users = resolved;
         _isLoading = false;
         _loadError = null;
@@ -84,6 +95,56 @@ class _UsersListScreenState extends State<UsersListScreen> {
           fallback: 'Не удалось загрузить пользователей для модерации.',
         );
       });
+    }
+  }
+
+  Future<void> _changeUserRole(_ModerationUserItem item, String nextRole) async {
+    final id = item.user.id;
+    final currentRole = (item.user.role ?? 'USER').toUpperCase();
+    if (currentRole == nextRole) return;
+
+    if (_currentUser?.id == id) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Нельзя менять свою собственную роль')),
+      );
+      return;
+    }
+
+    if (_actionInProgress.contains(id)) return;
+
+    setState(() {
+      _actionInProgress.add(id);
+    });
+
+    try {
+      await _userService.updateUserRole(targetUserId: id, role: nextRole);
+      await _loadUsers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Роль изменена на $nextRole')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка смены роли: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _actionInProgress.remove(id);
+        });
+      }
+    }
+  }
+
+  String _roleLabel(String? role) {
+    switch ((role ?? '').trim().toUpperCase()) {
+      case 'ADMIN':
+        return 'ADMIN';
+      case 'MODERATOR':
+        return 'MODERATOR';
+      default:
+        return 'USER';
     }
   }
 
@@ -350,6 +411,46 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                       ),
                                     ),
                                   ),
+                                  if (_isAdmin) ...[
+                                    const SizedBox(width: 8),
+                                    PopupMenuButton<String>(
+                                      enabled: !inProgress,
+                                      onSelected: (role) =>
+                                          _changeUserRole(item, role),
+                                      itemBuilder: (context) => const [
+                                        PopupMenuItem<String>(
+                                          value: 'USER',
+                                          child: Text('Сделать USER'),
+                                        ),
+                                        PopupMenuItem<String>(
+                                          value: 'MODERATOR',
+                                          child: Text('Сделать MODERATOR'),
+                                        ),
+                                        PopupMenuItem<String>(
+                                          value: 'ADMIN',
+                                          child: Text('Сделать ADMIN'),
+                                        ),
+                                      ],
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEFF2FF),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          _roleLabel(user.role),
+                                          style: const TextStyle(
+                                            color: Color(0xFF5965D8),
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                               const SizedBox(height: 10),

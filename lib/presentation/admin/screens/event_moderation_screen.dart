@@ -34,26 +34,40 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
     });
 
     try {
-      final reports = await _reportService.getReports();
-      final pendingEventReports = reports
-          .where(
-            (r) =>
-                r.status.toUpperCase() == 'PENDING' &&
-                (r.targetEventId?.isNotEmpty ?? false),
+      final results = await Future.wait<dynamic>([
+        _eventService.getEvents(limit: 500),
+        _reportService.getEventReports(),
+      ]);
+
+      final events = results[0] as List<EventModel>;
+      final reports = results[1] as List<ReportModel>;
+
+      final Map<String, List<ReportModel>> reportsByEventId =
+          <String, List<ReportModel>>{};
+
+      for (final report in reports) {
+        final target = report.targetEventId;
+        if (target == null || target.isEmpty) continue;
+        reportsByEventId.putIfAbsent(target, () => <ReportModel>[]).add(report);
+      }
+
+      for (final reportList in reportsByEventId.values) {
+        reportList.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      }
+
+      final resolved = events
+          .map(
+            (event) => _EventModerationItem(
+              event: event,
+              reports: reportsByEventId[event.id] ?? <ReportModel>[],
+            ),
           )
-          .toList();
-
-      final futures = pendingEventReports.map((report) async {
-        EventModel? event;
-        try {
-          event = await _eventService.getEventById(report.targetEventId!);
-        } catch (_) {
-          event = null;
-        }
-        return _EventModerationItem(report: report, event: event);
-      }).toList();
-
-      final resolved = await Future.wait(futures);
+          .toList()
+        ..sort((a, b) {
+          final byPending = b.pendingReports.compareTo(a.pendingReports);
+          if (byPending != 0) return byPending;
+          return b.event.dateTime.compareTo(a.event.dateTime);
+        });
 
       if (!mounted) return;
       setState(() {
@@ -86,52 +100,34 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
     return fallback;
   }
 
-  Future<void> _resolveReport(ReportModel report, String resolution) async {
-    if (_actionInProgress.contains(report.id)) return;
-    setState(() {
-      _actionInProgress.add(report.id);
-    });
-
-    try {
-      await _reportService.resolveReport(report.id, resolution);
-      await _loadModerationQueue();
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Жалоба обработана: $resolution')));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Ошибка обработки: $e')));
-    } finally {
-      if (mounted) {
-        setState(() {
-          _actionInProgress.remove(report.id);
-        });
-      }
-    }
-  }
-
   Future<void> _rejectEvent(_EventModerationItem item) async {
-    final report = item.report;
-    final event = item.event;
+    final eventId = item.event.id;
+    final pendingReports = item.reports
+        .where((r) => r.status.toUpperCase() == 'PENDING')
+        .toList();
 
-    if (_actionInProgress.contains(report.id)) return;
+    if (_actionInProgress.contains(eventId)) return;
     setState(() {
-      _actionInProgress.add(report.id);
+      _actionInProgress.add(eventId);
     });
 
     try {
-      if (event != null) {
-        // С backend текущей версии это сработает только если у модератора есть право удаления.
-        await _eventService.deleteEvent(event.id);
+      await _eventService.deleteEvent(eventId);
+
+      for (final report in pendingReports) {
+        await _reportService.resolveReport(report.id, 'RESOLVED');
       }
-      await _reportService.resolveReport(report.id, 'RESOLVED');
+
       await _loadModerationQueue();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Событие отклонено, жалоба закрыта')),
+        SnackBar(
+          content: Text(
+            pendingReports.isEmpty
+                ? 'Событие удалено'
+                : 'Событие удалено, жалоб закрыто: ${pendingReports.length}',
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -141,7 +137,50 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _actionInProgress.remove(report.id);
+          _actionInProgress.remove(eventId);
+        });
+      }
+    }
+  }
+
+  Future<void> _dismissPendingReports(_EventModerationItem item) async {
+    final eventId = item.event.id;
+    final pendingReports = item.reports
+        .where((r) => r.status.toUpperCase() == 'PENDING')
+        .toList();
+
+    if (pendingReports.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('У события нет активных жалоб')),
+      );
+      return;
+    }
+
+    if (_actionInProgress.contains(eventId)) return;
+
+    setState(() {
+      _actionInProgress.add(eventId);
+    });
+
+    try {
+      for (final report in pendingReports) {
+        await _reportService.resolveReport(report.id, 'DISMISSED');
+      }
+
+      await _loadModerationQueue();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Отклонено жалоб: ${pendingReports.length}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка обработки жалоб: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _actionInProgress.remove(eventId);
         });
       }
     }
@@ -198,7 +237,7 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
           : _items.isEmpty
           ? const Center(
               child: Text(
-                'Нет активных жалоб на события',
+                'События не найдены',
                 style: TextStyle(color: Color(0xFF7B82AD), fontSize: 16),
               ),
             )
@@ -210,9 +249,9 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final item = _items[index];
-                  final report = item.report;
                   final event = item.event;
-                  final inProgress = _actionInProgress.contains(report.id);
+                  final inProgress = _actionInProgress.contains(event.id);
+                  final lastReport = item.reports.isEmpty ? null : item.reports.first;
 
                   return Container(
                     padding: const EdgeInsets.all(14),
@@ -240,7 +279,7 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                event?.title ?? 'Событие недоступно',
+                                event.title,
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
@@ -248,35 +287,64 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                                 ),
                               ),
                             ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: item.pendingReports > 0
+                                    ? const Color(0xFFFFEFE8)
+                                    : const Color(0xFFEAF8F2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                'Жалоб: ${item.pendingReports}',
+                                style: TextStyle(
+                                  color: item.pendingReports > 0
+                                      ? const Color(0xFFD16A3A)
+                                      : const Color(0xFF2E9E71),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          'Причина: ${report.reason.displayName}',
-                          style: const TextStyle(
-                            color: Color(0xFF6B74A6),
-                            fontWeight: FontWeight.w600,
+                        if (lastReport != null)
+                          Text(
+                            'Последняя жалоба: ${lastReport.reason.displayName}',
+                            style: const TextStyle(
+                              color: Color(0xFF6B74A6),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          )
+                        else
+                          const Text(
+                            'Жалоб на событие нет',
+                            style: TextStyle(
+                              color: Color(0xFF6B74A6),
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                        if (report.details?.isNotEmpty == true) ...[
+                        if (lastReport?.details?.isNotEmpty == true) ...[
                           const SizedBox(height: 6),
                           Text(
-                            report.details!,
+                            lastReport!.details!,
                             style: const TextStyle(
                               color: Color(0xFF7E86AE),
                               height: 1.35,
                             ),
                           ),
                         ],
-                        if (event != null) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Локация: ${event.location}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Color(0xFF8A92BA)),
-                          ),
-                        ],
+                        const SizedBox(height: 8),
+                        Text(
+                          'Локация: ${event.location}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Color(0xFF8A92BA)),
+                        ),
                         const SizedBox(height: 12),
                         Row(
                           children: [
@@ -284,8 +352,8 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                               child: OutlinedButton(
                                 onPressed: inProgress
                                     ? null
-                                    : () => _resolveReport(report, 'DISMISSED'),
-                                child: const Text('Отклонить жалобу'),
+                                    : () => _dismissPendingReports(item),
+                                child: const Text('Отклонить жалобы'),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -298,11 +366,7 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                                   backgroundColor: const Color(0xFFFF6B6B),
                                   foregroundColor: Colors.white,
                                 ),
-                                child: Text(
-                                  event == null
-                                      ? 'Закрыть жалобу'
-                                      : 'Отклонить событие',
-                                ),
+                                child: const Text('Удалить событие'),
                               ),
                             ),
                           ],
@@ -318,8 +382,11 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
 }
 
 class _EventModerationItem {
-  const _EventModerationItem({required this.report, required this.event});
+  const _EventModerationItem({required this.event, required this.reports});
 
-  final ReportModel report;
-  final EventModel? event;
+  final EventModel event;
+  final List<ReportModel> reports;
+
+  int get pendingReports =>
+      reports.where((r) => r.status.toUpperCase() == 'PENDING').length;
 }

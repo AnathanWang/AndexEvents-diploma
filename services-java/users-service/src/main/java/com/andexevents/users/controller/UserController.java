@@ -3,7 +3,9 @@ package com.andexevents.users.controller;
 import com.andexevents.users.api.ApiResponse;
 import com.andexevents.users.auth.AuthContext;
 import com.andexevents.users.auth.AuthFilter;
+import com.andexevents.users.model.AdminAuditLogDto;
 import com.andexevents.users.model.UserDto;
+import com.andexevents.users.service.AdminAuditLogService;
 import com.andexevents.users.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
@@ -16,10 +18,95 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
-    private final UserService userService;
+    private static final String UNAUTHORIZED_MESSAGE = "Unauthorized: User ID not found";
 
-    public UserController(UserService userService) {
+    private final UserService userService;
+    private final AdminAuditLogService adminAuditLogService;
+
+    public UserController(UserService userService, AdminAuditLogService adminAuditLogService) {
         this.userService = userService;
+        this.adminAuditLogService = adminAuditLogService;
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<UserDto>>> listUsersForModeration(HttpServletRequest request) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(UNAUTHORIZED_MESSAGE));
+        }
+
+        UserDto requester = userService.getById(auth.userId()).orElse(null);
+        if (requester == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: requester profile not found"));
+        }
+
+        if (!userService.isAdmin(requester)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: admin access required"));
+        }
+
+        List<UserDto> users = userService.getAllUsersForModeration();
+        return ResponseEntity.ok(ApiResponse.ok(users));
+    }
+
+    @GetMapping("/admin/audit-logs")
+    public ResponseEntity<ApiResponse<List<AdminAuditLogDto>>> getAdminAuditLogs(
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "100") int limit
+    ) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(UNAUTHORIZED_MESSAGE));
+        }
+
+        UserDto requester = userService.getById(auth.userId()).orElse(null);
+        if (requester == null || !userService.isAdmin(requester)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: admin access required"));
+        }
+
+        List<AdminAuditLogDto> logs = adminAuditLogService.getRecent(limit);
+        return ResponseEntity.ok(ApiResponse.ok(logs));
+    }
+
+    @PutMapping("/{id}/role")
+    public ResponseEntity<ApiResponse<UserDto>> updateUserRole(
+            HttpServletRequest request,
+            @PathVariable String id,
+            @RequestBody UpdateRoleRequest body
+    ) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(UNAUTHORIZED_MESSAGE));
+        }
+
+        UserDto requester = userService.getById(auth.userId()).orElse(null);
+        if (requester == null || !userService.isAdmin(requester)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: admin access required"));
+        }
+
+        if (id.equals(requester.id())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Admin cannot change own role"));
+        }
+
+        try {
+            String oldRole = requesterRole(userService.getById(id).orElse(null));
+            UserDto updated = userService.updateUserRole(id, body.role());
+            adminAuditLogService.logRoleChange(requester.id(), updated.id(), oldRole, requesterRole(updated));
+            return ResponseEntity.ok(ApiResponse.ok(updated));
+        } catch (UserService.BadRequestException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (UserService.NotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     @PostMapping
@@ -212,5 +299,12 @@ public class UserController {
     }
 
     public record BlockRequest(String targetUserId) {
+    }
+
+    public record UpdateRoleRequest(String role) {
+    }
+
+    private String requesterRole(UserDto user) {
+        return user == null || user.role() == null ? "UNKNOWN" : user.role();
     }
 }

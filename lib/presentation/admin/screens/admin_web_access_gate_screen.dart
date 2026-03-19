@@ -213,6 +213,7 @@ class _AdminWebAccessGateScreenState extends State<AdminWebAccessGateScreen> {
         showBackButton: false,
         onLogout: _logout,
         headerSubtitle: subtitle,
+        userRole: _currentUser!.role ?? 'UNKNOWN',
       );
     }
 
