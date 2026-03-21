@@ -11,6 +11,10 @@ import java.util.Locale;
 
 @Service
 public class UserSanctionService {
+    private static final String SANCTION_FULL_BAN = "FULL_BAN";
+    private static final String SANCTION_MUTE = "MUTE";
+    private static final String SANCTION_EVENT_CREATE_BAN = "EVENT_CREATE_BAN";
+
     private final UserSanctionRepository userSanctionRepository;
     private final UserRepository userRepository;
 
@@ -105,16 +109,23 @@ public class UserSanctionService {
     }
 
     public void assertCanSubmitReport(String userId) {
-        boolean blocked = userSanctionRepository.hasActiveSanction(userId, "FULL_BAN", "MUTE");
+        boolean blocked = userSanctionRepository.hasActiveSanction(userId, SANCTION_FULL_BAN, SANCTION_MUTE);
         if (blocked) {
             throw new ForbiddenException("Your account is restricted from submitting reports");
         }
     }
 
     public void assertCanCreateEvent(String userId) {
-        boolean blocked = userSanctionRepository.hasActiveSanction(userId, "FULL_BAN", "EVENT_CREATE_BAN");
+        boolean blocked = userSanctionRepository.hasActiveSanction(userId, SANCTION_FULL_BAN, SANCTION_EVENT_CREATE_BAN);
         if (blocked) {
             throw new ForbiddenException("Your account is restricted from creating events");
+        }
+    }
+
+    public void assertCanMutateOwnProfile(String userId) {
+        boolean blocked = userSanctionRepository.hasActiveSanction(userId, SANCTION_FULL_BAN);
+        if (blocked) {
+            throw new ForbiddenException("Your account is restricted from profile and social actions");
         }
     }
 

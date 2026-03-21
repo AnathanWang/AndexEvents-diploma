@@ -55,6 +55,14 @@ app:
         pattern: /api/users/me/location
       - method: GET
         pattern: /api/users/matches
+      - method: POST
+        pattern: /api/users/me/photos
+      - method: DELETE
+        pattern: /api/users/me/photos
+      - method: POST
+        pattern: /api/users/me/blocks
+      - method: DELETE
+        pattern: /api/users/me/blocks
       - method: GET
         pattern: /api/users/reports
       - method: GET

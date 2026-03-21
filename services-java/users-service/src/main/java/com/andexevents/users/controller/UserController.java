@@ -284,6 +284,12 @@ public class UserController {
                     .body(ApiResponse.error("Unauthorized: User ID not found"));
         }
 
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
+        }
+
         UserService.UpdateProfileRequest update = new UserService.UpdateProfileRequest(
                 body.displayName(),
                 body.photoUrl(),
@@ -309,6 +315,12 @@ public class UserController {
                     .body(new ApiResponse<>(false, null, "Unauthorized: User ID not found"));
         }
 
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
+        }
+
         UserDto updated = userService.updateProfile(auth.userId(), body);
         return ResponseEntity.ok(ApiResponse.ok(updated));
     }
@@ -319,6 +331,12 @@ public class UserController {
         if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Unauthorized: User ID not found"));
+        }
+
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
         }
 
         if (body.latitude() < -90 || body.latitude() > 90 || body.longitude() < -180 || body.longitude() > 180) {
@@ -363,6 +381,12 @@ public class UserController {
                     .body(new ApiResponse<>(false, null, "Unauthorized: User ID not found"));
         }
 
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
+        }
+
         UserDto updated = userService.addPhoto(auth.userId(), body.photoUrl());
         return ResponseEntity.ok(ApiResponse.ok(updated));
     }
@@ -373,6 +397,12 @@ public class UserController {
         if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ApiResponse<>(false, null, "Unauthorized: User ID not found"));
+        }
+
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
         }
 
         UserDto updated = userService.removePhoto(auth.userId(), body.photoUrl());
@@ -387,6 +417,12 @@ public class UserController {
                     .body(ApiResponse.error("Unauthorized: User ID not found"));
         }
 
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
+        }
+
         userService.blockUser(auth.userId(), body.targetUserId());
         return ResponseEntity.ok(ApiResponse.okMessage("User blocked"));
     }
@@ -397,6 +433,12 @@ public class UserController {
         if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Unauthorized: User ID not found"));
+        }
+
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
         }
 
         userService.unblockUser(auth.userId(), body.targetUserId());
@@ -456,5 +498,14 @@ public class UserController {
         }
 
         return requester;
+    }
+
+    private String validateSelfMutationAccess(String userId) {
+        try {
+            userSanctionService.assertCanMutateOwnProfile(userId);
+            return null;
+        } catch (UserSanctionService.ForbiddenException e) {
+            return e.getMessage();
+        }
     }
 }
