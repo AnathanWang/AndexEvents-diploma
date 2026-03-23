@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/auth/id_token_provider.dart';
 import '../../core/config/app_config.dart';
@@ -12,6 +13,8 @@ import '../../core/services/logger_service.dart';
 
 /// Сервис для работы с Firebase Authentication
 class AuthService {
+  static const String _onboardingStatusKeyPrefix = 'onboarding_completed_';
+
   final FirebaseAuth _auth;
   final GoogleSignIn _googleSignIn;
   final IdTokenProvider _idTokenProvider;
@@ -85,10 +88,14 @@ class AuthService {
 
       final user = credential.user;
       if (user != null) {
-        await _createUserInBackend(
-          displayName: user.displayName ?? _displayNameFromEmail(user.email),
-          photoUrl: user.photoURL,
-        );
+        try {
+          await _createUserInBackend(
+            displayName: user.displayName ?? _displayNameFromEmail(user.email),
+            photoUrl: user.photoURL,
+          );
+        } catch (e) {
+          LoggerService.warning('[AuthService] createUserInBackend failed on signIn, continue login flow', e);
+        }
       }
 
       return credential;
@@ -125,18 +132,23 @@ class AuthService {
         throw Exception('Ошибка Google Sign-In: пользователь не найден');
       }
 
-      await _createUserInBackend(
-        displayName: user.displayName ?? googleUser.displayName ?? 'User',
-        photoUrl: user.photoURL ?? googleUser.photoUrl,
-      );
+      try {
+        await _createUserInBackend(
+          displayName: user.displayName ?? googleUser.displayName ?? 'User',
+          photoUrl: user.photoURL ?? googleUser.photoUrl,
+        );
+      } catch (e) {
+        LoggerService.warning('[Google Sign-In] createUserInBackend failed, continue login flow', e);
+      }
 
       bool isOnboardingCompleted = false;
       try {
         final profileData = await getCurrentUserProfile();
         isOnboardingCompleted = profileData['isOnboardingCompleted'] as bool? ?? false;
+        await cacheOnboardingStatus(isOnboardingCompleted);
       } catch (e) {
         LoggerService.warning('[Google Sign-In] Не удалось получить статус онбординга', e);
-        isOnboardingCompleted = false;
+        isOnboardingCompleted = await getCachedOnboardingStatus() ?? true;
       }
 
       return {
@@ -257,7 +269,35 @@ class AuthService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         LoggerService.info('[AuthService] Профиль успешно загружен');
-        return data['data'] as Map<String, dynamic>;
+        final profile = data['data'] as Map<String, dynamic>;
+        final isOnboardingCompleted = profile['isOnboardingCompleted'] as bool? ?? false;
+        await cacheOnboardingStatus(isOnboardingCompleted);
+        return profile;
+      }
+
+      if (response.statusCode == 404 && _auth.currentUser != null) {
+        LoggerService.warning('[AuthService] /users/me returned 404, trying to create user and retry profile fetch');
+        final user = _auth.currentUser!;
+        await _createUserInBackend(
+          displayName: user.displayName ?? _displayNameFromEmail(user.email),
+          photoUrl: user.photoURL,
+        );
+
+        final retryResponse = await http.get(
+          Uri.parse(url),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ).timeout(AppConfig.receiveTimeout);
+
+        if (retryResponse.statusCode == 200) {
+          final retryData = json.decode(retryResponse.body);
+          final retryProfile = retryData['data'] as Map<String, dynamic>;
+          final isOnboardingCompleted = retryProfile['isOnboardingCompleted'] as bool? ?? false;
+          await cacheOnboardingStatus(isOnboardingCompleted);
+          return retryProfile;
+        }
       }
 
       throw Exception('Не удалось загрузить профиль пользователя (${response.statusCode}): ${response.body}');
@@ -276,6 +316,20 @@ class AuthService {
       LoggerService.error('[AuthService] Ошибка загрузки профиля', e);
       rethrow;
     }
+  }
+
+  Future<void> cacheOnboardingStatus(bool isCompleted) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('$_onboardingStatusKeyPrefix$uid', isCompleted);
+  }
+
+  Future<bool?> getCachedOnboardingStatus() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return null;
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('$_onboardingStatusKeyPrefix$uid');
   }
 
   Future<void> _createUserInBackend({

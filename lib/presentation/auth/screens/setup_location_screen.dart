@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/services/logger_service.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../data/services/user_service.dart';
 import '../../home/home_shell.dart';
 
@@ -111,6 +112,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
       await _userService.updateProfile(
         isOnboardingCompleted: true,
       );
+      await AuthService().cacheOnboardingStatus(true);
 
       if (mounted) {
         setState(() => _isLoading = false);
@@ -139,6 +141,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
       await _userService.updateProfile(
         isOnboardingCompleted: true,
       );
+      await AuthService().cacheOnboardingStatus(true);
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(

@@ -199,7 +199,7 @@ func (h *MatchHandler) sendAction(c *gin.Context, action model.MatchAction) {
 		return
 	}
 
-	result, err := h.matchService.CreateOrUpdateMatch(c.Request.Context(), userID.(string), req.TargetUserID, action)
+	result, err := h.matchService.CreateOrUpdateMatch(c.Request.Context(), userID.(string), req.TargetUserID, req.EventID, action)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Success: false,

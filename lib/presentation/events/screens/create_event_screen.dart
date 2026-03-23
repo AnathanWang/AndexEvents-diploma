@@ -28,6 +28,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
+  bool _hasEndDateTime = false;
+  DateTime _selectedEndDate = DateTime.now();
+  TimeOfDay _selectedEndTime = TimeOfDay.now();
   String _selectedCategory = 'Спорт';
   bool _isOnline = false;
   bool _isPhotoUploading = false;
@@ -110,6 +113,58 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     }
   }
 
+  Future<void> _selectEndDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedEndDate,
+      firstDate: _selectedDate,
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (BuildContext context, Widget? child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF5E60CE),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != _selectedEndDate) {
+      setState(() {
+        _selectedEndDate = picked;
+      });
+    }
+  }
+
+  Future<void> _selectEndTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedEndTime,
+      builder: (BuildContext context, Widget? child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF5E60CE),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != _selectedEndTime) {
+      setState(() {
+        _selectedEndTime = picked;
+      });
+    }
+  }
+
   Future<void> _pickImage() async {
     try {
       final ImagePicker picker = ImagePicker();
@@ -180,6 +235,25 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         _selectedTime.hour,
         _selectedTime.minute,
       );
+
+      DateTime? endDateTime;
+      if (_hasEndDateTime) {
+        endDateTime = DateTime(
+          _selectedEndDate.year,
+          _selectedEndDate.month,
+          _selectedEndDate.day,
+          _selectedEndTime.hour,
+          _selectedEndTime.minute,
+        );
+        if (!endDateTime.isAfter(dateTime)) {
+          CustomNotification.show(
+            context,
+            'Дата окончания должна быть позже начала события',
+            isError: true,
+          );
+          return;
+        }
+      }
       
       final price = double.tryParse(_priceController.text) ?? 0.0;
       
@@ -197,6 +271,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           latitude: lat,
           longitude: lng,
           dateTime: dateTime,
+          endDateTime: endDateTime,
           price: price,
           imageUrl: _uploadedPhotoUrl,
           isOnline: _isOnline,
@@ -450,6 +525,86 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFE0E0E0)),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: CheckboxListTile(
+                title: const Text('Указать дату окончания'),
+                subtitle: const Text('Добавьте дату и время завершения события'),
+                value: _hasEndDateTime,
+                activeColor: const Color(0xFF5E60CE),
+                controlAffinity: ListTileControlAffinity.leading,
+                onChanged: (bool? value) {
+                  if (value == null) return;
+                  setState(() {
+                    _hasEndDateTime = value;
+                    if (_hasEndDateTime) {
+                      _selectedEndDate = _selectedDate;
+                      _selectedEndTime = _selectedTime;
+                    }
+                  });
+                },
+              ),
+            ),
+
+            if (_hasEndDateTime) ...<Widget>[
+              const SizedBox(height: 12),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: InkWell(
+                      onTap: _selectEndDate,
+                      borderRadius: BorderRadius.circular(16),
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Дата окончания',
+                          prefixIcon: const Icon(Icons.event_available),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                        ),
+                        child: Text(
+                          DateFormat('dd.MM.yyyy').format(_selectedEndDate),
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: _selectEndTime,
+                      borderRadius: BorderRadius.circular(16),
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Время окончания',
+                          prefixIcon: const Icon(Icons.more_time),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                        ),
+                        child: Text(
+                          _selectedEndTime.format(context),
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 16),
             
             // Переключатель онлайн/офлайн

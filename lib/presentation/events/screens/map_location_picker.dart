@@ -74,7 +74,9 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
       
       final userPoint = Point(
@@ -287,6 +289,14 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
             bottom: 100,
             child: Column(
               children: [
+                FloatingActionButton(
+                  mini: true,
+                  heroTag: 'locate_me',
+                  onPressed: _getUserLocation,
+                  tooltip: 'Моё местоположение',
+                  child: const Icon(Icons.my_location),
+                ),
+                const SizedBox(height: 8),
                 FloatingActionButton(
                   mini: true,
                   heroTag: 'zoom_in',

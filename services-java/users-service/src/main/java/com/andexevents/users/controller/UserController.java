@@ -51,7 +51,7 @@ public class UserController {
                     .body(ApiResponse.error("Forbidden: requester profile not found"));
         }
 
-        if (!userService.isAdmin(requester)) {
+        if (!userService.canModerate(requester)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error("Forbidden: admin access required"));
         }
@@ -72,7 +72,7 @@ public class UserController {
         }
 
         UserDto requester = userService.getById(auth.userId()).orElse(null);
-        if (requester == null || !userService.isAdmin(requester)) {
+        if (requester == null || !userService.canModerate(requester)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error("Forbidden: admin access required"));
         }
@@ -196,7 +196,7 @@ public class UserController {
         }
 
         UserDto requester = userService.getById(auth.userId()).orElse(null);
-        if (requester == null || !userService.isAdmin(requester)) {
+        if (requester == null || !userService.canModerate(requester)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error("Forbidden: admin access required"));
         }
@@ -493,7 +493,7 @@ public class UserController {
         }
 
         UserDto requester = userService.getById(auth.userId()).orElse(null);
-        if (requester == null || !userService.isAdmin(requester)) {
+        if (requester == null || !userService.canModerate(requester)) {
             return null;
         }
 

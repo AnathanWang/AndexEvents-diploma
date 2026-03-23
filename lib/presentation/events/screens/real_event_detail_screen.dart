@@ -9,6 +9,7 @@ import '../bloc/event_event.dart';
 import '../bloc/event_state.dart';
 import '../../../data/models/event_model.dart';
 import '../widgets/event_participants_dialog.dart';
+import '../../matches/screens/event_match_screen.dart';
 
 class RealEventDetailScreen extends StatefulWidget {
   final String eventId;
@@ -33,15 +34,16 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
     });
   }
 
-  void _toggleFavorite() {
-    setState(() {
-      _isFavorite = !_isFavorite;
-    });
-    CustomNotification.show(
-      context,
-      _isFavorite ? 'Добавлено в избранное' : 'Удалено из избранного',
-      duration: const Duration(seconds: 1),
-    );
+  void _toggleFavorite(EventModel event) {
+    if (!_isFavorite) {
+      context.read<EventBloc>().add(
+        EventParticipateRequested(eventId: event.id, status: 'INTERESTED'),
+      );
+    } else {
+      context.read<EventBloc>().add(
+        EventCancelParticipationRequested(event.id),
+      );
+    }
   }
 
   void _toggleGoing(EventModel event) {
@@ -70,7 +72,8 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
       listener: (context, state) {
         if (state is EventDetailLoaded) {
           setState(() {
-            _isGoing = state.event.isParticipating;
+            _isGoing = state.event.userParticipationStatus == 'GOING';
+            _isFavorite = state.event.userParticipationStatus == 'INTERESTED';
             _isParticipationLoading = false;
           });
         } else if (state is EventParticipationUpdating) {
@@ -181,7 +184,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                     _isFavorite ? Icons.favorite : Icons.favorite_outline,
                     color: _isFavorite ? Colors.red : const Color(0xFF4A4D6A),
                   ),
-                  onPressed: _toggleFavorite,
+                  onPressed: () => _toggleFavorite(event),
                 ),
               ),
               Container(
@@ -332,13 +335,21 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Дата и время
+                // Дата и время (с учетом даты окончания)
                 _buildInfoRow(
                   Icons.calendar_today,
-                  _formatDate(event.dateTime),
+                  event.endDateTime != null &&
+                          !_isSameCalendarDate(event.dateTime, event.endDateTime!)
+                      ? '${_formatDate(event.dateTime)} - ${_formatDate(event.endDateTime!)}'
+                      : _formatDate(event.dateTime),
                 ),
                 const SizedBox(height: 12),
-                _buildInfoRow(Icons.access_time, _formatTime(event.dateTime)),
+                _buildInfoRow(
+                  Icons.access_time,
+                  event.endDateTime != null
+                      ? '${_formatTime(event.dateTime)} - ${_formatTime(event.endDateTime!)}'
+                      : _formatTime(event.dateTime),
+                ),
                 const SizedBox(height: 12),
                 _buildInfoRow(Icons.location_on, event.location, onTap: () {}),
                 const SizedBox(height: 24),
@@ -471,33 +482,41 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                             ),
                           ),
                           const Spacer(),
-                          // Matches Button
-                          Container(
-                            decoration: BoxDecoration(
-                              color: categoryColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {},
+                          // Matches Button (видима только если статус = GOING)
+                          if (_isGoing)
+                            Container(
+                              decoration: BoxDecoration(
+                                color: categoryColor.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(20),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  child: Text(
-                                    'Метчи',
-                                    style: TextStyle(
-                                      color: categoryColor,
-                                      fontWeight: FontWeight.w600,
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => EventMatchScreen(eventId: event.id),
+                                      ),
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    child: Text(
+                                      'Метчи',
+                                      style: TextStyle(
+                                        color: categoryColor,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     ],
@@ -784,11 +803,15 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   }
 
   String _formatDate(DateTime date) {
-    return DateFormat('dd MMMM yyyy, EEEE', 'ru').format(date);
+    return DateFormat('dd.MM.yyyy', 'ru').format(date);
   }
 
   String _formatTime(DateTime date) {
     return DateFormat('HH:mm', 'ru').format(date);
+  }
+
+  bool _isSameCalendarDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   void _showParticipantsDialog(BuildContext context, EventModel event) {

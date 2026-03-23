@@ -85,7 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     });
 
     try {
-      late final List<UserModel> users;
+      List<UserModel> users;
       switch (filter) {
         case _ProfileMatchFilter.mutual:
           users = await _userService.getMutualMatches();
@@ -105,6 +105,31 @@ class _ProfileScreenState extends State<ProfileScreen>
             action: 'SUPER_LIKE',
           );
           break;
+      }
+
+      // Один и тот же человек не должен одновременно быть во "Взаимных"
+      // и в других вкладках (например, "Отложил").
+      if (filter != _ProfileMatchFilter.mutual) {
+        List<MatchPreview> mutualPreviews =
+            _matchesByFilter[_ProfileMatchFilter.mutual] ?? <MatchPreview>[];
+
+        if (mutualPreviews.isEmpty) {
+          final mutualUsers = await _userService.getMutualMatches();
+          mutualPreviews = mutualUsers
+              .map(
+                (u) => MatchPreview.fromUserModel(
+                  u,
+                  currentUserInterests: currentUser.interests,
+                ),
+              )
+              .toList();
+          if (mounted) {
+            _matchesByFilter[_ProfileMatchFilter.mutual] = mutualPreviews;
+          }
+        }
+
+        final mutualIds = mutualPreviews.map((m) => m.id).toSet();
+        users = users.where((u) => !mutualIds.contains(u.id)).toList();
       }
 
       final previews = users
@@ -1107,11 +1132,14 @@ class _ProfileScreenState extends State<ProfileScreen>
             context.read<ProfileBloc>().add(const ProfileLoadRequested());
           }
         } else {
-           await Navigator.push(
+          await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => RealEventDetailScreen(
-                eventId: id,
+              builder: (_) => BlocProvider(
+                create: (context) => EventBloc(),
+                child: RealEventDetailScreen(
+                  eventId: id,
+                ),
               ),
             ),
           );

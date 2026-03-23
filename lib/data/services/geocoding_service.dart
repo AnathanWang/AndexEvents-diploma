@@ -20,19 +20,24 @@ class GeocodingService {
   final String _baseUrl = 'https://geocode-maps.yandex.ru/1.x/';
 
   /// Checks if the Yandex API key is configured
-  bool get _hasApiKey => MapConfig.yandexApiKey.isNotEmpty;
+  bool get _hasApiKey => MapConfig.yandexApiKey.isNotEmpty || MapConfig.yandexMapKitApiKey.isNotEmpty;
+
+  /// Gets the best available API key
+  String get _apiKey => MapConfig.yandexApiKey.isNotEmpty 
+      ? MapConfig.yandexApiKey 
+      : MapConfig.yandexMapKitApiKey;
 
   /// Получить адрес по координатам (reverse geocoding)
   Future<String?> getAddressFromCoordinates(double latitude, double longitude) async {
     if (!_hasApiKey) {
-      LoggerService.warning('[GeocodingService] Yandex API key not configured (YANDEX_API_KEY)');
+      LoggerService.warning('[GeocodingService] Yandex API key not configured (YANDEX_API_KEY or YANDEX_MAPKIT_API_KEY)');
       return null;
     }
     try {
       final response = await _dio.get(
         _baseUrl,
         queryParameters: {
-          'apikey': MapConfig.yandexApiKey,
+          'apikey': _apiKey,
           'geocode': '$longitude,$latitude', // Yandex ожидает "lon,lat"
           'format': 'json',
           'lang': 'ru_RU',
@@ -67,7 +72,7 @@ class GeocodingService {
   Future<List<GeocodingResult>> searchAddresses(String query) async {
     if (query.isEmpty) return [];
     if (!_hasApiKey) {
-      LoggerService.warning('[GeocodingService] Yandex API key not configured (YANDEX_API_KEY)');
+      LoggerService.warning('[GeocodingService] Yandex API key not configured (YANDEX_API_KEY or YANDEX_MAPKIT_API_KEY)');
       return [];
     }
 
@@ -75,7 +80,7 @@ class GeocodingService {
       final response = await _dio.get(
         _baseUrl,
         queryParameters: {
-          'apikey': MapConfig.yandexApiKey,
+          'apikey': _apiKey,
           'geocode': query,
           'format': 'json',
           'lang': 'ru_RU',

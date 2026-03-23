@@ -19,8 +19,8 @@ type MockMatchService struct {
 	mock.Mock
 }
 
-func (m *MockMatchService) CreateOrUpdateMatch(ctx context.Context, userID, targetUserID string, action model.MatchAction) (*model.Match, error) {
-	args := m.Called(ctx, userID, targetUserID, action)
+func (m *MockMatchService) CreateOrUpdateMatch(ctx context.Context, userID, targetUserID, eventID string, action model.MatchAction) (*model.Match, error) {
+	args := m.Called(ctx, userID, targetUserID, eventID, action)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -93,7 +93,7 @@ func TestSendLike_Success(t *testing.T) {
 	router := setupRouter(mockSvc)
 
 	match := &model.Match{ID: "m1", UserAID: "user-123", UserBID: "user-456", IsMutual: false}
-	mockSvc.On("CreateOrUpdateMatch", mock.Anything, "user-123", "user-456", model.MatchActionLike).Return(match, nil)
+	mockSvc.On("CreateOrUpdateMatch", mock.Anything, "user-123", "user-456", "", model.MatchActionLike).Return(match, nil)
 
 	body, _ := json.Marshal(model.LikeRequest{TargetUserID: "user-456"})
 	w := httptest.NewRecorder()

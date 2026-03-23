@@ -182,6 +182,10 @@ class UserService {
     List<String>? interests,
     Map<String, String>? socialLinks,
     bool? isOnboardingCompleted,
+    bool? showVisitedEvents,
+    bool? showInMatches,
+    bool? incognitoMode,
+    bool? hideOnlineStatus,
   }) async {
     try {
       final String? token = await _getIdToken();
@@ -204,6 +208,10 @@ class UserService {
       if (isOnboardingCompleted != null) {
         body['isOnboardingCompleted'] = isOnboardingCompleted;
       }
+      if (showVisitedEvents != null) body['showVisitedEvents'] = showVisitedEvents;
+      if (showInMatches != null) body['showInMatches'] = showInMatches;
+      if (incognitoMode != null) body['incognitoMode'] = incognitoMode;
+      if (hideOnlineStatus != null) body['hideOnlineStatus'] = hideOnlineStatus;
 
       final url = '${AppConfig.baseUrl}/users/me';
       LoggerService.debug('[UserService] PUT $url');
@@ -664,11 +672,16 @@ class UserService {
   }
 
   /// Отправить лайк на сервер
-  Future<void> sendLike(String targetUserId) async {
+  Future<void> sendLike(String targetUserId, {String? eventId}) async {
     try {
       final token = await _getIdToken();
       if (token == null) {
         throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final body = <String, dynamic>{'targetUserId': targetUserId};
+      if (eventId != null) {
+        body['eventId'] = eventId;
       }
 
       final response = await http
@@ -678,7 +691,7 @@ class UserService {
               'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
             },
-            body: json.encode({'targetUserId': targetUserId}),
+            body: json.encode(body),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -701,11 +714,16 @@ class UserService {
   }
 
   /// Отправить дизлайк на сервер
-  Future<void> sendDislike(String targetUserId) async {
+  Future<void> sendDislike(String targetUserId, {String? eventId}) async {
     try {
       final token = await _getIdToken();
       if (token == null) {
         throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final body = <String, dynamic>{'targetUserId': targetUserId};
+      if (eventId != null) {
+        body['eventId'] = eventId;
       }
 
       final response = await http
@@ -715,7 +733,7 @@ class UserService {
               'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
             },
-            body: json.encode({'targetUserId': targetUserId}),
+            body: json.encode(body),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -738,11 +756,16 @@ class UserService {
   }
 
   /// Отправить супер-лайк на сервер
-  Future<void> sendSuperLike(String targetUserId) async {
+  Future<void> sendSuperLike(String targetUserId, {String? eventId}) async {
     try {
       final token = await _getIdToken();
       if (token == null) {
         throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final body = <String, dynamic>{'targetUserId': targetUserId};
+      if (eventId != null) {
+        body['eventId'] = eventId;
       }
 
       final response = await http
@@ -752,7 +775,7 @@ class UserService {
               'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
             },
-            body: json.encode({'targetUserId': targetUserId}),
+            body: json.encode(body),
           )
           .timeout(const Duration(seconds: 10));
 

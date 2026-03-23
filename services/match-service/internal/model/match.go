@@ -27,6 +27,7 @@ type Match struct {
 	ID          string       `json:"id"`
 	UserAID     string       `json:"userAId"`
 	UserBID     string       `json:"userBId"`
+	EventID     string       `json:"eventId,omitempty"`
 	UserAAction *MatchAction `json:"userAAction,omitempty"`
 	UserBAction *MatchAction `json:"userBAction,omitempty"`
 	IsMutual    bool         `json:"isMutual"`
@@ -37,6 +38,7 @@ type Match struct {
 
 type LikeRequest struct {
 	TargetUserID string `json:"targetUserId" binding:"required"`
+	EventID      string `json:"eventId,omitempty"`
 }
 
 type UsersResponse struct {

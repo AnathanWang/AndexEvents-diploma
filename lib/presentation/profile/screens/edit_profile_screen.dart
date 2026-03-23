@@ -38,9 +38,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   UserModel? _currentUser;
   bool _isLoading = false;
   bool _isInitialLoad = true;
-  bool _showInSearch = true;
   bool _showVisitedEvents = true;
-  bool _matchNotifications = true;
+  bool _showInMatches = true;
+  bool _incognitoMode = false;
+  bool _hideOnlineStatus = false;
 
   final List<String> _allInterests = <String>[
     'Спорт',
@@ -83,6 +84,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ) ??
           {};
       _existingPhotos = List.from(user.photos);
+      _showVisitedEvents = user.showVisitedEvents;
+      _showInMatches = user.showInMatches;
+      _incognitoMode = user.incognitoMode;
+      _hideOnlineStatus = user.hideOnlineStatus;
     }
   }
 
@@ -510,6 +515,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             photos: uploadedPhotoUrls,
             interests: _selectedInterests,
             socialLinks: _socialLinks.isNotEmpty ? _socialLinks : null,
+            showVisitedEvents: _showVisitedEvents,
+            showInMatches: _showInMatches,
+            incognitoMode: _incognitoMode,
+            hideOnlineStatus: _hideOnlineStatus,
           ),
         );
       } catch (e) {
@@ -627,9 +636,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final result = await Navigator.of(context).push<Map<String, bool>>(
       MaterialPageRoute<Map<String, bool>>(
         builder: (context) => PrivacySettingsScreen(
-          showInSearch: _showInSearch,
           showVisitedEvents: _showVisitedEvents,
-          matchNotifications: _matchNotifications,
+          showInMatches: _showInMatches,
+          incognitoMode: _incognitoMode,
+          hideOnlineStatus: _hideOnlineStatus,
         ),
       ),
     );
@@ -637,11 +647,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (result == null || !mounted) return;
 
     setState(() {
-      _showInSearch = result['showInSearch'] ?? _showInSearch;
       _showVisitedEvents =
           result['showVisitedEvents'] ?? _showVisitedEvents;
-      _matchNotifications =
-          result['matchNotifications'] ?? _matchNotifications;
+      _showInMatches =
+          result['showInMatches'] ?? _showInMatches;
+      _incognitoMode =
+          result['incognitoMode'] ?? _incognitoMode;
+      _hideOnlineStatus =
+          result['hideOnlineStatus'] ?? _hideOnlineStatus;
     });
   }
 

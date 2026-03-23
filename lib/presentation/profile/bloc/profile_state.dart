@@ -24,22 +24,36 @@ class ProfileLoading extends ProfileState {
 class ProfileLoaded extends ProfileState {
   final UserModel user;
   final List<EventModel> userEvents;
+  final List<EventModel> goingEvents;
+  final List<EventModel> interestedEvents;
 
-  const ProfileLoaded(this.user, {this.userEvents = const []});
+  const ProfileLoaded(
+    this.user, {
+    this.userEvents = const [],
+    this.goingEvents = const [],
+    this.interestedEvents = const [],
+  });
 
   @override
-  List<Object?> get props => [user, userEvents];
+  List<Object?> get props => [user, userEvents, goingEvents, interestedEvents];
 }
 
 /// Обновление профиля
 class ProfileUpdating extends ProfileState {
   final UserModel user;
   final List<EventModel> userEvents;
+  final List<EventModel> goingEvents;
+  final List<EventModel> interestedEvents;
 
-  const ProfileUpdating(this.user, {this.userEvents = const []});
+  const ProfileUpdating(
+    this.user, {
+    this.userEvents = const [],
+    this.goingEvents = const [],
+    this.interestedEvents = const [],
+  });
 
   @override
-  List<Object?> get props => [user, userEvents];
+  List<Object?> get props => [user, userEvents, goingEvents, interestedEvents];
 }
 
 /// Ошибка

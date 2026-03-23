@@ -261,6 +261,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Widget _buildRecentEventsContent() {
+    if (!(_user?.showVisitedEvents ?? true)) {
+      return const SizedBox.shrink();
+    }
+    
     if (_eventsLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 20),
@@ -765,28 +769,36 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 ),
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: presence.color.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  Icon(Icons.circle, color: presence.color, size: 8),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    presence.text,
-                                    style: TextStyle(
+                            if (!(_user?.hideOnlineStatus ?? false))
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: presence.color.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    Icon(
+                                      Icons.circle,
                                       color: presence.color,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
+                                      size: 8,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      presence.text,
+                                      style: TextStyle(
+                                        color: presence.color,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -870,18 +882,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                
-                // Недавние события
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: _SectionTitleRow(
-                    title: 'Недавние события',
-                    icon: Icons.schedule_rounded,
+                if (_user?.showVisitedEvents ?? true) ...[
+                  const SizedBox(height: 24),
+                  // Недавние события
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _SectionTitleRow(
+                      title: 'Недавние события',
+                      icon: Icons.schedule_rounded,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                _buildRecentEventsContent(),
+                  const SizedBox(height: 12),
+                  _buildRecentEventsContent(),
+                ],
                 const SizedBox(height: 24),
                 
                 // Соцсети (доступны только после взаимного лайка)

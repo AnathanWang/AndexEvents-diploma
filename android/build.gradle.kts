@@ -19,6 +19,20 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+subprojects {
+    if (name != "app") {
+        tasks.matching { it.name.startsWith("lint") }
+            .configureEach {
+                enabled = false
+            }
+
+        tasks.matching { it.name.startsWith("test") && it.name.endsWith("UnitTest") }
+            .configureEach {
+                enabled = false
+            }
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }

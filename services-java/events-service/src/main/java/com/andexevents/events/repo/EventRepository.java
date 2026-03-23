@@ -82,6 +82,15 @@ public class EventRepository {
         return v != null && v == 1;
     }
 
+    public String getParticipationStatus(String eventId, String userId) {
+        return jdbcTemplate.query(
+                "SELECT status FROM events.\"Participant\" WHERE \"eventId\" = ? AND \"userId\" = ? LIMIT 1",
+                rs -> rs.next() ? rs.getString("status") : null,
+                eventId,
+                userId
+        );
+    }
+
     public List<EventDtos.ParticipantDto> findTopParticipants(String eventId, int limit) {
         return jdbcTemplate.query(
                 "SELECT p.id, p.\"userId\", p.\"eventId\", p.status, p.\"joinedAt\", p.\"updatedAt\", " +

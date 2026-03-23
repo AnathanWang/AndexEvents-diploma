@@ -40,6 +40,7 @@ public class EventDtos {
             CountDto _count,
             long participantCount,
             boolean isParticipating,
+            String userParticipationStatus,
             Double distance
     ) {
     }

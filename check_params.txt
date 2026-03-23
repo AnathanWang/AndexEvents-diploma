@@ -1,0 +1,86 @@
+                    if (state is ProfileLoaded && state.goingEvents.isEmpty)
+                      _buildEmptyStateCard(
+                        icon: Icons.search_rounded,
+                        title: 'Вы пока никуда не идёте',
+                        subtitle:
+                            'Найдите интересные события в ленте и присоединяйтесь.',
+                      )
+                    else if (state is ProfileLoaded)
+                      ...state.goingEvents.take(3).map((event) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildEventCard(event, context),
+                        );
+                      }),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              _buildAnimatedSection(
+                start: 0.16,
+                child: Column(
+                  children: <Widget>[
+                    _buildSectionBadge(
+                      title: 'Мои мероприятия',
+                      caption: 'Собственные события (организатор)',
+                      icon: Icons.event_note_rounded,
+                    ),
+                    const SizedBox(height: 12),
+                    if (state is ProfileLoaded && state.userEvents.isEmpty)
+                      _buildEmptyStateCard(
+                        icon: Icons.auto_awesome_rounded,
+                        title: 'Добавьте первое мероприятие',
+                        subtitle:
+                            'Заполните профиль события и пригласите людей.',
+                      )
+                    else if (state is ProfileLoaded)
+                      ...state.userEvents.take(3).map((event) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildEventCard(
+                            event,
+                            context,
+                            isCreator: true,
+                          ),
+                        );
+                      }),
+                    FilledButton.tonalIcon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.add_circle_outline, size: 18),
+                      label: const Text('Добавить новое событие'),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: const Color(0xFF404A8F),
+                        backgroundColor: const Color(0xFFEAEFFF),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              _buildAnimatedSection(
+                start: 0.20,
+                child: Column(
+                  children: <Widget>[
+                    _buildSectionBadge(
+                      title: 'Понравившиеся',
+                      caption: 'События, в которых я заинтересован',
+                      icon: Icons.favorite_border_rounded,
+                    ),
+                    const SizedBox(height: 12),
+                    if (state is ProfileLoaded &&
+                        state.interestedEvents.isEmpty)
+                      _buildEmptyStateCard(
+                        icon: Icons.favorite_outline,
+                        title: 'Нет сохраненных событий',
+                        subtitle:
+                            'Отмечайте события сердечком, чтобы не потерять.',
+                      )
+                    else if (state is ProfileLoaded)
+                      ...state.interestedEvents.take(3).map((event) {
+                        return Padding(

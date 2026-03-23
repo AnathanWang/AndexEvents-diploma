@@ -1,4 +1,5 @@
 import 'participant_model.dart';
+import '../../core/config/app_config.dart';
 
 /// Модель события
 class EventModel {
@@ -60,6 +61,31 @@ class EventModel {
     this.previewParticipants = const [],
   });
 
+  static String? _normalizeMediaUrl(String? rawUrl) {
+    if (rawUrl == null || rawUrl.isEmpty) return rawUrl;
+
+    try {
+      final uri = Uri.parse(rawUrl);
+      final host = uri.host.toLowerCase();
+      final isLoopback =
+          host == 'localhost' || host == '127.0.0.1' || host == '0.0.0.0';
+      if (!isLoopback) return rawUrl;
+
+      final apiUri = Uri.parse(AppConfig.baseUrl);
+      if (apiUri.host.isEmpty) return rawUrl;
+
+      return uri
+          .replace(
+            scheme: apiUri.scheme.isEmpty ? 'http' : apiUri.scheme,
+            host: apiUri.host,
+            port: apiUri.hasPort ? apiUri.port : null,
+          )
+          .toString();
+    } catch (_) {
+      return rawUrl;
+    }
+  }
+
   factory EventModel.fromJson(Map<String, dynamic> json) {
     // Извлекаем данные организатора из объекта createdBy
     final createdBy = json['createdBy'] as Map<String, dynamic>?;
@@ -90,7 +116,7 @@ class EventModel {
           ? DateTime.parse(json['endDateTime'] as String)
           : null,
       price: (json['price'] as num).toDouble(),
-      imageUrl: json['imageUrl'] as String?,
+      imageUrl: _normalizeMediaUrl(json['imageUrl'] as String?),
       isOnline: json['isOnline'] as bool? ?? false,
       status: json['status'] as String,
       rejectionReason: json['rejectionReason'] as String?,
@@ -108,7 +134,7 @@ class EventModel {
       isParticipating: json['isParticipating'] as bool? ?? false,
       userParticipationStatus: json['userParticipationStatus'] as String?,
       creatorName: createdBy?['displayName'] as String?,
-      creatorPhotoUrl: createdBy?['photoUrl'] as String?,
+      creatorPhotoUrl: _normalizeMediaUrl(createdBy?['photoUrl'] as String?),
       previewParticipants: previewParticipants,
     );
   }

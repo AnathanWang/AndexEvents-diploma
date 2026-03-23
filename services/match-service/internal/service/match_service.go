@@ -13,7 +13,7 @@ var (
 )
 
 type MatchService interface {
-	CreateOrUpdateMatch(ctx context.Context, userID, targetUserID string, action model.MatchAction) (*model.Match, error)
+	CreateOrUpdateMatch(ctx context.Context, userID, targetUserID, eventID string, action model.MatchAction) (*model.Match, error)
 	GetMutualMatches(ctx context.Context, userID string) ([]model.User, error)
 	GetUsersByAction(ctx context.Context, userID string, action model.MatchAction, limit int) ([]model.User, error)
 	GetIncomingLikes(ctx context.Context, userID string, limit int) ([]model.User, error)
@@ -27,11 +27,11 @@ func NewMatchService(repo repository.MatchRepository) MatchService {
 	return &matchService{repo: repo}
 }
 
-func (s *matchService) CreateOrUpdateMatch(ctx context.Context, userID, targetUserID string, action model.MatchAction) (*model.Match, error) {
+func (s *matchService) CreateOrUpdateMatch(ctx context.Context, userID, targetUserID, eventID string, action model.MatchAction) (*model.Match, error) {
 	if !action.IsValid() {
 		return nil, ErrInvalidAction
 	}
-	return s.repo.CreateOrUpdateMatch(ctx, userID, targetUserID, action)
+	return s.repo.CreateOrUpdateMatch(ctx, userID, targetUserID, eventID, action)
 }
 
 func (s *matchService) GetMutualMatches(ctx context.Context, userID string) ([]model.User, error) {

@@ -31,6 +31,11 @@ type User struct {
 	LastLocationUpdate    *time.Time      `json:"lastLocationUpdate,omitempty"`
 	IsProfileVisible      bool            `json:"isProfileVisible"`
 	IsLocationVisible     bool            `json:"isLocationVisible"`
+	ShowVisitedEvents     bool            `json:"showVisitedEvents"`
+	ShowInMatches         bool            `json:"showInMatches"`
+	IncognitoMode         bool            `json:"incognitoMode"`
+	HideOnlineStatus      bool            `json:"hideOnlineStatus"`
+
 	MinAge                *int            `json:"minAge,omitempty"`
 	MaxAge                *int            `json:"maxAge,omitempty"`
 	MaxDistance           int             `json:"maxDistance"`

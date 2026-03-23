@@ -6,6 +6,7 @@ com/andexevents/events/auth/SecurityConfig.class
 com/andexevents/events/model/EventDtos$ParticipantDto.class
 com/andexevents/events/repo/EventRepository$NearbyEventRow.class
 com/andexevents/events/auth/AuthConfigProperties.class
+com/andexevents/events/config/WebCorsConfig.class
 com/andexevents/events/model/EventDtos$EventDto.class
 com/andexevents/events/auth/SupabaseJwtVerifier.class
 com/andexevents/events/auth/AuthConfigProperties$PathRule.class
@@ -13,6 +14,7 @@ com/andexevents/events/model/EventDtos$UserPreviewDto.class
 com/andexevents/events/service/EventService$NearbyMeta.class
 com/andexevents/events/controller/HealthController.class
 com/andexevents/events/auth/FirebaseJwtVerifier.class
+com/andexevents/events/service/UserSanctionGuardService$ForbiddenException.class
 com/andexevents/events/repo/EventRepository$ParticipantRow.class
 com/andexevents/events/EventsServiceApplication.class
 com/andexevents/events/service/EventService$BadRequestException.class
@@ -27,6 +29,7 @@ com/andexevents/events/repo/EventRepository$NearbyQueryResult.class
 com/andexevents/events/controller/EventController$ParticipateRequest.class
 com/andexevents/events/model/EventDtos.class
 com/andexevents/events/api/ApiResponse.class
+com/andexevents/events/repo/UserSanctionReadRepository.class
 com/andexevents/events/repo/EventRepository$EventRow.class
 com/andexevents/events/repo/EventRepository$EventCreateParams.class
 com/andexevents/events/repo/EventRepository.class
@@ -34,3 +37,4 @@ com/andexevents/events/auth/AuthFilter.class
 com/andexevents/events/auth/AuthContext.class
 com/andexevents/events/controller/EventController$UpdateEventRequest.class
 com/andexevents/events/service/EventService$NotFoundException.class
+com/andexevents/events/service/UserSanctionGuardService.class

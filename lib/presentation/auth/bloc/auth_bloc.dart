@@ -43,19 +43,30 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final User? user = _authService.currentUser;
     if (user != null) {
       LoggerService.info('🔵 [AuthBloc] Пользователь найден в Firebase: ${user.email}');
+      final cachedOnboarding = await _authService.getCachedOnboardingStatus();
+      if (cachedOnboarding != null) {
+        LoggerService.info('🔵 [AuthBloc] Используем кэш онбординга: $cachedOnboarding');
+        emit(AuthAuthenticated(user: user, isOnboardingCompleted: cachedOnboarding));
+      }
+
       try {
         // Загружаем профиль из бэкенда для проверки onboarding
         LoggerService.info('🔵 [AuthBloc] Загрузка профиля из backend...');
-        final userProfile = await _authService.getCurrentUserProfile();
+        final userProfile = await _authService
+            .getCurrentUserProfile()
+            .timeout(const Duration(seconds: 6));
         LoggerService.info('🔵 [AuthBloc] Профиль получен: $userProfile');
         final bool isOnboardingCompleted = userProfile['isOnboardingCompleted'] ?? false;
         LoggerService.info('🔵 [AuthBloc] isOnboardingCompleted = $isOnboardingCompleted');
+        await _authService.cacheOnboardingStatus(isOnboardingCompleted);
         emit(AuthAuthenticated(user: user, isOnboardingCompleted: isOnboardingCompleted));
       } catch (e) {
-        // Если не удалось загрузить профиль, считаем что onboarding не завершен
-        LoggerService.error('🔴 [AuthBloc] Ошибка загрузки профиля при проверке состояния', e);
-        LoggerService.warning('🟡 [AuthBloc] Устанавливаем isOnboardingCompleted = false');
-        emit(AuthAuthenticated(user: user, isOnboardingCompleted: false));
+        if (cachedOnboarding == null) {
+          LoggerService.warning('🟡 [AuthBloc] Профиль не загрузился и кэша нет, используем безопасный fallback=true', e);
+          emit(AuthAuthenticated(user: user, isOnboardingCompleted: true));
+        } else {
+          LoggerService.warning('🟡 [AuthBloc] Не удалось загрузить профиль на старте, продолжаем с кэшем', e);
+        }
       }
     } else {
       LoggerService.info('🔵 [AuthBloc] Пользователь не найден, показываем Onboarding');
@@ -88,17 +99,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         LoggerService.info('🔵 [AuthBloc] Профиль получен: $userProfile');
         final bool isOnboardingCompleted = userProfile['isOnboardingCompleted'] ?? false;
         LoggerService.info('🔵 [AuthBloc] isOnboardingCompleted = $isOnboardingCompleted');
+        await _authService.cacheOnboardingStatus(isOnboardingCompleted);
         emit(AuthAuthenticated(
           user: user,
           isOnboardingCompleted: isOnboardingCompleted,
         ));
       } catch (e) {
-        // Если не удалось загрузить профиль, считаем что onboarding не завершен
+        final cachedOnboarding = await _authService.getCachedOnboardingStatus();
         LoggerService.error('🔴 [AuthBloc] Ошибка загрузки профиля', e);
-        LoggerService.warning('🟡 [AuthBloc] Устанавливаем isOnboardingCompleted = false');
+        final fallbackOnboarding = cachedOnboarding ?? true;
+        LoggerService.warning('🟡 [AuthBloc] Используем fallback onboarding=$fallbackOnboarding');
         emit(AuthAuthenticated(
           user: user,
-          isOnboardingCompleted: false,
+          isOnboardingCompleted: fallbackOnboarding,
         ));
       }
     } catch (e) {
@@ -167,6 +180,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         user: user,
         isOnboardingCompleted: isOnboardingCompleted,
       ));
+      await _authService.cacheOnboardingStatus(isOnboardingCompleted);
     } catch (e) {
       LoggerService.error('🔴 [AuthBloc] Google Sign-In ошибка: $e');
       emit(AuthFailure(message: e.toString()));

@@ -244,16 +244,8 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
     const double userLocationTapRadius =
         0.003; // Меньше радиус для точки пользователя
 
-    // Проверяем нажатие на точку пользователя
-    if (_userLocation != null) {
-      final distance = _calculateDistance(tappedPoint, _userLocation!);
-      if (distance < userLocationTapRadius) {
-        _showUserLocationSnackBar();
-        return;
-      }
-    }
-
-    // Проверяем нажатие на события
+    // 1. Сначала проверяем события, чтобы они имели приоритет при нажатии
+    // (даже если пользователь стоит рядом или на метке)
     for (final event in widget.events) {
       final eventPoint = Point(
         latitude: event.latitude,
@@ -264,6 +256,15 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
 
       if (distance < tapRadius) {
         widget.onEventMarkerTapped?.call(event);
+        return;
+      }
+    }
+
+    // 2. Только если не попали в событие, проверяем нажатие на точку пользователя
+    if (_userLocation != null) {
+      final distance = _calculateDistance(tappedPoint, _userLocation!);
+      if (distance < userLocationTapRadius) {
+        _showUserLocationSnackBar();
         return;
       }
     }

@@ -52,7 +52,7 @@ public class EventService {
     public List<EventDtos.EventDto> listUserParticipatedEvents(String userId) {
         List<EventDtos.EventDto> out = new ArrayList<>();
         for (EventRepository.EventRow row : repo.listUserParticipatedApprovedEvents(userId)) {
-            out.add(toDto(row, null, null));
+            out.add(toDto(row, userId, null));
         }
         return out;
     }
@@ -110,8 +110,10 @@ public class EventService {
         EventDtos.CountDto count = nearby != null ? null : new EventDtos.CountDto(participantCount);
 
         boolean isParticipating = false;
+        String userParticipationStatus = null;
         if (viewerUserId != null && !viewerUserId.isBlank()) {
             isParticipating = repo.isParticipating(row.id(), viewerUserId);
+            userParticipationStatus = repo.getParticipationStatus(row.id(), viewerUserId);
         }
 
         Double distance = nearby != null ? nearby.distance() : null;
@@ -140,6 +142,7 @@ public class EventService {
             count,
                 participantCount,
                 isParticipating,
+                userParticipationStatus,
                 distance
         );
     }

@@ -145,6 +145,15 @@ public class UserRepository {
             "SELECT u.* FROM users.\"User\" u WHERE u.id <> ? " +
                 "AND u.\"isOnboardingCompleted\" = true " +
                 "AND u.\"isProfileVisible\" = true " +
+                "AND u.\"showInMatches\" = true " +
+                "AND (" +
+                "    u.\"incognitoMode\" = false " +
+                "    OR EXISTS (" +
+                "        SELECT 1 FROM \"Match\" m " +
+                "        WHERE (m.\"userAId\" = u.id AND m.\"userBId\" = ? AND m.\"userAAction\" = 'LIKE') " +
+                "           OR (m.\"userBId\" = u.id AND m.\"userAId\" = ? AND m.\"userBAction\" = 'LIKE')" +
+                "    )" +
+                ") " +
                 "AND u.\"lastLatitude\" BETWEEN ? AND ? " +
                 "AND u.\"lastLongitude\" BETWEEN ? AND ? " +
                 "AND NOT EXISTS (" +
@@ -152,6 +161,8 @@ public class UserRepository {
         );
 
         List<Object> params = new ArrayList<>();
+        params.add(userId);
+        params.add(userId);
         params.add(userId);
         params.add(minLat);
         params.add(maxLat);
@@ -218,6 +229,10 @@ public class UserRepository {
                 (Integer) rs.getObject("minAge"),
                 (Integer) rs.getObject("maxAge"),
                 (Integer) rs.getObject("maxDistance"),
+                (Boolean) rs.getObject("showVisitedEvents"),
+                (Boolean) rs.getObject("showInMatches"),
+                (Boolean) rs.getObject("incognitoMode"),
+                (Boolean) rs.getObject("hideOnlineStatus"),
                 rs.getString("fcmToken"),
                 (Boolean) rs.getObject("isOnboardingCompleted"),
                 toInstant(rs.getObject("createdAt")),

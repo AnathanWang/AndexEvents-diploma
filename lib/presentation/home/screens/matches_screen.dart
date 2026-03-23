@@ -65,6 +65,8 @@ class _MatchesScreenState extends State<MatchesScreen>
         latitude: _currentUser!.lastLatitude,
         longitude: _currentUser!.lastLongitude,
       );
+      final mutualMatches = await _userService.getMutualMatches();
+      final mutualIds = mutualMatches.map((u) => u.id).toSet();
 
       LoggerService.debug(
         '🔵 [MatchesScreen] Received ${otherUsers.length} users from service',
@@ -75,6 +77,7 @@ class _MatchesScreenState extends State<MatchesScreen>
       final Map<String, UserModel> uniqueUsers = <String, UserModel>{};
       for (final u in otherUsers) {
         if (u.id == currentUserId) continue;
+        if (mutualIds.contains(u.id)) continue;
         if (seen.contains(u.id)) continue;
         uniqueUsers[u.id] = u;
       }
@@ -157,11 +160,6 @@ class _MatchesScreenState extends State<MatchesScreen>
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 
   Future<void> _loadUserData() async {

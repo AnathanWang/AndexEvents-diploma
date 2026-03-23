@@ -7,43 +7,49 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AnathanWang/andexevents/services/match-service/internal/model"
 )
 
 type MatchRepository interface {
-	CreateOrUpdateMatch(ctx context.Context, userID, targetUserID string, action model.MatchAction) (*model.Match, error)
+	CreateOrUpdateMatch(ctx context.Context, userID, targetUserID, eventID string, action model.MatchAction) (*model.Match, error)
 	GetMutualMatchUsers(ctx context.Context, userID string) ([]model.User, error)
 	GetActionUsers(ctx context.Context, userID string, action model.MatchAction, limit int) ([]model.User, error)
 	GetIncomingLikeUsers(ctx context.Context, userID string, limit int) ([]model.User, error)
 }
 
-type matchRepository struct {
-	pool *pgxpool.Pool
+type PgxPoolIface interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-func NewMatchRepository(pool *pgxpool.Pool) MatchRepository {
+type matchRepository struct {
+	pool PgxPoolIface
+}
+
+func NewMatchRepository(pool PgxPoolIface) MatchRepository {
 	return &matchRepository{pool: pool}
 }
 
-func (r *matchRepository) CreateOrUpdateMatch(ctx context.Context, userID, targetUserID string, action model.MatchAction) (*model.Match, error) {
+func (r *matchRepository) CreateOrUpdateMatch(ctx context.Context, userID, targetUserID, eventID string, action model.MatchAction) (*model.Match, error) {
 	now := time.Now()
 
 	// Пытаемся найти существующую запись в любом порядке
 	selectQuery := `
-		SELECT id, "userAId", "userBId", "userAAction", "userBAction", "isMutual", "matchedAt", "createdAt", "updatedAt"
+		SELECT id, "userAId", "userBId", "eventId", "userAAction", "userBAction", "isMutual", "matchedAt", "createdAt", "updatedAt"
 		FROM "Match"
-		WHERE ("userAId" = $1 AND "userBId" = $2) OR ("userAId" = $2 AND "userBId" = $1)
+		WHERE (("userAId" = $1 AND "userBId" = $2) OR ("userAId" = $2 AND "userBId" = $1)) 
+		  AND COALESCE("eventId", '') = COALESCE($3, '')
 		LIMIT 1
 	`
 
 	var existing model.Match
 	var aAction, bAction *string
-	err := r.pool.QueryRow(ctx, selectQuery, userID, targetUserID).Scan(
+	err := r.pool.QueryRow(ctx, selectQuery, userID, targetUserID, eventID).Scan(
 		&existing.ID,
 		&existing.UserAID,
 		&existing.UserBID,
+		&existing.EventID,
 		&aAction,
 		&bAction,
 		&existing.IsMutual,
@@ -60,21 +66,22 @@ func (r *matchRepository) CreateOrUpdateMatch(ctx context.Context, userID, targe
 	if err == pgx.ErrNoRows {
 		insertQuery := `
 			INSERT INTO "Match" (
-				id, "userAId", "userBId", "userAAction", "isMutual", "createdAt", "updatedAt"
+				id, "userAId", "userBId", "eventId", "userAAction", "isMutual", "createdAt", "updatedAt"
 			) VALUES (
-				$1, $2, $3, $4, false, $5, $5
+				$1, $2, $3, NULLIF($4, ''), $5, false, $6, $6
 			)
-			RETURNING id, "userAId", "userBId", "userAAction", "userBAction", "isMutual", "matchedAt", "createdAt", "updatedAt"
+			RETURNING id, "userAId", "userBId", "eventId", "userAAction", "userBAction", "isMutual", "matchedAt", "createdAt", "updatedAt"
 		`
 		id := uuid.New().String()
 		actionStr := string(action)
 
 		var created model.Match
 		var ca, cb *string
-		err := r.pool.QueryRow(ctx, insertQuery, id, userID, targetUserID, actionStr, now).Scan(
+		err := r.pool.QueryRow(ctx, insertQuery, id, userID, targetUserID, eventID, actionStr, now).Scan(
 			&created.ID,
 			&created.UserAID,
 			&created.UserBID,
+			&created.EventID,
 			&ca,
 			&cb,
 			&created.IsMutual,
@@ -131,7 +138,7 @@ func (r *matchRepository) CreateOrUpdateMatch(ctx context.Context, userID, targe
 		UPDATE "Match"
 		SET ` + setColumn + ` = $1, "isMutual" = $2, "matchedAt" = $3, "updatedAt" = $4
 		WHERE id = $5
-		RETURNING id, "userAId", "userBId", "userAAction", "userBAction", "isMutual", "matchedAt", "createdAt", "updatedAt"
+		RETURNING id, "userAId", "userBId", "eventId", "userAAction", "userBAction", "isMutual", "matchedAt", "createdAt", "updatedAt"
 	`
 
 	actionStr := string(action)
@@ -141,6 +148,7 @@ func (r *matchRepository) CreateOrUpdateMatch(ctx context.Context, userID, targe
 		&updated.ID,
 		&updated.UserAID,
 		&updated.UserBID,
+		&updated.EventID,
 		&ua,
 		&ub,
 		&updated.IsMutual,
@@ -187,6 +195,11 @@ func scanUser(row pgx.Row, dest *model.User) error {
 		&dest.LastLocationUpdate,
 		&dest.IsProfileVisible,
 		&dest.IsLocationVisible,
+		&dest.ShowVisitedEvents,
+		&dest.ShowInMatches,
+		&dest.IncognitoMode,
+		&dest.HideOnlineStatus,
+
 		&dest.MinAge,
 		&dest.MaxAge,
 		&dest.MaxDistance,
@@ -213,7 +226,7 @@ func (r *matchRepository) GetMutualMatchUsers(ctx context.Context, userID string
 		SELECT
 			u.id, u."supabaseUid", u.email, u."displayName", u."photoUrl", COALESCE(u.photos, ARRAY[]::text[]), u.bio, u.interests,
 			u."socialLinks", u.age, u.gender, u.role, u."lastLatitude", u."lastLongitude",
-			u."lastLocationUpdate", u."isProfileVisible", u."isLocationVisible",
+			u."lastLocationUpdate", u."isProfileVisible", u."isLocationVisible", u."showVisitedEvents", u."showInMatches", u."incognitoMode", u."hideOnlineStatus",
 			u."minAge", u."maxAge", u."maxDistance", u."fcmToken", u."isOnboardingCompleted",
 			u."createdAt", u."updatedAt"
 		FROM "Match" m
@@ -255,7 +268,7 @@ func (r *matchRepository) GetActionUsers(ctx context.Context, userID string, act
 		SELECT
 			u.id, u."supabaseUid", u.email, u."displayName", u."photoUrl", COALESCE(u.photos, ARRAY[]::text[]), u.bio, u.interests,
 			u."socialLinks", u.age, u.gender, u.role, u."lastLatitude", u."lastLongitude",
-			u."lastLocationUpdate", u."isProfileVisible", u."isLocationVisible",
+			u."lastLocationUpdate", u."isProfileVisible", u."isLocationVisible", u."showVisitedEvents", u."showInMatches", u."incognitoMode", u."hideOnlineStatus",
 			u."minAge", u."maxAge", u."maxDistance", u."fcmToken", u."isOnboardingCompleted",
 			u."createdAt", u."updatedAt"
 		FROM "Match" m
@@ -299,7 +312,7 @@ func (r *matchRepository) GetIncomingLikeUsers(ctx context.Context, userID strin
 		SELECT
 			u.id, u."supabaseUid", u.email, u."displayName", u."photoUrl", COALESCE(u.photos, ARRAY[]::text[]), u.bio, u.interests,
 			u."socialLinks", u.age, u.gender, u.role, u."lastLatitude", u."lastLongitude",
-			u."lastLocationUpdate", u."isProfileVisible", u."isLocationVisible",
+			u."lastLocationUpdate", u."isProfileVisible", u."isLocationVisible", u."showVisitedEvents", u."showInMatches", u."incognitoMode", u."hideOnlineStatus",
 			u."minAge", u."maxAge", u."maxDistance", u."fcmToken", u."isOnboardingCompleted",
 			u."createdAt", u."updatedAt"
 		FROM "Match" m
