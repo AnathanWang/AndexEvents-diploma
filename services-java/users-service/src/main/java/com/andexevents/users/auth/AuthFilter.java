@@ -55,7 +55,7 @@ public class AuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
-            HttpServletResponse response,
+            HttpServletResponse             docker-compose up -d --build users-serviceresponse,
             FilterChain filterChain
     ) throws ServletException, IOException {
         String authHeader = request.getHeader("Authorization");
@@ -94,7 +94,15 @@ public class AuthFilter extends OncePerRequestFilter {
             if (userId == null) {
                 userId = userLookupRepository.findUserIdByFirebaseUid(uid).orElse(null);
             }
-            request.setAttribute(ATTR, new AuthContext(uid, email, userId));
+            AuthContext auth = new AuthContext(uid, email, userId);
+            request.setAttribute(ATTR, auth);
+            
+            if (userId != null) {
+                logger.info("Authenticated user: userId=" + userId + ", uid=" + uid + ", email=" + email + " for " + request.getMethod() + " " + request.getRequestURI());
+            } else {
+                logger.warn("Authenticated check: NO userId found for uid=" + uid + ", email=" + email + " for " + request.getMethod() + " " + request.getRequestURI());
+            }
+            
             filterChain.doFilter(request, response);
         } catch (JWTVerificationException ex) {
             writeUnauthorized(response, "Unauthorized: Invalid token");

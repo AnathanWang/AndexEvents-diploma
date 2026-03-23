@@ -411,13 +411,17 @@ class _EventMatchScreenState extends State<EventMatchScreen>
     LoggerService.info('🟢 [_handleLike] Like: ${match.name}');
 
     final currentUserId = _currentUser?.id;
-    if (currentUserId != null) {
-      _matchSeenService.markSeen(currentUserId, match.id);
+    if (currentUserId != null && currentUserId == match.id) {
+      LoggerService.warning('🟡 [_handleLike] Skip self-like for userId=$currentUserId');
+      return;
     }
 
     _userService
         .sendLike(match.id, eventId: widget.eventId)
         .then((_) {
+          if (currentUserId != null) {
+            _matchSeenService.markSeen(currentUserId, match.id);
+          }
           LoggerService.info(
             '🟢 [_handleLike] Successfully sent like for ${match.name}',
           );
@@ -432,13 +436,17 @@ class _EventMatchScreenState extends State<EventMatchScreen>
     LoggerService.debug('🔴 [_handleDislike] Dislike: ${match.name}');
 
     final currentUserId = _currentUser?.id;
-    if (currentUserId != null) {
-      _matchSeenService.markSeen(currentUserId, match.id);
+    if (currentUserId != null && currentUserId == match.id) {
+      LoggerService.warning('🟡 [_handleDislike] Skip self-dislike for userId=$currentUserId');
+      return;
     }
 
     _userService
         .sendDislike(match.id, eventId: widget.eventId)
         .then((_) {
+          if (currentUserId != null) {
+            _matchSeenService.markSeen(currentUserId, match.id);
+          }
           LoggerService.info(
             '🟢 [_handleDislike] Successfully sent dislike for ${match.name}',
           );
@@ -453,13 +461,17 @@ class _EventMatchScreenState extends State<EventMatchScreen>
     LoggerService.debug('🔵 [_handleSuperLike] Super Like: ${match.name}');
 
     final currentUserId = _currentUser?.id;
-    if (currentUserId != null) {
-      _matchSeenService.markSeen(currentUserId, match.id);
+    if (currentUserId != null && currentUserId == match.id) {
+      LoggerService.warning('🟡 [_handleSuperLike] Skip self-super-like for userId=$currentUserId');
+      return;
     }
 
     _userService
         .sendSuperLike(match.id, eventId: widget.eventId)
         .then((_) {
+          if (currentUserId != null) {
+            _matchSeenService.markSeen(currentUserId, match.id);
+          }
           LoggerService.info(
             '🟢 [_handleSuperLike] Successfully sent super like for ${match.name}',
           );
@@ -877,7 +889,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                     ],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    stops: const [0.55, 1.0],
+                    stops: const [0.0, 0.55, 1.0],
                   ),
                 ),
               ),

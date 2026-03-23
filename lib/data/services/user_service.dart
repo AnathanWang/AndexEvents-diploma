@@ -186,6 +186,7 @@ class UserService {
     bool? showInMatches,
     bool? incognitoMode,
     bool? hideOnlineStatus,
+    String? fcmToken,
   }) async {
     try {
       final String? token = await _getIdToken();
@@ -212,8 +213,10 @@ class UserService {
       if (showInMatches != null) body['showInMatches'] = showInMatches;
       if (incognitoMode != null) body['incognitoMode'] = incognitoMode;
       if (hideOnlineStatus != null) body['hideOnlineStatus'] = hideOnlineStatus;
+      if (fcmToken != null) body['fcmToken'] = fcmToken;
 
       final url = '${AppConfig.baseUrl}/users/me';
+      LoggerService.info('[UserService] PUT $url with body: ${json.encode(body)}');
       LoggerService.debug('[UserService] PUT $url');
       LoggerService.debug(
         '[UserService] updateProfile payload keys: ${body.keys.toList()}',
@@ -253,6 +256,11 @@ class UserService {
     } catch (e) {
       throw Exception('Не удалось обновить профиль: $e');
     }
+  }
+
+  Future<void> updateFcmToken(String fcmToken) async {
+    if (fcmToken.trim().isEmpty) return;
+    await updateProfile(fcmToken: fcmToken.trim());
   }
 
   /// Обновить геолокацию пользователя
@@ -508,6 +516,7 @@ class UserService {
   /// Получить взаимные матчи (пользователи, с которыми есть mutual like)
   Future<List<UserModel>> getMutualMatches({
     int limit = 50,
+    String? eventId,
   }) async {
     try {
       final token = await _getIdToken();
@@ -516,7 +525,13 @@ class UserService {
       }
 
       // На бэкенде: GET /api/matches -> отдаёт список пользователей
-      final uri = Uri.parse('${AppConfig.baseUrl}/matches?limit=$limit');
+      final query = <String, String>{'limit': '$limit'};
+      if (eventId != null && eventId.trim().isNotEmpty) {
+        query['eventId'] = eventId.trim();
+      }
+      final uri = Uri.parse(
+        '${AppConfig.baseUrl}/matches',
+      ).replace(queryParameters: query);
       final response = await _with429Retry(
         () => http
             .get(
@@ -559,6 +574,7 @@ class UserService {
   Future<List<UserModel>> getUsersByMatchAction({
     required String action,
     int limit = 50,
+    String? eventId,
   }) async {
     try {
       final token = await _getIdToken();
@@ -566,9 +582,16 @@ class UserService {
         throw Exception('Не удалось получить токен авторизации');
       }
 
+      final query = <String, String>{
+        'action': action,
+        'limit': '$limit',
+      };
+      if (eventId != null && eventId.trim().isNotEmpty) {
+        query['eventId'] = eventId.trim();
+      }
       final uri = Uri.parse(
-        '${AppConfig.baseUrl}/matches/actions?action=$action&limit=$limit',
-      );
+        '${AppConfig.baseUrl}/matches/actions',
+      ).replace(queryParameters: query);
 
       final response = await _with429Retry(
         () => http
@@ -611,6 +634,7 @@ class UserService {
   /// Получить пользователей, которые лайкнули меня, но я еще не ответил
   Future<List<UserModel>> getIncomingLikes({
     int limit = 50,
+    String? eventId,
   }) async {
     try {
       final token = await _getIdToken();
@@ -618,9 +642,13 @@ class UserService {
         throw Exception('Не удалось получить токен авторизации');
       }
 
+      final query = <String, String>{'limit': '$limit'};
+      if (eventId != null && eventId.trim().isNotEmpty) {
+        query['eventId'] = eventId.trim();
+      }
       final uri = Uri.parse(
-        '${AppConfig.baseUrl}/matches/incoming-likes?limit=$limit',
-      );
+        '${AppConfig.baseUrl}/matches/incoming-likes',
+      ).replace(queryParameters: query);
 
       final response = await _with429Retry(
         () => http
@@ -671,6 +699,25 @@ class UserService {
     return '?${queryParts.join('&')}';
   }
 
+  String _extractApiErrorMessage(http.Response response, String fallback) {
+    try {
+      final payload = json.decode(response.body);
+      if (payload is Map<String, dynamic>) {
+        final message = payload['message'];
+        if (message is String && message.trim().isNotEmpty) {
+          return message.trim();
+        }
+        final error = payload['error'];
+        if (error is String && error.trim().isNotEmpty) {
+          return error.trim();
+        }
+      }
+    } catch (_) {
+      // Ignore JSON parse issues and return fallback message.
+    }
+    return fallback;
+  }
+
   /// Отправить лайк на сервер
   Future<void> sendLike(String targetUserId, {String? eventId}) async {
     try {
@@ -700,8 +747,14 @@ class UserService {
       } else if (response.statusCode == 401) {
         throw Exception('Истекла сессия авторизации');
       } else {
-        LoggerService.error('[UserService] Error sending like: ${response.statusCode}');
-        throw Exception('Ошибка при отправке лайка');
+        final apiMessage = _extractApiErrorMessage(
+          response,
+          'Ошибка при отправке лайка',
+        );
+        LoggerService.error(
+          '[UserService] Error sending like: ${response.statusCode}, body=${response.body}',
+        );
+        throw Exception('$apiMessage (${response.statusCode})');
       }
     } on TimeoutException {
       throw Exception('Таймаут при отправке лайка');
@@ -742,8 +795,14 @@ class UserService {
       } else if (response.statusCode == 401) {
         throw Exception('Истекла сессия авторизации');
       } else {
-        LoggerService.error('[UserService] Error sending dislike: ${response.statusCode}');
-        throw Exception('Ошибка при отправке дизлайка');
+        final apiMessage = _extractApiErrorMessage(
+          response,
+          'Ошибка при отправке дизлайка',
+        );
+        LoggerService.error(
+          '[UserService] Error sending dislike: ${response.statusCode}, body=${response.body}',
+        );
+        throw Exception('$apiMessage (${response.statusCode})');
       }
     } on TimeoutException {
       throw Exception('Таймаут при отправке дизлайка');
@@ -784,8 +843,14 @@ class UserService {
       } else if (response.statusCode == 401) {
         throw Exception('Истекла сессия авторизации');
       } else {
-        LoggerService.error('[UserService] Error sending super like: ${response.statusCode}');
-        throw Exception('Ошибка при отправке супер-лайка');
+        final apiMessage = _extractApiErrorMessage(
+          response,
+          'Ошибка при отправке супер-лайка',
+        );
+        LoggerService.error(
+          '[UserService] Error sending super like: ${response.statusCode}, body=${response.body}',
+        );
+        throw Exception('$apiMessage (${response.statusCode})');
       }
     } on TimeoutException {
       throw Exception('Таймаут при отправке супер-лайка');

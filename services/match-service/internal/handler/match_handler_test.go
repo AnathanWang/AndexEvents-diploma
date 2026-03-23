@@ -27,18 +27,18 @@ func (m *MockMatchService) CreateOrUpdateMatch(ctx context.Context, userID, targ
 	return args.Get(0).(*model.Match), args.Error(1)
 }
 
-func (m *MockMatchService) GetMutualMatches(ctx context.Context, userID string) ([]model.User, error) {
-	args := m.Called(ctx, userID)
+func (m *MockMatchService) GetMutualMatches(ctx context.Context, userID, eventID string) ([]model.User, error) {
+	args := m.Called(ctx, userID, eventID)
 	return args.Get(0).([]model.User), args.Error(1)
 }
 
-func (m *MockMatchService) GetUsersByAction(ctx context.Context, userID string, action model.MatchAction, limit int) ([]model.User, error) {
-	args := m.Called(ctx, userID, action, limit)
+func (m *MockMatchService) GetUsersByAction(ctx context.Context, userID, eventID string, action model.MatchAction, limit int) ([]model.User, error) {
+	args := m.Called(ctx, userID, eventID, action, limit)
 	return args.Get(0).([]model.User), args.Error(1)
 }
 
-func (m *MockMatchService) GetIncomingLikes(ctx context.Context, userID string, limit int) ([]model.User, error) {
-	args := m.Called(ctx, userID, limit)
+func (m *MockMatchService) GetIncomingLikes(ctx context.Context, userID, eventID string, limit int) ([]model.User, error) {
+	args := m.Called(ctx, userID, eventID, limit)
 	return args.Get(0).([]model.User), args.Error(1)
 }
 
@@ -110,7 +110,7 @@ func TestGetMyActions_IncludesPhotos(t *testing.T) {
 	router := setupRouter(mockSvc)
 
 	displayName := "Alice"
-	mockSvc.On("GetUsersByAction", mock.Anything, "user-123", model.MatchActionLike, 50).Return([]model.User{
+	mockSvc.On("GetUsersByAction", mock.Anything, "user-123", "", model.MatchActionLike, 50).Return([]model.User{
 		{
 			ID:          "user-456",
 			SupabaseUID: "sb-456",
@@ -135,7 +135,7 @@ func TestGetIncomingLikes_Success(t *testing.T) {
 	router := setupRouter(mockSvc)
 
 	displayName := "Bob"
-	mockSvc.On("GetIncomingLikes", mock.Anything, "user-123", 50).Return([]model.User{
+	mockSvc.On("GetIncomingLikes", mock.Anything, "user-123", "", 50).Return([]model.User{
 		{
 			ID:          "user-789",
 			SupabaseUID: "sb-789",
@@ -150,5 +150,19 @@ func TestGetIncomingLikes_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "user-789")
+	mockSvc.AssertExpectations(t)
+}
+
+func TestGetIncomingLikes_WithEventID(t *testing.T) {
+	mockSvc := new(MockMatchService)
+	router := setupRouter(mockSvc)
+
+	mockSvc.On("GetIncomingLikes", mock.Anything, "user-123", "event-42", 50).Return([]model.User{}, nil)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/matches/incoming-likes?eventId=event-42", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
 	mockSvc.AssertExpectations(t)
 }

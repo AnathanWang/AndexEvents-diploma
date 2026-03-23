@@ -13,21 +13,30 @@ CREATE TABLE IF NOT EXISTS "Match" (
   "id" TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   "userAId" TEXT NOT NULL REFERENCES users."User"("id") ON DELETE CASCADE,
   "userBId" TEXT NOT NULL REFERENCES users."User"("id") ON DELETE CASCADE,
+  "eventId" TEXT,
   "userAAction" "MatchAction",
   "userBAction" "MatchAction",
   "isMutual" BOOLEAN NOT NULL DEFAULT false,
   "matchedAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "Match_unique_pair" UNIQUE ("userAId", "userBId"),
   CONSTRAINT "Match_no_self_match" CHECK ("userAId" != "userBId")
 );
 
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS "Match_userAId_idx" ON "Match"("userAId");
 CREATE INDEX IF NOT EXISTS "Match_userBId_idx" ON "Match"("userBId");
+CREATE INDEX IF NOT EXISTS "Match_eventId_idx" ON "Match"("eventId");
 CREATE INDEX IF NOT EXISTS "Match_isMutual_idx" ON "Match"("isMutual");
 CREATE INDEX IF NOT EXISTS "Match_matchedAt_idx" ON "Match"("matchedAt");
+
+-- A pair can have multiple records across events, but only one record per pair+event.
+CREATE UNIQUE INDEX IF NOT EXISTS "Match_unique_pair_event_idx"
+ON "Match" (
+  LEAST("userAId", "userBId"),
+  GREATEST("userAId", "userBId"),
+  COALESCE("eventId", '')
+);
 
 -- Create index for querying matches for a specific user
 CREATE INDEX IF NOT EXISTS "Match_user_lookup_idx" ON "Match"("userAId", "userBId", "isMutual");

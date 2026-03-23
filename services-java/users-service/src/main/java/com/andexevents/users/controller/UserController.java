@@ -302,6 +302,7 @@ public class UserController {
                 body.gender(),
                 body.interests(),
                 body.socialLinks(),
+            null,
                 true
         );
 

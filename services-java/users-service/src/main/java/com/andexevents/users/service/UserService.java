@@ -93,6 +93,7 @@ public class UserService {
         if (req.gender() != null) updates.put("gender", req.gender());
         if (req.interests() != null) updates.put("interests", req.interests().toArray(new String[0]));
         if (req.socialLinks() != null) updates.put("socialLinks", req.socialLinks());
+        if (req.fcmToken() != null) updates.put("fcmToken", req.fcmToken());
         if (req.isOnboardingCompleted() != null) updates.put("isOnboardingCompleted", req.isOnboardingCompleted());
 
         return userRepository.updateProfile(userId, updates);
@@ -158,6 +159,7 @@ public class UserService {
             String gender,
             List<String> interests,
             Map<String, Object> socialLinks,
+                String fcmToken,
             Boolean isOnboardingCompleted
     ) {
     }
