@@ -80,9 +80,19 @@ public class AuthFilter extends OncePerRequestFilter {
                 return;
             }
 
-            String userId = userLookupRepository.findUserIdByFirebaseUid(uid).orElse(null);
-            if (userId == null && email != null && !email.isBlank()) {
-                userId = userLookupRepository.findUserIdByEmail(email).orElse(null);
+            String userId = null;
+
+            if (email != null && !email.isBlank()) {
+                // Prefer exact uid+email match first, then email fallback.
+                // This avoids binding to a stale uid row when identity data was migrated.
+                userId = userLookupRepository.findUserIdByFirebaseUidAndEmail(uid, email).orElse(null);
+                if (userId == null) {
+                    userId = userLookupRepository.findUserIdByEmail(email).orElse(null);
+                }
+            }
+
+            if (userId == null) {
+                userId = userLookupRepository.findUserIdByFirebaseUid(uid).orElse(null);
             }
             request.setAttribute(ATTR, new AuthContext(uid, email, userId));
             filterChain.doFilter(request, response);

@@ -7,6 +7,8 @@ import 'dart:io';
 import '../../../core/services/logger_service.dart';
 import '../../widgets/common/custom_dropdown.dart';
 import '../../widgets/common/custom_notification.dart';
+import '../../../data/services/user_service.dart';
+import '../../../data/models/user_sanction_model.dart';
 import '../bloc/event_bloc.dart';
 import '../bloc/event_event.dart';
 import '../bloc/event_state.dart';
@@ -20,6 +22,7 @@ class CreateEventScreen extends StatefulWidget {
 }
 
 class _CreateEventScreenState extends State<CreateEventScreen> {
+  final UserService _userService = UserService();
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -51,6 +54,39 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     'Развлечения',
     'Бизнес',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _guardCreateEventAccess();
+    });
+  }
+
+  bool _isCreateSanction(UserSanctionModel sanction) {
+    final type = sanction.type.trim().toUpperCase();
+    return sanction.isActive &&
+        (type == 'EVENT_CREATE_BAN' || type == 'FULL_BAN');
+  }
+
+  Future<void> _guardCreateEventAccess() async {
+    try {
+      final sanctions = await _userService.getMySanctions();
+      final block = sanctions.where(_isCreateSanction).toList();
+      if (!mounted || block.isEmpty) return;
+
+      final reason = block.first.reason.trim();
+      final message =
+          reason.isNotEmpty
+              ? 'Создание событий ограничено: $reason'
+              : 'Создание событий временно ограничено санкцией';
+
+      CustomNotification.show(context, message, isError: true);
+      Navigator.of(context).maybePop();
+    } catch (_) {
+      // If sanctions endpoint is temporarily unavailable, do not block UI here.
+    }
+  }
 
   @override
   void dispose() {

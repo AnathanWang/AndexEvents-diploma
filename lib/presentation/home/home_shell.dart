@@ -7,6 +7,7 @@ import '../events/screens/create_event_screen.dart';
 import '../events/bloc/event_bloc.dart';
 import '../profile/bloc/profile_bloc.dart';
 import '../../data/services/user_service.dart';
+import '../../data/models/user_sanction_model.dart';
 import 'sample_data.dart';
 import 'screens/events_feed_screen.dart';
 import 'screens/map_explore_screen.dart';
@@ -27,12 +28,97 @@ class _HomeShellState extends State<HomeShell> {
 
   int _index = 0;
   late final ProfileBloc _profileBloc;
+  bool _isCreateEventBlocked = false;
+  String? _createEventBlockReason;
+  bool _isFullBanActive = false;
 
   @override
   void initState() {
     super.initState();
     _profileBloc = ProfileBloc(userService: UserService());
     _loadMutualMatches();
+    _refreshCreateEventAccess();
+  }
+
+  bool _isCreateSanction(UserSanctionModel sanction) {
+    final type = sanction.type.trim().toUpperCase();
+    return sanction.isActive &&
+        (type == 'EVENT_CREATE_BAN' || type == 'FULL_BAN');
+  }
+
+  bool _isFullBanSanction(UserSanctionModel sanction) {
+    final type = sanction.type.trim().toUpperCase();
+    return sanction.isActive && type == 'FULL_BAN';
+  }
+
+  Future<void> _refreshCreateEventAccess() async {
+    try {
+      final sanctions = await _userService.getMySanctions();
+      final createBan = sanctions.where(_isCreateSanction).toList();
+      final fullBan = sanctions.where(_isFullBanSanction).toList();
+      if (!mounted) return;
+
+      setState(() {
+        _isCreateEventBlocked = createBan.isNotEmpty;
+        _createEventBlockReason =
+            createBan.isEmpty ? null : createBan.first.reason.trim();
+        _isFullBanActive = fullBan.isNotEmpty;
+        if (_isFullBanActive) {
+          _index = 3;
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isCreateEventBlocked = false;
+        _createEventBlockReason = null;
+        _isFullBanActive = false;
+      });
+    }
+  }
+
+  void _showFullBanMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Доступ ограничен: при FULL_BAN доступен только профиль'),
+      ),
+    );
+  }
+
+  void _onNavTapped(int index) {
+    if (_isFullBanActive && index != 3) {
+      _showFullBanMessage();
+      setState(() {
+        _index = 3;
+      });
+      return;
+    }
+
+    setState(() => _index = index);
+  }
+
+  Future<void> _openCreateEventScreen() async {
+    await _refreshCreateEventAccess();
+    if (!mounted) return;
+
+    if (_isCreateEventBlocked) {
+      final reason = _createEventBlockReason;
+      final message =
+          (reason != null && reason.isNotEmpty)
+              ? 'Создание событий ограничено: $reason'
+              : 'Создание событий временно ограничено санкцией';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => BlocProvider(
+          create: (context) => EventBloc(),
+          child: const CreateEventScreen(),
+        ),
+      ),
+    );
   }
 
   Future<void> _loadMutualMatches() async {
@@ -119,41 +205,44 @@ class _HomeShellState extends State<HomeShell> {
                 ),
               ),
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              top: -8,
-              child: Center(
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (BuildContext context) => BlocProvider(
-                          create: (context) => EventBloc(),
-                          child: const CreateEventScreen(),
-                        ),
+            if (!_isFullBanActive)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: -8,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: _openCreateEventScreen,
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color:
+                            _isCreateEventBlocked
+                                ? const Color(0xFF9FA4C8)
+                                : const Color(0xFF5E60CE),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                (_isCreateEventBlocked
+                                        ? const Color(0xFF9FA4C8)
+                                        : const Color(0xFF5E60CE))
+                                    .withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                  child: Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF5E60CE),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF5E60CE).withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                      child: Icon(
+                        _isCreateEventBlocked ? Icons.block_rounded : Icons.add,
+                        color: Colors.white,
+                        size: 28,
+                      ),
                     ),
-                    child: const Icon(Icons.add, color: Colors.white, size: 28),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -164,7 +253,7 @@ class _HomeShellState extends State<HomeShell> {
     final bool isSelected = _index == index;
     return Expanded(
       child: InkWell(
-        onTap: () => setState(() => _index = index),
+        onTap: () => _onNavTapped(index),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[

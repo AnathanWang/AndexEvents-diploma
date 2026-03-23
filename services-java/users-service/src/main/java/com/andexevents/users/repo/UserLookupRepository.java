@@ -22,6 +22,16 @@ public class UserLookupRepository {
         );
     }
 
+    public Optional<String> findUserIdByFirebaseUidAndEmail(String firebaseUid, String email) {
+        return jdbcTemplate.query(
+                "SELECT id FROM users.\"User\" WHERE (\"firebaseUid\" = ? OR \"supabaseUid\" = ?) AND lower(email) = lower(?)",
+                rs -> rs.next() ? Optional.ofNullable(rs.getString("id")) : Optional.empty(),
+                firebaseUid,
+                firebaseUid,
+                email
+        );
+    }
+
     public Optional<String> findUserIdByEmail(String email) {
         return jdbcTemplate.query(
                 "SELECT id FROM users.\"User\" WHERE lower(email) = lower(?)",

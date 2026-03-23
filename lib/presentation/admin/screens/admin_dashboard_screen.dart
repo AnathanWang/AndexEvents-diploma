@@ -187,22 +187,23 @@ class AdminDashboardScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    _buildActionCard(
-                      context,
-                      title: 'Модерация событий',
-                      subtitle: 'Проверка и отклонение проблемных мероприятий',
-                      icon: Icons.event_available_rounded,
-                      gradientColors: const [
-                        Color(0xFF5E60CE),
-                        Color(0xFF7D6EEC),
-                      ],
-                      onTap: () => Navigator.push(
+                    if (_isAdmin)
+                      _buildActionCard(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const EventModerationScreen(),
+                        title: 'Модерация событий',
+                        subtitle: 'Проверка и отклонение проблемных мероприятий',
+                        icon: Icons.event_available_rounded,
+                        gradientColors: const [
+                          Color(0xFF5E60CE),
+                          Color(0xFF7D6EEC),
+                        ],
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const EventModerationScreen(),
+                          ),
                         ),
                       ),
-                    ),
                     if (_isAdmin) ...[
                       const SizedBox(height: 14),
                       _buildActionCard(
@@ -262,7 +263,7 @@ class AdminDashboardScreen extends StatelessWidget {
                         context,
                         title: 'Жалобы на события',
                         subtitle:
-                            'Просмотр и обработка репортов, связанных с событиями',
+                            'Открыть очередь жалоб по событиям в модерации',
                         icon: Icons.flag_rounded,
                         gradientColors: const [
                           Color(0xFFFF6B6B),

@@ -10,6 +10,8 @@ import com.andexevents.users.service.AdminAuditLogService;
 import com.andexevents.users.service.UserSanctionService;
 import com.andexevents.users.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -108,7 +110,7 @@ public class UserController {
     @PostMapping("/admin/sanctions")
     public ResponseEntity<ApiResponse<UserSanctionDto>> createSanction(
             HttpServletRequest request,
-            @RequestBody CreateSanctionRequest body
+            @Valid @RequestBody CreateSanctionRequest body
     ) {
         UserDto requester = resolveAdminRequester(request);
         if (requester == null) {
@@ -475,8 +477,11 @@ public class UserController {
     }
 
     public record CreateSanctionRequest(
+            @NotBlank(message = "targetUserId is required")
             String targetUserId,
+            @NotBlank(message = "type is required")
             String type,
+            @NotBlank(message = "reason is required")
             String reason,
             String expiresAt
     ) {

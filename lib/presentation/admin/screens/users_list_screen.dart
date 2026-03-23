@@ -6,6 +6,8 @@ import '../../../data/models/user_model.dart';
 import '../../../data/services/report_service.dart';
 import '../../../data/services/user_service.dart';
 import '../../profile/screens/user_profile_screen.dart';
+import 'reports_screen.dart';
+import 'package:intl/intl.dart';
 
 class UsersListScreen extends StatefulWidget {
   const UsersListScreen({super.key});
@@ -274,6 +276,17 @@ class _UsersListScreenState extends State<UsersListScreen> {
 
     if (shouldApply == true) {
       final reason = reasonController.text.trim();
+      if (reason.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Укажите причину санкции')),
+          );
+        }
+        reasonController.dispose();
+        daysController.dispose();
+        return;
+      }
+
       final days = int.tryParse(daysController.text.trim());
       final expiresAt = days != null && days > 0
           ? DateTime.now().toUtc().add(Duration(days: days))
@@ -438,6 +451,205 @@ class _UsersListScreenState extends State<UsersListScreen> {
     }
   }
 
+  Future<void> _showUserReportsDialog(_ModerationUserItem item) async {
+    final reports = [...item.reports]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD9DCEF),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.report_problem_rounded, color: Color(0xFFFF8E53)),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Жалобы пользователя',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF2F355E),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${item.pendingReports} pending',
+                      style: const TextStyle(
+                        color: Color(0xFF7A82AC),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                if (reports.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Text(
+                      'По пользователю пока нет жалоб',
+                      style: TextStyle(color: Color(0xFF7B82AD)),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: reports.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final report = reports[index];
+                        final isPending = report.status.toUpperCase() == 'PENDING';
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8F9FF),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFDDE3FF)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      report.reason.displayName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF2F355E),
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: isPending
+                                          ? const Color(0xFFFFEFE8)
+                                          : const Color(0xFFEAF8F2),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      report.status.toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: isPending
+                                            ? const Color(0xFFD16A3A)
+                                            : const Color(0xFF2E9E71),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                DateFormat('dd.MM.yyyy HH:mm', 'ru').format(report.createdAt),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF7A82AC),
+                                ),
+                              ),
+                              if ((report.details ?? '').trim().isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  report.details!.trim(),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF4D5687),
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 6),
+                              Text(
+                                'ID: ${report.id}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF9AA2C8),
+                                ),
+                              ),
+                              if (isPending) ...[
+                                const SizedBox(height: 8),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                      _dismissSingleReport(item, report);
+                                    },
+                                    icon: const Icon(Icons.close_rounded, size: 16),
+                                    label: const Text('Отклонить эту жалобу'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFF9E9E9E),
+                                      side: const BorderSide(color: Color(0xFFD6D9EB)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _dismissSingleReport(_ModerationUserItem item, ReportModel report) async {
+    final id = item.user.id;
+    if (_actionInProgress.contains(id)) return;
+
+    setState(() {
+      _actionInProgress.add(id);
+    });
+
+    try {
+      await _reportService.resolveReport(report.id, 'DISMISSED');
+      await _loadUsers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Жалоба отклонена')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка отклонения жалобы: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _actionInProgress.remove(id);
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = _users.where((item) {
@@ -483,6 +695,24 @@ class _UsersListScreenState extends State<UsersListScreen> {
               ),
             ),
           ),
+          if (_isAdmin)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const ReportsScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.report_problem_rounded),
+                  label: const Text('Смотреть все жалобы'),
+                ),
+              ),
+            ),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -682,9 +912,12 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                 ],
                               ),
                               const SizedBox(height: 10),
-                              Row(
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
                                 children: [
-                                  Expanded(
+                                  SizedBox(
+                                    width: 150,
                                     child: OutlinedButton(
                                       onPressed: inProgress
                                           ? null
@@ -701,8 +934,15 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                       child: const Text('Профиль'),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
+                                  SizedBox(
+                                    width: 170,
+                                    child: OutlinedButton(
+                                      onPressed: () => _showUserReportsDialog(item),
+                                      child: const Text('Смотреть жалобы'),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: 170,
                                     child: ElevatedButton(
                                       onPressed: inProgress
                                           ? null
@@ -716,8 +956,8 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                       child: const Text('Закрыть жалобы'),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
+                                  SizedBox(
+                                    width: 120,
                                     child: ElevatedButton(
                                       onPressed: inProgress
                                           ? null

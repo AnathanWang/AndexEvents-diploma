@@ -77,7 +77,7 @@ public class ReportRepository {
         jdbcTemplate.update(
                 """
                 UPDATE users."Report"
-                SET "status" = ?::"ReportStatus", "resolverId" = ?, "resolvedAt" = NOW(), "updatedAt" = NOW()
+            SET "status" = ?::users."ReportStatus", "resolverId" = ?, "resolvedAt" = NOW(), "updatedAt" = NOW()
                 WHERE "id" = ?
                 """,
                 status, resolverId, reportId

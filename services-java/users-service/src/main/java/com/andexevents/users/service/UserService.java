@@ -3,6 +3,7 @@ package com.andexevents.users.service;
 import com.andexevents.users.model.UserDto;
 import com.andexevents.users.repo.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.Locale;
@@ -52,6 +53,7 @@ public class UserService {
         return "ADMIN".equals(normalizedRole) || "MODERATOR".equals(normalizedRole);
     }
 
+    @Transactional
     public UserDto updateUserRole(String targetUserId, String role) {
         String normalizedRole = normalizeRole(role);
         if (!"USER".equals(normalizedRole)

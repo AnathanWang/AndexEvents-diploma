@@ -186,21 +186,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildSanctionsBanner() {
     if (_activeSanctions.isEmpty) return const SizedBox.shrink();
 
-    String formatType(String type) {
-      switch (type.toUpperCase()) {
-        case 'WARNING':
-          return 'Предупреждение';
-        case 'MUTE':
-          return 'Ограничение общения';
-        case 'EVENT_CREATE_BAN':
-          return 'Запрет на создание событий';
-        case 'FULL_BAN':
-          return 'Полная блокировка действий';
-        default:
-          return type;
-      }
-    }
-
     final first = _activeSanctions.first;
 
     return Container(
@@ -229,7 +214,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            formatType(first.type),
+            _formatSanctionType(first.type),
             style: const TextStyle(
               color: Color(0xFF8B4D24),
               fontWeight: FontWeight.w700,
@@ -247,6 +232,58 @@ class _ProfileScreenState extends State<ProfileScreen>
               style: const TextStyle(color: Color(0xFF9C643E), fontSize: 12),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  String _formatSanctionType(String type) {
+    switch (type.toUpperCase()) {
+      case 'WARNING':
+        return 'Предупреждение';
+      case 'MUTE':
+        return 'Ограничение общения';
+      case 'EVENT_CREATE_BAN':
+        return 'Запрет на создание событий';
+      case 'FULL_BAN':
+        return 'Полная блокировка действий';
+      default:
+        return type;
+    }
+  }
+
+  Widget _buildHeaderSanctionChip() {
+    if (_activeSanctions.isEmpty) return const SizedBox.shrink();
+
+    final first = _activeSanctions.first;
+    final label = _formatSanctionType(first.type);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFB680).withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: const Color(0xFFFFD2AE).withValues(alpha: 0.92),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const Icon(Icons.gavel_rounded, size: 12, color: Colors.white),
+          const SizedBox(width: 4),
+          Text(
+            _activeSanctions.length > 1
+                ? 'Санкция: $label +${_activeSanctions.length - 1}'
+                : 'Санкция: $label',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -793,6 +830,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                             if (user.age != null)
                               _buildHeaderMetaChip('${user.age} лет'),
                             if (hasGender) _buildHeaderMetaChip(user.gender!),
+                            if (_activeSanctions.isNotEmpty)
+                              _buildHeaderSanctionChip(),
                           ],
                         ),
                       ],

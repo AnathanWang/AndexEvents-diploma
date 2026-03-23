@@ -1,6 +1,7 @@
 package com.andexevents.users.repo;
 
 import com.andexevents.users.model.UserDto;
+import com.andexevents.users.service.UserService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -274,11 +275,15 @@ public class UserRepository {
     }
 
     public UserDto updateRole(String userId, String role) {
-        jdbcTemplate.update(
+        int rowsUpdated = jdbcTemplate.update(
                 "UPDATE users.\"User\" SET \"role\" = CAST(? AS users.\"UserRole\"), \"updatedAt\" = NOW() WHERE id = ?",
                 role,
                 userId
         );
+
+        if (rowsUpdated == 0) {
+            throw new UserService.NotFoundException("User not found");
+        }
 
         return findById(userId).orElseThrow();
     }
