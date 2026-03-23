@@ -50,6 +50,7 @@ class EventCreateRequested extends EventEvent {
   final DateTime? endDateTime;
   final double price;
   final String? imageUrl;
+  final List<String>? imageUrls;
   final bool isOnline;
   final int? maxParticipants;
   final int? minAge;
@@ -66,6 +67,7 @@ class EventCreateRequested extends EventEvent {
     this.endDateTime,
     required this.price,
     this.imageUrl,
+    this.imageUrls,
     required this.isOnline,
     this.maxParticipants,
     this.minAge,
@@ -84,6 +86,7 @@ class EventCreateRequested extends EventEvent {
         endDateTime,
         price,
         imageUrl,
+        imageUrls,
         isOnline,
         maxParticipants,
         minAge,
@@ -148,6 +151,7 @@ class EventUpdateRequested extends EventEvent {
   final DateTime? endDateTime;
   final double? price;
   final String? imageUrl;
+  final List<String>? imageUrls;
   final bool? isOnline;
   final int? maxParticipants;
   final int? minAge;
@@ -165,6 +169,7 @@ class EventUpdateRequested extends EventEvent {
     this.endDateTime,
     this.price,
     this.imageUrl,
+    this.imageUrls,
     this.isOnline,
     this.maxParticipants,
     this.minAge,
@@ -184,6 +189,7 @@ class EventUpdateRequested extends EventEvent {
         endDateTime,
         price,
         imageUrl,
+        imageUrls,
         isOnline,
         maxParticipants,
         minAge,

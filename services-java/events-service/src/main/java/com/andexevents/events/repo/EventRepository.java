@@ -2,7 +2,6 @@ package com.andexevents.events.repo;
 
 import com.andexevents.events.model.EventDtos;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
@@ -22,9 +21,14 @@ public class EventRepository {
     public String insertEvent(EventCreateParams p) {
         String id = UUID.randomUUID().toString();
 
+        String imageUrl = p.imageUrl();
+        if ((imageUrl == null || imageUrl.isBlank()) && p.imageUrls() != null && !p.imageUrls().isEmpty()) {
+            imageUrl = p.imageUrls().get(0);
+        }
+
         jdbcTemplate.update(
-                "INSERT INTO events.\"Event\" (id, title, description, category, location, latitude, longitude, \"locationGeo\", \"dateTime\", \"endDateTime\", price, \"imageUrl\", \"isOnline\", status, \"createdById\", \"createdAt\", \"updatedAt\") " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?, ?, ?, ?, ?, 'APPROVED'::events.\"EventStatus\", ?, NOW(), NOW())",
+            "INSERT INTO events.\"Event\" (id, title, description, category, location, latitude, longitude, \"locationGeo\", \"dateTime\", \"endDateTime\", price, \"imageUrl\", \"imageUrls\", \"isOnline\", status, \"createdById\", \"createdAt\", \"updatedAt\") " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?, ?, ?, ?, ?::text[], ?, 'APPROVED'::events.\"EventStatus\", ?, NOW(), NOW())",
                 id,
                 p.title(),
                 p.description(),
@@ -37,7 +41,8 @@ public class EventRepository {
                 Timestamp.from(p.dateTime()),
                 p.endDateTime() != null ? Timestamp.from(p.endDateTime()) : null,
                 p.price() == null ? 0.0 : p.price(),
-                p.imageUrl(),
+                imageUrl,
+                toPgTextArrayLiteral(p.imageUrls()),
                 p.isOnline() != null && p.isOnline(),
                 p.createdById()
         );
@@ -144,15 +149,6 @@ public class EventRepository {
         int offset = (page - 1) * limit;
 
         String categoryClause = (category == null || category.isBlank()) ? "" : " AND e.category = ? ";
-        List<Object> params = new ArrayList<>();
-        params.add(lon);
-        params.add(lat);
-        params.add(maxDistanceMeters);
-        if (!categoryClause.isEmpty()) {
-            params.add(category);
-        }
-        params.add(limit);
-        params.add(offset);
 
         String sql =
                 "SELECT e.*, " +
@@ -183,7 +179,21 @@ public class EventRepository {
         finalParams.add(limit);
         finalParams.add(offset);
 
-        List<NearbyEventRow> events = jdbcTemplate.query(sql, nearbyRowMapper(), finalParams.toArray());
+        List<NearbyEventRow> events = jdbcTemplate.query(
+                sql,
+                (rs, rn) -> {
+                    EventRow event = mapEventRow(rs);
+                    double distance = rs.getDouble("distance");
+                    long participantCount = rs.getLong("participantCount");
+                    EventDtos.CreatorDto createdBy = null;
+                    String creatorId = rs.getString("u_id");
+                    if (creatorId != null) {
+                        createdBy = new EventDtos.CreatorDto(creatorId, rs.getString("u_displayName"), rs.getString("u_photoUrl"));
+                    }
+                    return new NearbyEventRow(event, distance, createdBy, participantCount);
+                },
+                finalParams.toArray()
+        );
 
         String countSql =
                 "SELECT COUNT(DISTINCT e.id) " +
@@ -208,7 +218,7 @@ public class EventRepository {
                 "UPDATE events.\"Event\" SET title = COALESCE(?, title), description = COALESCE(?, description), category = COALESCE(?, category), " +
                         "location = COALESCE(?, location), latitude = COALESCE(?, latitude), longitude = COALESCE(?, longitude), " +
                         "\"locationGeo\" = CASE WHEN ? IS NOT NULL AND ? IS NOT NULL THEN ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography ELSE \"locationGeo\" END, " +
-                        "\"dateTime\" = COALESCE(?, \"dateTime\"), \"endDateTime\" = COALESCE(?, \"endDateTime\"), price = COALESCE(?, price), \"imageUrl\" = COALESCE(?, \"imageUrl\"), \"isOnline\" = COALESCE(?, \"isOnline\"), \"updatedAt\" = NOW() " +
+                    "\"dateTime\" = COALESCE(?, \"dateTime\"), \"endDateTime\" = COALESCE(?, \"endDateTime\"), price = COALESCE(?, price), \"imageUrl\" = COALESCE(?, \"imageUrl\"), \"imageUrls\" = COALESCE(?::text[], \"imageUrls\"), \"isOnline\" = COALESCE(?, \"isOnline\"), \"updatedAt\" = NOW() " +
                         "WHERE id = ?",
                 p.title(),
                 p.description(),
@@ -224,6 +234,7 @@ public class EventRepository {
                 p.endDateTime() == null ? null : Timestamp.from(p.endDateTime()),
                 p.price(),
                 p.imageUrl(),
+                toPgTextArrayLiteral(p.imageUrls()),
                 p.isOnline(),
                 eventId
         );
@@ -272,6 +283,7 @@ public class EventRepository {
             Instant endDateTime,
             Double price,
             String imageUrl,
+            List<String> imageUrls,
             Boolean isOnline,
             String createdById
     ) {
@@ -288,6 +300,7 @@ public class EventRepository {
             Instant endDateTime,
             Double price,
             String imageUrl,
+            List<String> imageUrls,
             Boolean isOnline
     ) {
     }
@@ -304,6 +317,7 @@ public class EventRepository {
             Instant endDateTime,
             double price,
             String imageUrl,
+            List<String> imageUrls,
             boolean isOnline,
             String status,
             String rejectionReason,
@@ -338,6 +352,7 @@ public class EventRepository {
                 toInstant(rs.getObject("endDateTime")),
                 rs.getDouble("price"),
                 rs.getString("imageUrl"),
+                readTextArray(rs.getArray("imageUrls")),
                 rs.getBoolean("isOnline"),
                 rs.getString("status"),
                 rs.getString("rejectionReason"),
@@ -348,20 +363,6 @@ public class EventRepository {
                 toInstant(rs.getObject("createdAt")),
                 toInstant(rs.getObject("updatedAt"))
         );
-    }
-
-    private RowMapper<NearbyEventRow> nearbyRowMapper() {
-        return (rs, rn) -> {
-            EventRow event = mapEventRow(rs);
-            double distance = rs.getDouble("distance");
-            long participantCount = rs.getLong("participantCount");
-            EventDtos.CreatorDto createdBy = null;
-            String creatorId = rs.getString("u_id");
-            if (creatorId != null) {
-                createdBy = new EventDtos.CreatorDto(creatorId, rs.getString("u_displayName"), rs.getString("u_photoUrl"));
-            }
-            return new NearbyEventRow(event, distance, createdBy, participantCount);
-        };
     }
 
     private EventDtos.ParticipantDto mapParticipant(ResultSet rs) throws SQLException {
@@ -400,5 +401,33 @@ public class EventRepository {
         if (ts instanceof java.time.OffsetDateTime odt) return odt.toInstant();
         if (ts instanceof java.time.LocalDateTime ldt) return ldt.atZone(java.time.ZoneOffset.UTC).toInstant();
         return null;
+    }
+
+    private List<String> readTextArray(java.sql.Array sqlArray) throws SQLException {
+        if (sqlArray == null) return List.of();
+        Object value = sqlArray.getArray();
+        if (value instanceof String[] arr) return Arrays.asList(arr);
+        if (value instanceof Object[] arr) {
+            List<String> out = new ArrayList<>();
+            for (Object item : arr) {
+                if (item != null) out.add(item.toString());
+            }
+            return out;
+        }
+        return List.of();
+    }
+
+    private String toPgTextArrayLiteral(List<String> values) {
+        if (values == null) return null;
+        if (values.isEmpty()) return "{}";
+
+        StringJoiner joiner = new StringJoiner(",", "{", "}");
+        for (String value : values) {
+            String escaped = value == null ? "" : value
+                    .replace("\\", "\\\\")
+                    .replace("\"", "\\\"");
+            joiner.add("\"" + escaped + "\"");
+        }
+        return joiner.toString();
     }
 }

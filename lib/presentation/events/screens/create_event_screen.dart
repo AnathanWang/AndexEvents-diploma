@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'dart:io';
 import '../../../core/services/logger_service.dart';
 import '../../widgets/common/custom_dropdown.dart';
 import '../../widgets/common/custom_notification.dart';
@@ -39,10 +38,12 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   bool _isPhotoUploading = false;
   bool _isLoading = false;
   
-  File? _eventPhoto;
-  String? _uploadedPhotoUrl;
+  final List<String> _uploadedPhotoUrls = <String>[];
+  int _pendingPhotoUploads = 0;
   double? _latitude;
   double? _longitude;
+
+  static const int _maxEventPhotos = 5;
 
   final List<String> _categories = <String>[
     'Спорт',
@@ -201,23 +202,44 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     }
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImages() async {
     try {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
+      final List<XFile> images = await picker.pickMultiImage(
         maxWidth: 1280,
         maxHeight: 720,
         imageQuality: 70,
       );
 
-      if (image != null && mounted) {
+      if (images.isNotEmpty && mounted) {
+        final currentTotal = _uploadedPhotoUrls.length + _pendingPhotoUploads;
+        if (currentTotal >= _maxEventPhotos) {
+          CustomNotification.show(
+            context,
+            'Можно добавить максимум $_maxEventPhotos фото',
+            isError: true,
+          );
+          return;
+        }
+
+        final canAdd = _maxEventPhotos - currentTotal;
+        final imagesToAdd = images.take(canAdd).toList();
+
         setState(() {
-          _eventPhoto = File(image.path);
+          _pendingPhotoUploads += imagesToAdd.length;
+          _isPhotoUploading = _pendingPhotoUploads > 0;
         });
-        
-        // Загружаем фото сразу
-        context.read<EventBloc>().add(EventPhotoUploadRequested(image.path));
+
+        for (final image in imagesToAdd) {
+          context.read<EventBloc>().add(EventPhotoUploadRequested(image.path));
+        }
+
+        if (images.length > canAdd) {
+          CustomNotification.show(
+            context,
+            'Добавлено $canAdd из ${images.length} фото (лимит $_maxEventPhotos)',
+          );
+        }
       }
     } catch (e) {
       // Пользователь отменил выбор или произошла другая ошибка
@@ -230,6 +252,12 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       }
       LoggerService.error('Image picker error: $e');
     }
+  }
+
+  void _removeUploadedPhoto(int index) {
+    setState(() {
+      _uploadedPhotoUrls.removeAt(index);
+    });
   }
 
   Future<void> _openMapPicker() async {
@@ -309,7 +337,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           dateTime: dateTime,
           endDateTime: endDateTime,
           price: price,
-          imageUrl: _uploadedPhotoUrl,
+          imageUrl: _uploadedPhotoUrls.isEmpty ? null : _uploadedPhotoUrls.first,
+          imageUrls: _uploadedPhotoUrls.isEmpty ? null : _uploadedPhotoUrls,
           isOnline: _isOnline,
         ),
       );
@@ -324,11 +353,21 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           setState(() => _isPhotoUploading = true);
         } else if (state is EventPhotoUploaded) {
           setState(() {
-            _isPhotoUploading = false;
             final url = state.photoUrl.trim();
-            _uploadedPhotoUrl = url.isEmpty ? null : url;
+            if (url.isNotEmpty && !_uploadedPhotoUrls.contains(url)) {
+              _uploadedPhotoUrls.add(url);
+            }
+            if (_pendingPhotoUploads > 0) {
+              _pendingPhotoUploads -= 1;
+            }
+            _isPhotoUploading = _pendingPhotoUploads > 0;
           });
-          CustomNotification.show(context, 'Фото загружено!');
+          if (_pendingPhotoUploads == 0) {
+            CustomNotification.show(
+              context,
+              'Загружено ${_uploadedPhotoUrls.length} фото',
+            );
+          }
         } else if (state is EventCreating) {
           setState(() => _isLoading = true);
         } else if (state is EventCreated) {
@@ -338,7 +377,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         } else if (state is EventError) {
           setState(() {
             _isLoading = false;
-            _isPhotoUploading = false;
+            if (_pendingPhotoUploads > 0) {
+              _pendingPhotoUploads -= 1;
+            }
+            _isPhotoUploading = _pendingPhotoUploads > 0;
           });
           CustomNotification.show(context, state.message, isError: true);
         }
@@ -368,7 +410,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           children: <Widget>[
             // Фото события
             GestureDetector(
-              onTap: _pickImage,
+              onTap: _pickImages,
               child: Container(
                 height: 200,
                 decoration: BoxDecoration(
@@ -377,21 +419,16 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ),
                 child: _isPhotoUploading
                     ? const Center(child: CircularProgressIndicator())
-                    : _eventPhoto != null
+                    : _uploadedPhotoUrls.isNotEmpty
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(16),
-                            child: Image.file(_eventPhoto!, fit: BoxFit.cover),
+                            child: CachedNetworkImage(
+                              imageUrl: _uploadedPhotoUrls.first,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                              errorWidget: (context, url, error) => const Icon(Icons.error),
+                            ),
                           )
-                        : _uploadedPhotoUrl != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: CachedNetworkImage(
-                                  imageUrl: _uploadedPhotoUrl!,
-                                  fit: BoxFit.cover,
-                                  placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                                  errorWidget: (context, url, error) => const Icon(Icons.error),
-                                ),
-                              )
                             : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: <Widget>[
@@ -420,6 +457,60 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                               ),
               ),
             ),
+            if (_uploadedPhotoUrls.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 88,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _uploadedPhotoUrls.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final url = _uploadedPhotoUrls[index];
+                    return Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: CachedNetworkImage(
+                            imageUrl: url,
+                            width: 88,
+                            height: 88,
+                            fit: BoxFit.cover,
+                            placeholder: (context, _) => Container(
+                              width: 88,
+                              height: 88,
+                              color: Colors.grey.shade200,
+                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            ),
+                            errorWidget: (context, _, __) => Container(
+                              width: 88,
+                              height: 88,
+                              color: Colors.grey.shade200,
+                              child: const Icon(Icons.broken_image),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: GestureDetector(
+                            onTap: () => _removeUploadedPhoto(index),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close, size: 14, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             
             // Название события

@@ -55,6 +55,7 @@ public class EventController {
                 body.endDateTime() != null ? Instant.parse(body.endDateTime()) : null,
                 body.price(),
                 body.imageUrl(),
+            body.imageUrls(),
                 body.isOnline(),
                 auth.userId()
         );
@@ -153,6 +154,7 @@ public class EventController {
                 body.endDateTime() == null ? null : Instant.parse(body.endDateTime()),
                 body.price(),
                 body.imageUrl(),
+            body.imageUrls(),
                 body.isOnline()
         );
 
@@ -240,6 +242,7 @@ public class EventController {
             String endDateTime,
             Double price,
             String imageUrl,
+            List<String> imageUrls,
             Boolean isOnline
     ) {
     }
@@ -255,6 +258,7 @@ public class EventController {
             String endDateTime,
             Double price,
             String imageUrl,
+            List<String> imageUrls,
             Boolean isOnline
     ) {
     }

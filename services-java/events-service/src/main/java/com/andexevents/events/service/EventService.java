@@ -5,6 +5,7 @@ import com.andexevents.events.repo.EventRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -118,6 +119,19 @@ public class EventService {
 
         Double distance = nearby != null ? nearby.distance() : null;
 
+        String primaryImage = row.imageUrl();
+        List<String> normalizedImages = new ArrayList<>();
+        if (row.imageUrls() != null) {
+            normalizedImages.addAll(row.imageUrls());
+        }
+        if ((primaryImage == null || primaryImage.isBlank()) && !normalizedImages.isEmpty()) {
+            primaryImage = normalizedImages.get(0);
+        }
+        if (primaryImage != null && !primaryImage.isBlank()) {
+            normalizedImages.add(0, primaryImage);
+        }
+        normalizedImages = new ArrayList<>(new LinkedHashSet<>(normalizedImages));
+
         return new EventDtos.EventDto(
                 row.id(),
                 row.title(),
@@ -129,7 +143,8 @@ public class EventService {
                 row.dateTime(),
                 row.endDateTime(),
                 row.price(),
-                row.imageUrl(),
+                primaryImage,
+                normalizedImages,
                 row.isOnline(),
                 row.status(),
                 row.rejectionReason(),

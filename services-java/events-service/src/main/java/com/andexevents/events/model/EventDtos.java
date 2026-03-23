@@ -28,6 +28,7 @@ public class EventDtos {
             Instant endDateTime,
             double price,
             String imageUrl,
+            List<String> imageUrls,
             boolean isOnline,
             String status,
             String rejectionReason,

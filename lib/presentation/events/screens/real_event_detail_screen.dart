@@ -26,6 +26,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   bool _isFavorite = false;
   bool _isGoing = false;
   bool _isParticipationLoading = false;
+  int _currentImageIndex = 0;
   final ExternalRouteService _routeService = ExternalRouteService();
 
   @override
@@ -168,6 +169,11 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   Widget _buildEventDetail(BuildContext context, EventModel event) {
     final categoryColor = _getCategoryColor(event.category);
     final categoryName = _getCategoryName(event.category);
+    final imageGallery = event.imageUrls.isNotEmpty
+        ? event.imageUrls
+        : <String>[
+            if ((event.imageUrl ?? '').trim().isNotEmpty) event.imageUrl!.trim(),
+          ];
 
     return Scaffold(
       body: CustomScrollView(
@@ -236,29 +242,40 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (event.imageUrl != null)
-                    CachedNetworkImage(
-                      imageUrl: event.imageUrl!,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey.shade300,
-                        child: const Center(child: CircularProgressIndicator()),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              categoryColor.withValues(alpha: 0.7),
-                              categoryColor.withValues(alpha: 0.5),
-                            ],
+                  if (imageGallery.isNotEmpty)
+                    PageView.builder(
+                      itemCount: imageGallery.length,
+                      onPageChanged: (index) {
+                        if (!mounted) return;
+                        setState(() {
+                          _currentImageIndex = index;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        return CachedNetworkImage(
+                          imageUrl: imageGallery[index],
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey.shade300,
+                            child: const Center(child: CircularProgressIndicator()),
                           ),
-                        ),
-                        child: const Icon(
-                          Icons.event,
-                          size: 120,
-                          color: Colors.white38,
-                        ),
-                      ),
+                          errorWidget: (context, url, error) => Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  categoryColor.withValues(alpha: 0.7),
+                                  categoryColor.withValues(alpha: 0.5),
+                                ],
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.event,
+                              size: 120,
+                              color: Colors.white38,
+                            ),
+                          ),
+                        );
+                      },
                     )
                   else
                     Container(
@@ -276,18 +293,45 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                         color: Colors.white38,
                       ),
                     ),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.7),
-                        ],
+                  IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.7),
+                          ],
+                        ),
                       ),
                     ),
                   ),
+                  if (imageGallery.length > 1)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 16,
+                      child: IgnorePointer(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            imageGallery.length,
+                            (index) => Container(
+                              width: 8,
+                              height: 8,
+                              margin: const EdgeInsets.symmetric(horizontal: 3),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _currentImageIndex == index
+                                    ? Colors.white
+                                    : Colors.white54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

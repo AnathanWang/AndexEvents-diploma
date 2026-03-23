@@ -51,6 +51,7 @@ class EventService {
     DateTime? endDateTime,
     required double price,
     String? imageUrl,
+    List<String>? imageUrls,
     required bool isOnline,
     int? maxParticipants,
     int? minAge,
@@ -78,6 +79,7 @@ class EventService {
         body['endDateTime'] = endDateTime.toUtc().toIso8601String();
       }
       if (imageUrl != null) body['imageUrl'] = imageUrl;
+      if (imageUrls != null) body['imageUrls'] = imageUrls;
       if (maxParticipants != null) body['maxParticipants'] = maxParticipants;
       if (minAge != null) body['minAge'] = minAge;
       if (maxAge != null) body['maxAge'] = maxAge;
@@ -332,6 +334,7 @@ class EventService {
     DateTime? endDateTime,
     double? price,
     String? imageUrl,
+    List<String>? imageUrls,
     bool? isOnline,
     int? maxParticipants,
     int? minAge,
@@ -356,6 +359,7 @@ class EventService {
       }
       if (price != null) body['price'] = price;
       if (imageUrl != null) body['imageUrl'] = imageUrl;
+      if (imageUrls != null) body['imageUrls'] = imageUrls;
       if (isOnline != null) body['isOnline'] = isOnline;
       if (maxParticipants != null) body['maxParticipants'] = maxParticipants;
       if (minAge != null) body['minAge'] = minAge;

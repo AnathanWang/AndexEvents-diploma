@@ -14,6 +14,7 @@ class EventModel {
   final DateTime? endDateTime;
   final double price;
   final String? imageUrl;
+  final List<String> imageUrls;
   final bool isOnline;
   final String status; // PENDING, APPROVED, REJECTED
   final String? rejectionReason;
@@ -44,6 +45,7 @@ class EventModel {
     this.endDateTime,
     required this.price,
     this.imageUrl,
+    this.imageUrls = const [],
     required this.isOnline,
     required this.status,
     this.rejectionReason,
@@ -103,6 +105,20 @@ class EventModel {
             .toList() ??
         [];
 
+    final normalizedImageUrl = _normalizeMediaUrl(json['imageUrl'] as String?);
+    final normalizedImageUrls =
+      (json['imageUrls'] as List<dynamic>?)
+        ?.map((e) => _normalizeMediaUrl(e?.toString()))
+        .whereType<String>()
+        .where((url) => url.trim().isNotEmpty)
+        .toList() ??
+      <String>[];
+
+    if ((normalizedImageUrl ?? '').trim().isNotEmpty &&
+      !normalizedImageUrls.contains(normalizedImageUrl)) {
+      normalizedImageUrls.insert(0, normalizedImageUrl!);
+    }
+
     return EventModel(
       id: json['id'] as String,
       title: json['title'] as String,
@@ -116,7 +132,8 @@ class EventModel {
           ? DateTime.parse(json['endDateTime'] as String)
           : null,
       price: (json['price'] as num).toDouble(),
-      imageUrl: _normalizeMediaUrl(json['imageUrl'] as String?),
+        imageUrl: normalizedImageUrl,
+        imageUrls: normalizedImageUrls,
       isOnline: json['isOnline'] as bool? ?? false,
       status: json['status'] as String,
       rejectionReason: json['rejectionReason'] as String?,
@@ -152,6 +169,7 @@ class EventModel {
       'endDateTime': endDateTime?.toUtc().toIso8601String(),
       'price': price,
       'imageUrl': imageUrl,
+      'imageUrls': imageUrls,
       'isOnline': isOnline,
       'status': status,
       'rejectionReason': rejectionReason,
@@ -176,6 +194,7 @@ class EventModel {
     DateTime? endDateTime,
     double? price,
     String? imageUrl,
+    List<String>? imageUrls,
     bool? isOnline,
     String? status,
     String? rejectionReason,
@@ -204,6 +223,7 @@ class EventModel {
       endDateTime: endDateTime ?? this.endDateTime,
       price: price ?? this.price,
       imageUrl: imageUrl ?? this.imageUrl,
+      imageUrls: imageUrls ?? this.imageUrls,
       isOnline: isOnline ?? this.isOnline,
       status: status ?? this.status,
       rejectionReason: rejectionReason ?? this.rejectionReason,
