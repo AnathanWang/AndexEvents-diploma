@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 class EventPreview {
   const EventPreview({
+    required this.id, // Добавлено поле id
     required this.title,
     required this.category,
     required this.time,
@@ -14,6 +15,7 @@ class EventPreview {
     this.attendeeNames = const <String>[],
   });
 
+  final String id; // Добавлено поле id
   final String title;
   final String category;
   final String time;

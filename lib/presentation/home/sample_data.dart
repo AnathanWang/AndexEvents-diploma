@@ -9,6 +9,7 @@ class SampleData {
 
   static final List<EventPreview> events = <EventPreview>[
     EventPreview(
+      id: 'event_1',
       title: 'Andex Meetup: Networking & Coffee',
       category: 'Комьюнити',
       time: 'Сегодня · 19:00',
@@ -27,6 +28,7 @@ class SampleData {
       ],
     ),
     EventPreview(
+      id: 'event_2',
       title: 'Sunrise Yoga в Парке Горького',
       category: 'Здоровье',
       time: 'Завтра · 07:30',
@@ -39,6 +41,7 @@ class SampleData {
       attendeeNames: const <String>['Ольга', 'Светлана', 'Екатерина'],
     ),
     EventPreview(
+      id: 'event_3',
       title: 'Techno Night by Local DJs',
       category: 'Музыка',
       time: 'Пятница · 22:00',
