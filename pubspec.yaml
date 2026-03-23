@@ -55,7 +55,7 @@ dependencies:
   mime: ^1.0.5
 
   # Geolocation & Maps
-  yandex_mapkit: 4.1.0
+  yandex_mapkit: ^4.2.1
   yandex_geocoder: ^2.3.1
   geolocator: ^13.0.1
   geocoding: ^3.0.0
@@ -71,6 +71,7 @@ dependencies:
   intl: ^0.19.0
   timeago: ^3.7.0
   flutter_svg: ^2.0.10+1
+  url_launcher: ^6.3.1
 
   # Permissions
   permission_handler: ^11.3.1

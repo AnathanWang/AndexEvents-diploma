@@ -3,11 +3,13 @@ import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:yandex_mapkit/yandex_mapkit.dart';
 
 import '../bloc/event_bloc.dart';
 import '../bloc/event_event.dart';
 import '../bloc/event_state.dart';
 import '../../../data/models/event_model.dart';
+import '../../../data/services/external_route_service.dart';
 import '../widgets/event_participants_dialog.dart';
 import '../../matches/screens/event_match_screen.dart';
 
@@ -24,6 +26,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   bool _isFavorite = false;
   bool _isGoing = false;
   bool _isParticipationLoading = false;
+  final ExternalRouteService _routeService = ExternalRouteService();
 
   @override
   void initState() {
@@ -58,6 +61,30 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
     } else {
       context.read<EventBloc>().add(
         EventCancelParticipationRequested(event.id),
+      );
+    }
+  }
+
+  Future<void> _openRoute(EventModel event) async {
+    if (event.isOnline) {
+      CustomNotification.show(
+        context,
+        'Для онлайн-событий маршрут недоступен',
+      );
+      return;
+    }
+
+    final opened = await _routeService.openRouteToDestination(
+      latitude: event.latitude,
+      longitude: event.longitude,
+      label: event.title,
+    );
+
+    if (!opened && mounted) {
+      CustomNotification.show(
+        context,
+        'Не удалось открыть приложение навигации',
+        isError: true,
       );
     }
   }
@@ -351,7 +378,11 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                       : _formatTime(event.dateTime),
                 ),
                 const SizedBox(height: 12),
-                _buildInfoRow(Icons.location_on, event.location, onTap: () {}),
+                _buildInfoRow(
+                  Icons.location_on,
+                  event.location,
+                  onTap: event.isOnline ? null : () => _openRoute(event),
+                ),
                 const SizedBox(height: 24),
 
                 // Участники
@@ -653,6 +684,85 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                                 child: const Text('Профиль'),
                               ),
                             ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                if (!event.isOnline) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Маршрут',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF4A4D6A),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: SizedBox(
+                            height: 180,
+                            child: IgnorePointer(
+                              child: YandexMap(
+                                onMapCreated: (controller) {
+                                  controller.moveCamera(
+                                    CameraUpdate.newCameraPosition(
+                                      CameraPosition(
+                                        target: Point(
+                                          latitude: event.latitude,
+                                          longitude: event.longitude,
+                                        ),
+                                        zoom: 15,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                mapObjects: [
+                                  PlacemarkMapObject(
+                                    mapId: const MapObjectId('event_detail_point'),
+                                    point: Point(
+                                      latitude: event.latitude,
+                                      longitude: event.longitude,
+                                    ),
+                                    icon: PlacemarkIcon.single(
+                                      PlacemarkIconStyle(
+                                        image: BitmapDescriptor.fromAssetImage(
+                                          'assets/icons/map_arrow.png',
+                                        ),
+                                        scale: 0.3,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () => _openRoute(event),
+                            icon: const Icon(Icons.route),
+                            label: const Text('Построить маршрут'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: categoryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              elevation: 0,
+                            ),
                           ),
                         ),
                       ],
