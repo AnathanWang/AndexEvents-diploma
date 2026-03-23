@@ -5,6 +5,7 @@ import com.andexevents.users.model.ReportReason;
 import com.andexevents.users.model.ReportStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
@@ -84,7 +85,7 @@ public class ReportRepository {
         );
     }
 
-    private RowMapper<ReportDto> mapper() {
+    private @NonNull RowMapper<ReportDto> mapper() {
         return (ResultSet rs, int rowNum) -> mapRow(rs);
     }
 
