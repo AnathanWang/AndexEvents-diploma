@@ -26,6 +26,7 @@ class EventModel {
   // Дополнительные поля для UI
   final int participantsCount;
   final bool isParticipating;
+  final String? userParticipationStatus;
   final String? creatorName;
   final String? creatorPhotoUrl;
   final List<ParticipantModel> previewParticipants;
@@ -53,6 +54,7 @@ class EventModel {
     this.updatedAt,
     this.participantsCount = 0,
     this.isParticipating = false,
+    this.userParticipationStatus,
     this.creatorName,
     this.creatorPhotoUrl,
     this.previewParticipants = const [],
@@ -104,6 +106,7 @@ class EventModel {
           : null,
       participantsCount: participantsCount,
       isParticipating: json['isParticipating'] as bool? ?? false,
+      userParticipationStatus: json['userParticipationStatus'] as String?,
       creatorName: createdBy?['displayName'] as String?,
       creatorPhotoUrl: createdBy?['photoUrl'] as String?,
       previewParticipants: previewParticipants,
@@ -158,6 +161,7 @@ class EventModel {
     DateTime? updatedAt,
     int? participantsCount,
     bool? isParticipating,
+    String? userParticipationStatus,
     String? creatorName,
     String? creatorPhotoUrl,
     List<ParticipantModel>? previewParticipants,
@@ -185,6 +189,7 @@ class EventModel {
       updatedAt: updatedAt ?? this.updatedAt,
       participantsCount: participantsCount ?? this.participantsCount,
       isParticipating: isParticipating ?? this.isParticipating,
+      userParticipationStatus: userParticipationStatus ?? this.userParticipationStatus,
       creatorName: creatorName ?? this.creatorName,
       creatorPhotoUrl: creatorPhotoUrl ?? this.creatorPhotoUrl,
       previewParticipants: previewParticipants ?? this.previewParticipants,

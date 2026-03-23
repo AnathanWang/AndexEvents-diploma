@@ -2,38 +2,43 @@ import 'package:flutter/material.dart';
 
 class PrivacySettingsScreen extends StatefulWidget {
   const PrivacySettingsScreen({
-    required this.showInSearch,
     required this.showVisitedEvents,
-    required this.matchNotifications,
+    required this.showInMatches,
+    required this.incognitoMode,
+    required this.hideOnlineStatus,
     super.key,
   });
 
-  final bool showInSearch;
   final bool showVisitedEvents;
-  final bool matchNotifications;
+  final bool showInMatches;
+  final bool incognitoMode;
+  final bool hideOnlineStatus;
 
   @override
   State<PrivacySettingsScreen> createState() => _PrivacySettingsScreenState();
 }
 
 class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
-  late bool _showInSearch;
   late bool _showVisitedEvents;
-  late bool _matchNotifications;
+  late bool _showInMatches;
+  late bool _incognitoMode;
+  late bool _hideOnlineStatus;
 
   @override
   void initState() {
     super.initState();
-    _showInSearch = widget.showInSearch;
     _showVisitedEvents = widget.showVisitedEvents;
-    _matchNotifications = widget.matchNotifications;
+    _showInMatches = widget.showInMatches;
+    _incognitoMode = widget.incognitoMode;
+    _hideOnlineStatus = widget.hideOnlineStatus;
   }
 
   void _save() {
     Navigator.of(context).pop(<String, bool>{
-      'showInSearch': _showInSearch,
       'showVisitedEvents': _showVisitedEvents,
-      'matchNotifications': _matchNotifications,
+      'showInMatches': _showInMatches,
+      'incognitoMode': _incognitoMode,
+      'hideOnlineStatus': _hideOnlineStatus,
     });
   }
 
@@ -59,13 +64,7 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
         actions: <Widget>[
           TextButton(
             onPressed: _save,
-            child: const Text(
-              'Готово',
-              style: TextStyle(
-                color: Color(0xFF5E60CE),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            child: const Text('Готово', style: TextStyle(color: Color(0xFF5E60CE), fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -74,46 +73,35 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
         children: <Widget>[
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFE0E0E0)),
-              borderRadius: BorderRadius.circular(20),
-            ),
+            decoration: BoxDecoration(border: Border.all(color: const Color(0xFFE0E0E0)), borderRadius: BorderRadius.circular(20)),
             child: Column(
               children: <Widget>[
                 SwitchListTile(
-                  title: const Text('Показывать в поиске'),
-                  subtitle: const Text('Другие пользователи смогут найти вас'),
-                  value: _showInSearch,
-                  activeThumbColor: const Color(0xFF5E60CE),
-                  onChanged: (bool value) {
-                    setState(() {
-                      _showInSearch = value;
-                    });
-                  },
-                ),
-                const Divider(height: 1),
-                SwitchListTile(
                   title: const Text('Показывать посещенные события'),
-                  subtitle: const Text('В вашем профиле'),
                   value: _showVisitedEvents,
                   activeThumbColor: const Color(0xFF5E60CE),
-                  onChanged: (bool value) {
-                    setState(() {
-                      _showVisitedEvents = value;
-                    });
-                  },
+                  onChanged: (bool value) => setState(() => _showVisitedEvents = value),
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
-                  title: const Text('Получать уведомления о матчах'),
-                  subtitle: const Text('Когда появляется новое совпадение'),
-                  value: _matchNotifications,
+                  title: const Text('Показывать профиль в мэтчах'),
+                  value: _showInMatches,
                   activeThumbColor: const Color(0xFF5E60CE),
-                  onChanged: (bool value) {
-                    setState(() {
-                      _matchNotifications = value;
-                    });
-                  },
+                  onChanged: (bool value) => setState(() => _showInMatches = value),
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  title: const Text('Инкогнито режим (Только взаимные)'),
+                  value: _incognitoMode,
+                  activeThumbColor: const Color(0xFF5E60CE),
+                  onChanged: (bool value) => setState(() => _incognitoMode = value),
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  title: const Text('Скрывать статус "в сети"'),
+                  value: _hideOnlineStatus,
+                  activeThumbColor: const Color(0xFF5E60CE),
+                  onChanged: (bool value) => setState(() => _hideOnlineStatus = value),
                 ),
               ],
             ),

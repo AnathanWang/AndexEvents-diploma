@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/user_sanction_model.dart';
+import '../../../data/models/event_model.dart';
 import '../../profile/bloc/profile_bloc.dart';
 import '../../profile/bloc/profile_event.dart';
 import '../../profile/bloc/profile_state.dart';
@@ -12,6 +13,7 @@ import '../../profile/screens/edit_profile_screen.dart';
 import '../../profile/screens/privacy_settings_screen.dart';
 import '../../events/screens/edit_event_screen.dart';
 import '../../events/bloc/event_bloc.dart';
+import '../../events/screens/real_event_detail_screen.dart';
 import '../../models/event_preview.dart';
 import '../../models/match_preview.dart';
 import '../../widgets/match_card.dart';
@@ -42,9 +44,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool _matchesLoading = false;
   String? _matchesError;
   String? _loadedForUserId;
-  bool _showInSearch = true;
-  bool _showVisitedEvents = true;
-  bool _matchNotifications = true;
   String? _sanctionsLoadedForUserId;
   List<UserSanctionModel> _activeSanctions = <UserSanctionModel>[];
 
@@ -417,6 +416,30 @@ class _ProfileScreenState extends State<ProfileScreen>
     return role == 'ADMIN' || role == 'MODERATOR';
   }
 
+  Future<void> _openPrivacySettings(UserModel user) async {
+    final result = await Navigator.of(context).push<Map<String, bool>>(
+      MaterialPageRoute<Map<String, bool>>(
+        builder: (context) => PrivacySettingsScreen(
+          showVisitedEvents: user.showVisitedEvents,
+          showInMatches: user.showInMatches,
+          incognitoMode: user.incognitoMode,
+          hideOnlineStatus: user.hideOnlineStatus,
+        ),
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    context.read<ProfileBloc>().add(
+      ProfileUpdateRequested(
+        showVisitedEvents: result['showVisitedEvents'],
+        showInMatches: result['showInMatches'],
+        incognitoMode: result['incognitoMode'],
+        hideOnlineStatus: result['hideOnlineStatus'],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -482,38 +505,29 @@ class _ProfileScreenState extends State<ProfileScreen>
                 child: Column(
                   children: <Widget>[
                     _buildSectionBadge(
-                      title: 'Мои мероприятия',
-                      caption: 'Собственные события и сохранённые планы',
+                      title: 'Мероприятия',
+                      caption: 'Созданные, запланированные и понравившиеся',
                       icon: Icons.event_note_rounded,
                     ),
                     const SizedBox(height: 12),
-                    if (state is ProfileLoaded && state.userEvents.isEmpty)
+                    if (state is ProfileLoaded &&
+                        state.userEvents.isEmpty &&
+                        state.goingEvents.isEmpty &&
+                        state.interestedEvents.isEmpty)
                       _buildEmptyStateCard(
                         icon: Icons.auto_awesome_rounded,
-                        title: 'Добавьте первое мероприятие',
+                        title: 'Мероприятий пока нет',
                         subtitle:
-                            'Заполните профиль события и пригласите людей.',
+                            'Вы еще не создали и не сохранили ни одного события.',
                       )
-                    else if (state is ProfileLoaded)
-                      ...state.userEvents.take(3).map((event) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _buildEventCard(event, context),
-                        );
-                      }),
-                    FilledButton.tonalIcon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.add_circle_outline, size: 18),
-                      label: const Text('Добавить новое событие'),
-                      style: FilledButton.styleFrom(
-                        foregroundColor: const Color(0xFF404A8F),
-                        backgroundColor: const Color(0xFFEAEFFF),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
+                    else if (state is ProfileLoaded) ...[
+                      _buildEventsRow('Созданные мной', state.userEvents,
+                          context, isEditable: true),
+                      _buildEventsRow('Я иду', state.goingEvents, context,
+                          isEditable: false),
+                      _buildEventsRow('Мне понравилось', state.interestedEvents,
+                          context, isEditable: false),
+                    ],
                   ],
                 ),
               ),
@@ -961,7 +975,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       const SizedBox(width: 8),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: _openPrivacySettings,
+                          onPressed: () => _openPrivacySettings(user),
                           icon: const Icon(
                             Icons.shield_moon_outlined,
                             size: 16,
@@ -1034,147 +1048,132 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Icon(icon, size: 16, color: color);
   }
 
-  Widget _buildEventCard(dynamic event, BuildContext context) {
-    return GestureDetector(
-      onTap: () async {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => BlocProvider(
-              create: (context) => EventBloc(),
-              child: EditEventScreen(event: event),
+  Widget _buildEventsRow(String title, List<dynamic> events, BuildContext context, {required bool isEditable}) {
+    if (events.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 8, bottom: 8, left: 16, right: 16),
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF2F355E),
             ),
           ),
-        );
+        ),
+        SizedBox(
+          height: 200, // Увеличено для предотвращения переполнения
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: events.length,
+            clipBehavior: Clip.none,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              return _buildCompactEventCard(events[index], context, isEditable: isEditable);
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
 
-        if (result == true && context.mounted) {
-          // Обновляем профиль, если событие было изменено или удалено
-          context.read<ProfileBloc>().add(const ProfileLoadRequested());
+  Widget _buildCompactEventCard(dynamic event, BuildContext context, {required bool isEditable}) {
+    final imageUrl = event is EventModel ? event.imageUrl : (event as dynamic).imageUrl?.toString();
+    final title = event is EventModel ? event.title : (event as dynamic).title;
+    final dateTime = event is EventModel ? event.dateTime : (event as dynamic).date;
+    final id = event is EventModel ? event.id : (event as dynamic).id;
+    
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+    
+    return GestureDetector(
+      onTap: () async {
+        if (isEditable) {
+           final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => BlocProvider(
+                create: (context) => EventBloc(),
+                child: EditEventScreen(event: event),
+              ),
+            ),
+          );
+          if (result == true && context.mounted) {
+            context.read<ProfileBloc>().add(const ProfileLoadRequested());
+          }
+        } else {
+           await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => RealEventDetailScreen(
+                eventId: id,
+              ),
+            ),
+          );
         }
       },
       child: Container(
+        width: 160,
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: const <BoxShadow>[
+          boxShadow: const [
             BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 14,
-              offset: Offset(0, 8),
+              color: Color(0x0A000000),
+              blurRadius: 12,
+              offset: Offset(0, 6),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (event.imageUrl != null)
+            if (hasImage)
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
-                ),
+                borderRadius: BorderRadius.circular(14),
                 child: CachedNetworkImage(
-                  imageUrl: event.imageUrl!,
-                  height: 130,
+                  imageUrl: imageUrl,
                   width: double.infinity,
+                  height: 100,
                   fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    height: 130,
-                    color: Colors.grey.shade200,
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) {
-                    LoggerService.error(
-                      'Error loading profile event image: $url, error: $error',
-                    );
-                    return Container(
-                      height: 130,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            const Color(0xFF5E60CE).withValues(alpha: 0.7),
-                            const Color(0xFF9370DB).withValues(alpha: 0.7),
-                          ],
-                        ),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.event, size: 48, color: Colors.white),
-                      ),
-                    );
-                  },
+                  placeholder: (context, _) => Container(color: Colors.grey.shade100),
+                  errorWidget: (context, _, __) => _buildFallbackImageCompact(),
                 ),
-              ),
+              )
+            else
+              _buildFallbackImageCompact(),
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+              padding: const EdgeInsets.only(top: 8, left: 2, right: 2),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 4.5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getCategoryColor(event.category),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      event.category,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
                   Text(
-                    event.title,
+                    title ?? '',
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF2F355E),
+                      height: 1.2,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 9),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.access_time,
-                        size: 15,
-                        color: Color(0xFF7F88B3),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _formatDate(event.dateTime),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF7F88B3),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 5),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on_outlined,
-                        size: 15,
-                        color: Color(0xFF7F88B3),
-                      ),
+                      const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF7F88B3)),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          event.location,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF7F88B3),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          _formatDate(dateTime),
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF7F88B3)),
                         ),
                       ),
                     ],
@@ -1184,6 +1183,20 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFallbackImageCompact() {
+    return Container(
+      width: double.infinity,
+      height: 100,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F5FA),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: const Center(
+        child: Icon(Icons.event_outlined, color: Color(0xFFBAC0E1), size: 28),
       ),
     );
   }
@@ -1373,26 +1386,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (result == true && context.mounted) {
       CustomNotification.success(context, 'Профиль успешно обновлен!');
     }
-  }
-
-  Future<void> _openPrivacySettings() async {
-    final result = await Navigator.of(context).push<Map<String, bool>>(
-      MaterialPageRoute<Map<String, bool>>(
-        builder: (context) => PrivacySettingsScreen(
-          showInSearch: _showInSearch,
-          showVisitedEvents: _showVisitedEvents,
-          matchNotifications: _matchNotifications,
-        ),
-      ),
-    );
-
-    if (result == null || !mounted) return;
-
-    setState(() {
-      _showInSearch = result['showInSearch'] ?? _showInSearch;
-      _showVisitedEvents = result['showVisitedEvents'] ?? _showVisitedEvents;
-      _matchNotifications = result['matchNotifications'] ?? _matchNotifications;
-    });
   }
 
   Rect? _avatarRect() {
