@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../core/services/logger_service.dart';
@@ -8,6 +9,7 @@ import '../presentation/auth/bloc/auth_state.dart';
 import '../presentation/onboarding/onboarding_screen.dart';
 import '../presentation/home/home_shell.dart';
 import '../presentation/auth/screens/setup_profile_screen.dart';
+import '../presentation/auth/screens/email_verification_screen.dart';
 
 class AndexApp extends StatelessWidget {
   const AndexApp({super.key});
@@ -22,6 +24,10 @@ class AndexApp extends StatelessWidget {
   }
 
   Widget _buildMaterialApp() {
+    final bool isApplePlatform = defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS;
+    final String? appFontFamily = isApplePlatform ? '.SF Pro Text' : null;
+
     final colorScheme = ColorScheme.fromSeed(
       seedColor: const Color(0xFF5E60CE),
       brightness: Brightness.light,
@@ -32,12 +38,13 @@ class AndexApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: colorScheme,
+        fontFamily: appFontFamily,
         scaffoldBackgroundColor: const Color(0xFFF5F6FA),
         textTheme: const TextTheme(
           headlineSmall: TextStyle(fontWeight: FontWeight.w700, fontSize: 22),
           titleMedium: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
           bodyMedium: TextStyle(fontSize: 14, color: Color(0xFF4A4D6A)),
-        ),
+        ).apply(fontFamily: appFontFamily),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: colorScheme.surface,
@@ -128,6 +135,10 @@ class AndexApp extends StatelessWidget {
       );
     } else if (state is AuthAuthenticated) {
       LoggerService.debug('🟢 [AndexApp] AuthAuthenticated, isOnboardingCompleted: ${state.isOnboardingCompleted}');
+      if (!state.user.emailVerified) {
+        LoggerService.debug('🟢 [AndexApp] Показываем EmailVerificationScreen (email не подтвержден)');
+        return EmailVerificationScreen(userEmail: state.user.email ?? '');
+      }
       if (state.isOnboardingCompleted) {
         LoggerService.debug('🟢 [AndexApp] Показываем HomeShell');
         return const HomeShell();

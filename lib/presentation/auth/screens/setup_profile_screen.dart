@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:async';
 import '../../../data/services/user_service.dart';
-import '../../../data/services/auth_service.dart';
 import 'setup_interests_screen.dart';
 import '../../widgets/common/custom_dropdown.dart';
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_event.dart';
+import 'login_screen.dart';
 
 /// Экран 1: Настройка базового профиля
 /// Фото, возраст, пол
@@ -144,7 +147,13 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
 
     if (shouldLogout == true) {
       // Выполняем logout
-      await AuthService().signOut();
+      if (mounted) {
+        context.read<AuthBloc>().add(const AuthLogoutRequested());
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
+      }
       return true;
     }
     return false;
@@ -399,24 +408,22 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                                 gender: _selectedGender,
                               );
 
-                              if (mounted) {
-                                setState(() => _isLoading = false);
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (BuildContext context) =>
-                                        const SetupInterestsScreen(),
-                                  ),
-                                );
-                              }
+                              if (!context.mounted) return;
+                              setState(() => _isLoading = false);
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (BuildContext context) =>
+                                      const SetupInterestsScreen(),
+                                ),
+                              );
                             } catch (e) {
-                              if (mounted) {
-                                setState(() => _isLoading = false);
-                                CustomNotification.show(
-                                  context,
-                                  'Ошибка при обновлении профиля: $e',
-                                  isError: true,
-                                );
-                              }
+                              if (!context.mounted) return;
+                              setState(() => _isLoading = false);
+                              CustomNotification.show(
+                                context,
+                                'Ошибка при обновлении профиля: $e',
+                                isError: true,
+                              );
                             }
                           }
                         },

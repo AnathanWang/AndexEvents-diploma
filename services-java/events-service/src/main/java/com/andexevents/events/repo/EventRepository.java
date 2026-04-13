@@ -121,7 +121,9 @@ public class EventRepository {
 
     public List<EventRow> listApprovedEvents() {
         return jdbcTemplate.query(
-                "SELECT * FROM events.\"Event\" WHERE status = 'APPROVED'::events.\"EventStatus\" ORDER BY \"createdAt\" DESC",
+                "SELECT * FROM events.\"Event\" WHERE status = 'APPROVED'::events.\"EventStatus\" " +
+                "AND COALESCE(\"endDateTime\", \"dateTime\" + interval '3 hours') > NOW() " +
+                "ORDER BY \"createdAt\" DESC",
                 (rs, rn) -> mapEventRow(rs)
         );
     }
@@ -160,6 +162,7 @@ public class EventRepository {
                         "LEFT JOIN events.\"Participant\" p ON e.id = p.\"eventId\" " +
                         "WHERE e.status = 'APPROVED'::events.\"EventStatus\" AND e.\"isOnline\" = false " +
                         "AND ST_DWithin(e.\"locationGeo\", ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?) " +
+                        "AND COALESCE(e.\"endDateTime\", e.\"dateTime\" + interval '3 hours') > NOW() " +
                         categoryClause +
                         "GROUP BY e.id, u.id " +
                         "ORDER BY distance ASC " +
@@ -200,6 +203,7 @@ public class EventRepository {
                         "FROM events.\"Event\" e " +
                         "WHERE e.status = 'APPROVED'::events.\"EventStatus\" AND e.\"isOnline\" = false " +
                         "AND ST_DWithin(e.\"locationGeo\", ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?) " +
+                        "AND COALESCE(e.\"endDateTime\", e.\"dateTime\" + interval '3 hours') > NOW() " +
                         categoryClause;
 
         List<Object> countParams = new ArrayList<>();

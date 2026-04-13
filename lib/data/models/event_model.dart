@@ -33,6 +33,8 @@ class EventModel {
   final String? creatorPhotoUrl;
   final List<ParticipantModel> previewParticipants;
 
+  DateTime get actualEndDateTime => endDateTime ?? dateTime.add(const Duration(hours: 3));
+
   const EventModel({
     required this.id,
     required this.title,

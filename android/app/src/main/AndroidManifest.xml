@@ -7,7 +7,7 @@
     <application
         android:label="andexevents"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         <!-- Yandex MapKit API Key
              NOTE: do NOT commit the actual key into the repository.
              Set the key via Gradle manifest placeholder (e.g. in local.properties or CI secrets)

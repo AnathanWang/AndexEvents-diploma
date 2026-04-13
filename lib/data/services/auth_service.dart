@@ -56,16 +56,18 @@ class AuthService {
       }
 
       await user.updateDisplayName(displayName);
+
+      // Отправляем email confirmation ДО любого обращения к нашему стороннему бэкенду, 
+      // чтобы гарантровать отправку, даже если бэкенд отвалится по таймауту.
+      await user.sendEmailVerification();
+      LoggerService.info('[AuthService] Verification email sent to $email');
+
       await user.reload();
 
       await _createUserInBackend(
         displayName: displayName,
         photoUrl: user.photoURL,
       );
-
-      // Автоматически отправляем verification email
-      await user.sendEmailVerification();
-      LoggerService.info('[AuthService] Verification email sent to $email');
 
       return credential;
     } on FirebaseAuthException catch (e) {
@@ -189,13 +191,12 @@ class AuthService {
   /// Возвращает true если email свободен, false если занят
   Future<bool> checkEmailAvailability(String email) async {
     try {
-      final trimmedEmail = email.trim();
-      final signInMethods = await _auth.fetchSignInMethodsForEmail(trimmedEmail);
-      // Если список пустой - email свободен
-      // Если есть методы входа - email уже зарегистрирован
-      return signInMethods.isEmpty;
-    } on FirebaseAuthException catch (e) {
-      throw Exception(_mapFirebaseAuthException(e));
+      // Использовать fetchSignInMethodsForEmail сейчас небезопасно и запрещено в Firebase (Email Enumeration Protection)
+      // Чтобы проверить доступность, мы пытаемся создать фейковую авторизацию,
+      // либо в будущем реализовать это на стороне бэкенда.
+      // 
+      // Пока что здесь мы возвращаем всегда true, либо можно вызывать эндпоинт на сервере.
+      return true;
     } catch (e) {
       throw Exception('Ошибка проверки email: $e');
     }

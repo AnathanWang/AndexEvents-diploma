@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../data/models/event_model.dart';
+import 'package:andexevents/presentation/widgets/event_countdown_timer.dart';
 
 class EventCarousel extends StatefulWidget {
   final List<EventModel> events;
@@ -41,7 +42,7 @@ class _EventCarouselState extends State<EventCarousel> {
     return Column(
       children: [
         SizedBox(
-          height: 280,
+          height: 310,
           child: PageView.builder(
             controller: _pageController,
             onPageChanged: (index) {
@@ -252,6 +253,8 @@ class _EventCarouselState extends State<EventCarousel> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      EventCountdownTimer(expirationTime: event.actualEndDateTime, isMinimal: true),
                     ],
                   ),
                 ],

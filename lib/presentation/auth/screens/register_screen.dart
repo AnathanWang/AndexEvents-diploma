@@ -8,7 +8,6 @@ import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import 'email_verification_screen.dart';
-import 'setup_profile_screen.dart';
 
 enum EmailAvailabilityStatus {
   initial,
@@ -148,15 +147,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           );
     }
-  }
-
-  void _skipDetailedSetup() {
-    // Пропускаем регистрацию и переходим сразу на детальную настройку профиля
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (BuildContext context) => const SetupProfileScreen(),
-      ),
-    );
   }
 
   @override
@@ -441,20 +431,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                
-                // Кнопка "Пропустить регистрацию"
-                TextButton(
-                  onPressed: _skipDetailedSetup,
-                  child: const Text(
-                    'Пропустить регистрацию',
-                    style: TextStyle(
-                      color: Color(0xFF9E9E9E),
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 
                 // Кнопка регистрации
                 ElevatedButton(

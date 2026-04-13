@@ -7,6 +7,7 @@ import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import 'register_screen.dart';
 import 'setup_profile_screen.dart';
+import 'email_verification_screen.dart';
 import 'forgot_password_screen.dart';
 import '../../home/home_shell.dart';
 
@@ -91,9 +92,14 @@ class _LoginScreenState extends State<LoginScreen> {
         if (state is AuthAuthenticated) {
           LoggerService.debug('DEBUG: AuthAuthenticated received, навигация к ${state.isOnboardingCompleted ? "HomeShell" : "SetupProfileScreen"}');
           // Переходим к правильному экрану в зависимости от статуса onboarding
-          final destination = state.isOnboardingCompleted 
-              ? const HomeShell()
-              : const SetupProfileScreen();
+          Widget destination;
+          if (!state.user.emailVerified) {
+            destination = EmailVerificationScreen(userEmail: state.user.email ?? '');
+          } else if (state.isOnboardingCompleted) {
+            destination = const HomeShell();
+          } else {
+            destination = const SetupProfileScreen();
+          }
           
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute<void>(builder: (context) => destination),

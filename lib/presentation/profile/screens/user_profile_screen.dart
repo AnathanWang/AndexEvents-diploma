@@ -12,6 +12,7 @@ import '../../events/bloc/event_bloc.dart';
 import '../../events/screens/real_event_detail_screen.dart';
 import '../widgets/photo_gallery_sheet.dart';
 import '../../../core/services/logger_service.dart';
+import 'package:andexevents/presentation/widgets/event_countdown_timer.dart';
 // import '../../../data/services/friend_service.dart'; // Removed FriendService
 
 class UserProfileScreen extends StatefulWidget {
@@ -177,7 +178,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 124,
+          height: 128,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -244,6 +245,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                     fontSize: 11.5,
                                   ),
                                 ),
+                                const SizedBox(height: 6),
+                                EventCountdownTimer(expirationTime: event.actualEndDateTime, isMinimal: true),
                               ],
                             ),
                           ),
@@ -1086,15 +1089,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
                 try {
                   await _userService.blockUser(targetId);
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   CustomNotification.show(
                     context,
                     '${widget.userName} заблокирован',
                     duration: const Duration(seconds: 2),
                   );
+                  if (!context.mounted) return;
                   Navigator.of(context).pop(true);
                 } catch (e) {
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   CustomNotification.show(
                     context,
                     'Не удалось заблокировать: $e',

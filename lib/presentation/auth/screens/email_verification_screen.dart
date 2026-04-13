@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'package:andexevents/data/services/auth_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_event.dart';
+import '../../widgets/common/custom_notification.dart';
 import 'login_screen.dart';
 import 'setup_profile_screen.dart';
 
@@ -27,15 +31,20 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
   String? _message;
   bool _isError = false;
   bool _isCheckingVerification = false;
+  
+  late String _currentEmail;
 
   // Cooldown mechanism
   int _cooldownSeconds = 0;
   Timer? _cooldownTimer;
   Timer? _pollingTimer;
+  int _pollingAttempts = 0;
+  static const int _maxPollingAttempts = 5; // 5 попыток по 3 секунды = 15 секунд автопроверки
 
   @override
   void initState() {
     super.initState();
+    _currentEmail = widget.userEmail;
     _authService = widget.authService ?? AuthService();
     WidgetsBinding.instance.addObserver(this);
     // Start polling for email verification every 3 seconds
@@ -59,7 +68,13 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
   }
 
   void _startPolling() {
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    _pollingAttempts = 0;
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (_pollingAttempts >= _maxPollingAttempts) {
+        timer.cancel();
+        return;
+      }
+      _pollingAttempts++;
       if (!_isCheckingVerification) {
         _checkEmailVerification();
       }
@@ -171,10 +186,98 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _message = 'Ошибка при отправке письма';
+        _message = 'Ошибка при отправке письма: $e';
         _isError = true;
       });
     }
+  }
+
+  Future<void> _showChangeEmailDialog() async {
+    final emailController = TextEditingController(text: _currentEmail);
+    bool isUpdating = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Сменить email'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Укажите правильный адрес электронной почты. На него будет отправлено новое письмо.'),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Новый Email',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    enabled: !isUpdating,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isUpdating ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('Отмена'),
+                ),
+                ElevatedButton(
+                  onPressed: isUpdating
+                      ? null
+                      : () async {
+                          final newEmail = emailController.text.trim();
+                          if (newEmail.isEmpty || !newEmail.contains('@')) {
+                            CustomNotification.show(context, 'Введите корректный email', isError: true);
+                            return;
+                          }
+
+                          if (newEmail == _currentEmail) {
+                            Navigator.pop(dialogContext);
+                            return;
+                          }
+
+                          setDialogState(() => isUpdating = true);
+
+                          try {
+                            final user = _authService.currentUser;
+                            if (user != null) {
+                              // В последних версиях firebase_auth используется метод verifyBeforeUpdateEmail,
+                              // который заодно отправляет письмо подтверждения на новый адрес
+                              await user.verifyBeforeUpdateEmail(newEmail);
+                              
+                              if (mounted) {
+                                setState(() {
+                                  _currentEmail = newEmail;
+                                  _message = 'Письмо отправлено на новый адрес';
+                                  _isError = false;
+                                });
+                                _startCooldown();
+                                Navigator.pop(dialogContext);
+                                CustomNotification.show(context, 'Email успешно изменен');
+                              }
+                            }
+                          } catch (e) {
+                            setDialogState(() => isUpdating = false);
+                            final errorMsg = e.toString().contains('requires-recent-login') 
+                                ? 'Требуется недавний вход. Выйдите и зарегистрируйтесь заново.'
+                                : 'Ошибка смены email. Возможно адрес уже занят.';
+                            CustomNotification.show(context, errorMsg, isError: true);
+                          }
+                        },
+                  child: isUpdating
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Сохранить'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -220,7 +323,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
 
               // User email
               Text(
-                widget.userEmail,
+                _currentEmail,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -283,11 +386,23 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                 ),
                 child: const Text('Я подтвердил email'),
               ),
+              const SizedBox(height: 12),
+
+              // Change email button
+              OutlinedButton(
+                onPressed: _isLoading ? null : _showChangeEmailDialog,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  foregroundColor: Theme.of(context).primaryColor,
+                ),
+                child: const Text('Ввели не по адресу? Сменить email'),
+              ),
               const SizedBox(height: 24),
 
               // Back to login button
               TextButton(
                 onPressed: () {
+                  context.read<AuthBloc>().add(const AuthLogoutRequested());
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
                       builder: (context) => const LoginScreen(),
@@ -295,7 +410,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                     (route) => false,
                   );
                 },
-                child: const Text('Вернуться к входу'),
+                style: TextButton.styleFrom(foregroundColor: Colors.grey),
+                child: const Text('Выйти в меню входа'),
               ),
             ],
           ),

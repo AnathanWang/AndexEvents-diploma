@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/config/app_config.dart';
 import '../../core/auth/id_token_provider.dart';
 import '../../core/services/logger_service.dart';
@@ -151,11 +152,44 @@ class EventService {
       final responseData = json.decode(response.body);
       final List<dynamic> eventsJson = responseData['data']['events'];
 
+      if (page == 1) {
+        try {
+          final String cacheKey = 'events_cache_${category ?? "all"}_page1';
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(cacheKey, json.encode(eventsJson));
+        } catch (cacheError) {
+          LoggerService.error('[EventService] Cache write error', cacheError);
+        }
+      }
+
       return eventsJson.map((json) => EventModel.fromJson(json)).toList();
     } catch (e) {
-      LoggerService.error('[EventService] Ошибка загрузки событий', e);
+      LoggerService.error('[EventService] Ошибка загрузки событий из сети, пробуем кэш', e);
+      if (page == 1) {
+        final cached = await getCachedEvents(category: category);
+        if (cached.isNotEmpty) {
+          LoggerService.debug('[EventService] Возвращаем события из кэша');
+          return cached;
+        }
+      }
       throw Exception('Ошибка загрузки событий: $e');
     }
+  }
+
+  /// Получить события из локального кэша
+  Future<List<EventModel>> getCachedEvents({String? category}) async {
+    try {
+      final String cacheKey = 'events_cache_${category ?? "all"}_page1';
+      final prefs = await SharedPreferences.getInstance();
+      final cachedData = prefs.getString(cacheKey);
+      if (cachedData != null) {
+        final List<dynamic> eventsJson = json.decode(cachedData);
+        return eventsJson.map((json) => EventModel.fromJson(json)).toList();
+      }
+    } catch (e) {
+      LoggerService.error('[EventService] Cache read error', e);
+    }
+    return [];
   }
 
   /// Получить детали события

@@ -11,6 +11,7 @@ import '../../events/screens/real_event_detail_screen.dart';
 import '../../widgets/yandex_map_widget.dart';
 import '../../../data/models/event_model.dart';
 import '../screens/search_screen.dart';
+import 'package:andexevents/presentation/widgets/event_countdown_timer.dart';
 
 class MapExploreScreen extends StatefulWidget {
   const MapExploreScreen({super.key});
@@ -689,6 +690,8 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    EventCountdownTimer(expirationTime: event.actualEndDateTime, isMinimal: true),
                   ],
                 ),
               ),

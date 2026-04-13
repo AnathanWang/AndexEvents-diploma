@@ -84,11 +84,19 @@ class _EditEventScreenState extends State<EditEventScreen> {
   }
 
   Future<void> _selectDate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final selectedDateOnly = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final firstDate = selectedDateOnly.isBefore(today) ? selectedDateOnly : today;
+
+    final maxDate = now.add(const Duration(days: 365));
+    final lastDate = selectedDateOnly.isAfter(maxDate) ? selectedDateOnly : maxDate;
+
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      firstDate: firstDate,
+      lastDate: lastDate,
       builder: (BuildContext context, Widget? child) {
         return Theme(
           data: Theme.of(context).copyWith(

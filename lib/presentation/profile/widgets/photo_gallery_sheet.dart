@@ -146,10 +146,11 @@ class _PhotoGallerySheetState extends State<PhotoGallerySheet>
         );
 
     if (allPhotos.isEmpty) {
-      return WillPopScope(
-        onWillPop: () async {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) async {
+          if (didPop) return;
           await _closeWithAnimation();
-          return false;
         },
         child: AnimatedBuilder(
           animation: _animation,
@@ -191,10 +192,11 @@ class _PhotoGallerySheetState extends State<PhotoGallerySheet>
       );
     }
 
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
         await _closeWithAnimation();
-        return false;
       },
       child: AnimatedBuilder(
         animation: _animation,

@@ -13,6 +13,7 @@ class EventPreview {
     required this.location,
     this.price,
     this.attendeeNames = const <String>[],
+    this.expirationTime,
   });
 
   final String id; // Добавлено поле id
@@ -26,6 +27,9 @@ class EventPreview {
   final String location;
   final int? price;
   final List<String> attendeeNames;
+  final DateTime? expirationTime;
   
+  DateTime get actualExpirationTime => expirationTime ?? date.add(const Duration(hours: 3));
+
   bool get isFree => price == null || price == 0;
 }

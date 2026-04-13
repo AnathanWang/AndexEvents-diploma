@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/event_preview.dart';
 import '../../profile/screens/user_profile_screen.dart';
 import '../../widgets/common/custom_notification.dart';
+import '../../widgets/event_countdown_timer.dart';
 
 class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({
@@ -42,12 +45,24 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   void _shareEvent() {
-    // TODO: Реализовать шаринг
-    CustomNotification.show(
-      context,
-      'Поделиться событием',
-      duration: const Duration(seconds: 1),
+    final eventTitle = widget.event.title;
+    final eventDate = widget.event.date.toString().substring(0, 16);
+    Share.share(
+      'Пошли вместе на "$eventTitle"!\n🕒 $eventDate\n📍 ${widget.event.location}\n\nУзнай подробности в приложении Andex Events.',
+      subject: eventTitle,
     );
+  }
+
+  Future<void> _openMap() async {
+    final address = Uri.encodeComponent(widget.event.location);
+    final url = Uri.parse('https://yandex.ru/maps/?text=$address');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        CustomNotification.show(context, 'Не удалось открыть карту', isError: true);
+      }
+    }
   }
 
   @override
@@ -223,12 +238,55 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   _formatTime(widget.event.date),
                 ),
                 const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF6F8FF),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.timer_outlined,
+                          color: Color(0xFF5E60CE),
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'До окончания',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF8D8D8D),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            EventCountdownTimer(
+                              expirationTime: widget.event.actualExpirationTime,
+                              isMinimal: true,
+                              textStyle: const TextStyle(
+                                color: Color(0xFF4A4D6A),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
                 _buildInfoRow(
                   Icons.location_on,
                   widget.event.location,
-                  onTap: () {
-                    // TODO: Открыть карту
-                  },
+                  onTap: _openMap,
                 ),
                 const SizedBox(height: 24),
                 
@@ -289,7 +347,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           const Spacer(),
                           TextButton(
                             onPressed: () {
-                              // TODO: Показать всех участников
+                              CustomNotification.show(context, 'Полный список участников в разработке');
                             },
                             child: const Text('Все'),
                           ),
@@ -479,9 +537,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 bottom: 16,
                                 right: 16,
                                 child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    // TODO: Открыть полноэкранную карту
-                                  },
+                                  onPressed: _openMap,
                                   icon: const Icon(Icons.directions),
                                   label: const Text('Маршрут'),
                                   style: ElevatedButton.styleFrom(

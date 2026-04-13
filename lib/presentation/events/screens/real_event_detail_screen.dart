@@ -12,6 +12,8 @@ import '../../../data/models/event_model.dart';
 import '../../../data/services/external_route_service.dart';
 import '../widgets/event_participants_dialog.dart';
 import '../../matches/screens/event_match_screen.dart';
+import '../../widgets/event_countdown_timer.dart';
+
 
 class RealEventDetailScreen extends StatefulWidget {
   final String eventId;
@@ -420,6 +422,51 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                   event.endDateTime != null
                       ? '${_formatTime(event.dateTime)} - ${_formatTime(event.endDateTime!)}'
                       : _formatTime(event.dateTime),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF6F8FF),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.timer_outlined,
+                          color: Color(0xFF5E60CE),
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'До окончания',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF8D8D8D),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            EventCountdownTimer(
+                              expirationTime: event.actualEndDateTime,
+                              isMinimal: true,
+                              textStyle: const TextStyle(
+                                color: Color(0xFF4A4D6A),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(

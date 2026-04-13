@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Andex Events — Открывай события, находи своих</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#ec4899',
+                        dark: '#0f172a'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+        .gradient-text {
+            background: linear-gradient(to right, #818cf8, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .blob-1 {
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 500px;
+            height: 500px;
+            background: #6366f1;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.3;
+            z-index: -1;
+        }
+        .blob-2 {
+            position: absolute;
+            bottom: -10%;
+            right: -10%;
+            width: 400px;
+            height: 400px;
+            background: #ec4899;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.2;
+            z-index: -1;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="antialiased relative min-h-screen flex flex-col font-sans">
+    
+    <!-- Background Blobs -->
+    <div class="blob-1"></div>
+    <div class="blob-2"></div>
+
+    <!-- Navbar -->
+    <header class="w-full fixed top-0 z-50 glass-card">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="text-2xl font-bold tracking-tighter">
+                <span class="text-white">Andex</span><span class="gradient-text">Events</span>
+            </div>
+            <nav class="hidden md:flex space-x-8 text-sm font-medium">
+                <a href="#features" class="hover:text-primary transition-colors">Функции</a>
+                <a href="#about" class="hover:text-primary transition-colors">О нас</a>
+                <a href="#download" class="hover:text-primary transition-colors">Скачать</a>
+            </nav>
+            <a href="#download" class="px-5 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-full font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-primary/30">
+                Загрузить
+            </a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <main class="flex-grow flex items-center justify-center pt-32 pb-20 px-6 relative">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            
+            <!-- Text Content -->
+            <div class="space-y-8 text-center lg:text-left z-10">
+                <div class="inline-flex items-center space-x-2 glass-card px-4 py-2 rounded-full text-sm font-medium text-primary mb-2">
+                    <span class="relative flex h-3 w-3">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                    </span>
+                    <span>Уже доступно в сторах</span>
+                </div>
+                <h1 class="text-5xl md:text-7xl font-extrabold leading-tight">
+                    Открывай события. <br />
+                    <span class="gradient-text">Находи своих людей.</span>
+                </h1>
+                <p class="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto lg:mx-0">
+                    Интерактивная карта мероприятий и система умных мэтчей. Находи то, что тебе интересно, и знакомься с единомышленниками в два тапа.
+                </p>
+                
+                <div id="download" class="flex flex-col sm:flex-row items-center justify-center lg:justify-start space-y-4 sm:space-y-0 sm:space-x-4 pt-4">
+                    <a href="AndexEvents.apk" download class="flex items-center justify-center space-x-3 bg-white text-dark px-8 py-4 rounded-2xl font-bold text-lg hover:scale-105 transition-transform w-[240px]">
+                        <i class="fa-brands fa-android text-2xl text-green-500"></i>
+                        <div class="flex flex-col items-start leading-none">
+                            <span class="text-[10px] font-medium uppercase text-slate-500">Установить напрямую</span>
+                            <span>Скачать APK</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- App Mockup -->
+            <div class="relative mx-auto w-[300px] h-[650px] border-[8px] border-slate-800 rounded-[40px] shadow-2xl overflow-hidden glass-card flex flex-col items-center z-10 transform lg:rotate-[-5deg] hover:rotate-0 transition-transform duration-500 bg-slate-900 !p-0">
+                <!-- Экран приложения (замените app_screenshot.png на реальную картинку) -->
+                <!-- Если картинки нет, покажем заглушку-подсказку -->
+                <img src="app_screenshot.png" alt="Скриншот Andex Events" class="absolute inset-0 w-full h-full object-cover object-top z-10" 
+                     onerror="this.onerror=null; this.parentElement.innerHTML += '<div class=\'absolute inset-0 flex flex-col items-center justify-center bg-slate-800 text-center p-6 z-10\'><i class=\'fa-solid fa-image text-4xl text-slate-500 mb-4\'></i><p class=\'text-slate-400 text-sm\'>Положите скриншот с именем <br> <b class=\'text-primary\'>app_screenshot.png</b> <br> в папку landing</p></div>'; this.style.display='none';">
+            </div>
+            
+        </div>
+    </main>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 relative z-10">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4">Всё, что тебе нужно <br> <span class="gradient-text">для идеального вечера</span></h2>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="glass-card p-8 rounded-3xl hover:-translate-y-2 transition-transform duration-300">
+                    <div class="w-14 h-14 bg-primary/20 rounded-2xl flex items-center justify-center text-primary text-2xl mb-6">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-3">Карта событий</h3>
+                    <p class="text-slate-400 leading-relaxed">
+                        Узнавай, что происходит рядом с тобой прямо сейчас. Удобный поиск и фильтры по интересам.
+                    </p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="glass-card p-8 rounded-3xl hover:-translate-y-2 transition-transform duration-300">
+                    <div class="w-14 h-14 bg-secondary/20 rounded-2xl flex items-center justify-center text-secondary text-2xl mb-6">
+                        <i class="fa-solid fa-fire"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-3">Умные мэтчи</h3>
+                    <p class="text-slate-400 leading-relaxed">
+                        Ищи компанию для похода на концерт или выставку. Свайпай, получай взаимную симпатию и общайся.
+                    </p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="glass-card p-8 rounded-3xl hover:-translate-y-2 transition-transform duration-300">
+                    <div class="w-14 h-14 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 text-2xl mb-6">
+                        <i class="fa-solid fa-calendar-plus"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-3">Создавай своё</h3>
+                    <p class="text-slate-400 leading-relaxed">
+                        Не нашел ничего интересного? Создай собственное событие и пригласи людей присоединиться к тебе.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 mt-20 z-10 glass-card">
+        <div class="max-w-7xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center justify-between">
+            <div class="text-xl font-bold tracking-tighter mb-4 md:mb-0">
+                <span class="text-white">Andex</span><span class="gradient-text">Events</span>
+            </div>
+            <div class="text-slate-500 text-sm">
+                &copy; 2026 Andex Events. Все права защищены.
+            </div>
+            <div class="flex space-x-6 mt-4 md:mt-0 text-slate-400">
+                <a href="#" class="hover:text-white transition-colors"><i class="fa-brands fa-telegram text-xl"></i></a>
+                <a href="#" class="hover:text-white transition-colors"><i class="fa-brands fa-vk text-xl"></i></a>
+                <a href="#" class="hover:text-white transition-colors"><i class="fa-brands fa-instagram text-xl"></i></a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

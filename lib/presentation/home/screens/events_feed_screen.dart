@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../../core/services/logger_service.dart';
 import '../../../data/services/geocoding_service.dart';
@@ -15,6 +16,7 @@ import '../../events/screens/real_event_detail_screen.dart';
 import '../../../data/models/event_model.dart';
 import '../../widgets/event_carousel.dart';
 import '../../widgets/event_filters.dart';
+import '../../widgets/event_countdown_timer.dart';
 import './search_screen.dart';
 
 class EventsFeedScreen extends StatefulWidget {
@@ -220,7 +222,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
     return BlocBuilder<EventBloc, EventState>(
       builder: (context, state) {
         if (state is EventsLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return _buildLoadingSkeleton(context);
         }
 
         if (state is EventError) {
@@ -651,11 +653,10 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                       CachedNetworkImage(
                         imageUrl: event.imageUrl!,
                         fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: Colors.grey.shade200,
-                          child: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
+                        placeholder: (context, url) => Shimmer.fromColors(
+                          baseColor: Colors.grey.shade200,
+                          highlightColor: Colors.grey.shade50,
+                          child: Container(color: Colors.white),
                         ),
                         errorWidget: (context, url, error) {
                           LoggerService.error(
@@ -834,16 +835,12 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                                   radius: 13,
                                   backgroundImage: imageProvider,
                                 ),
-                            placeholder: (context, url) => const CircleAvatar(
-                              radius: 13,
-                              backgroundColor: Color(0xFFE9EEFF),
-                              child: SizedBox(
-                                width: 10,
-                                height: 10,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 1.8,
-                                  color: Color(0xFF5965D8),
-                                ),
+                            placeholder: (context, url) => Shimmer.fromColors(
+                              baseColor: Colors.grey.shade200,
+                              highlightColor: Colors.grey.shade50,
+                              child: const CircleAvatar(
+                                radius: 13,
+                                backgroundColor: Colors.white,
                               ),
                             ),
                             errorWidget: (context, url, error) => CircleAvatar(
@@ -888,6 +885,11 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                       ],
                     ),
                   ],
+                  const SizedBox(height: 12),
+                  EventCountdownTimer(
+                    expirationTime: event.actualEndDateTime,
+                    isMinimal: false,
+                  ),
                 ],
               ),
             ),
@@ -941,6 +943,58 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
       default:
         return const Color(0xFF5E60CE);
     }
+  }
+
+  Widget _buildLoadingSkeleton(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[Color(0xFFF3F5FF), Color(0xFFFAFBFF)],
+        ),
+      ),
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: MediaQuery.of(context).padding.top + 8,
+          bottom: 16,
+        ),
+        children: <Widget>[
+          Shimmer.fromColors(
+            baseColor: Colors.white,
+            highlightColor: const Color(0xFFF3F5FF),
+            child: Container(
+              height: 160,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(22),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          ...List.generate(
+            3,
+            (_) => Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Shimmer.fromColors(
+                baseColor: Colors.white,
+                highlightColor: const Color(0xFFF3F5FF),
+                child: Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

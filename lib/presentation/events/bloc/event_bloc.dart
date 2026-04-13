@@ -27,7 +27,16 @@ class EventBloc extends Bloc<EventEvent, EventState> {
     Emitter<EventState> emit,
   ) async {
     if (event.page == 1) {
-      emit(const EventsLoading());
+      final cachedEvents = await _eventService.getCachedEvents(category: event.category);
+      if (cachedEvents.isNotEmpty) {
+        emit(EventsLoaded(
+          events: cachedEvents,
+          hasMore: cachedEvents.length >= 20,
+          currentPage: 1,
+        ));
+      } else {
+        emit(const EventsLoading());
+      }
     }
 
     try {

@@ -55,7 +55,7 @@ public class AuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
-            HttpServletResponse             docker-compose up -d --build users-serviceresponse,
+            HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
         String authHeader = request.getHeader("Authorization");

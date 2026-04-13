@@ -93,3 +93,6 @@ secrets/firebase-service-account.json
 *Firebase*Admin*SDK*.json
 *Google*Service*Info*.plist
 
+
+# Local distributables
+landing/*.apk

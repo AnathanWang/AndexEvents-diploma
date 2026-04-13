@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -48,6 +49,10 @@ class _AdminWebBootstrapAppState extends State<_AdminWebBootstrapApp> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isApplePlatform = defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS;
+    final String? appFontFamily = isApplePlatform ? '.SF Pro Text' : null;
+
     if (_ready) {
       return const AndexAdminWebApp();
     }
@@ -55,6 +60,10 @@ class _AdminWebBootstrapAppState extends State<_AdminWebBootstrapApp> {
     if (_initError != null) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          fontFamily: appFontFamily,
+          textTheme: ThemeData.light().textTheme.apply(fontFamily: appFontFamily),
+        ),
         home: Scaffold(
           body: Center(
             child: Padding(
@@ -103,9 +112,13 @@ class _AdminWebBootstrapAppState extends State<_AdminWebBootstrapApp> {
       );
     }
 
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Scaffold(body: Center(child: CircularProgressIndicator())),
+      theme: ThemeData(
+        fontFamily: appFontFamily,
+        textTheme: ThemeData.light().textTheme.apply(fontFamily: appFontFamily),
+      ),
+      home: const Scaffold(body: Center(child: CircularProgressIndicator())),
     );
   }
 }

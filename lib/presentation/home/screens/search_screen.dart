@@ -8,6 +8,8 @@ import '../../events/bloc/event_event.dart';
 import '../../events/bloc/event_state.dart';
 import '../../events/screens/real_event_detail_screen.dart';
 import '../../../data/models/event_model.dart';
+import 'package:andexevents/presentation/widgets/event_countdown_timer.dart';
+
 
 class SearchScreen extends StatefulWidget {
   final String initialQuery;
@@ -351,6 +353,8 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    EventCountdownTimer(expirationTime: event.actualEndDateTime, isMinimal: true),
                   ],
                 ),
               ),

@@ -76,8 +76,11 @@ dependencies:
   # Permissions
   permission_handler: ^11.3.1
   logger: ^2.6.2
+  share_plus: ^12.0.2
+  shimmer: ^3.0.0
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
   flutter_test:
     sdk: flutter
   mockito: ^5.4.4
@@ -131,3 +134,11 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icons/app_icon.png"
+  adaptive_icon_background: "#ffffff" # You can change this if you have a separate foreground
+  adaptive_icon_foreground: "assets/icons/app_icon.png"

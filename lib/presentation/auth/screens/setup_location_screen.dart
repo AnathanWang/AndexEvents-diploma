@@ -51,7 +51,6 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
           _isLoading = false;
         });
 
-        // TODO: Отправить координаты на backend
         await _completeOnboarding();
       } else {
         setState(() {
@@ -84,8 +83,10 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
         try {
           LoggerService.debug('DEBUG: Получаем текущую позицию...');
           final Position position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high,
-            timeLimit: const Duration(seconds: 10),
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 10),
+            ),
           );
           _currentPosition = position;
           LoggerService.debug('DEBUG: Позиция получена: ${position.latitude}, ${position.longitude}');

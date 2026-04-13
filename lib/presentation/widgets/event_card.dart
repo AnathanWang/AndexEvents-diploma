@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/event_preview.dart';
 import '../events/screens/event_detail_screen.dart';
+import 'event_countdown_timer.dart';
 
 class EventCard extends StatelessWidget {
   const EventCard({super.key, required this.event, this.width});
@@ -102,6 +103,11 @@ class EventCard extends StatelessWidget {
               const SizedBox(width: 12),
               Text('${event.attendees}+ участников', style: theme.textTheme.bodyMedium),
             ],
+          ),
+          const SizedBox(height: 14),
+          EventCountdownTimer(
+            expirationTime: event.actualExpirationTime,
+            textStyle: const TextStyle(fontSize: 12),
           ),
         ],
       ),

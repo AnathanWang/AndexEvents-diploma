@@ -21,6 +21,7 @@ import '../../../data/services/user_service.dart';
 import '../../profile/screens/user_profile_screen.dart';
 import '../../profile/widgets/photo_gallery_sheet.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
+import 'package:andexevents/presentation/widgets/event_countdown_timer.dart';
 
 enum _ProfileMatchFilter { mutual, incoming, liked, skipped, postponed }
 
@@ -1115,6 +1116,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildEventsRow(String title, List<dynamic> events, BuildContext context, {required bool isEditable}) {
     if (events.isEmpty) return const SizedBox.shrink();
 
+    final double textScale = MediaQuery.textScalerOf(context).scale(1);
+    final double listHeight = (178 + ((textScale - 1) * 24)).clamp(178, 202).toDouble();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1130,7 +1134,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
         SizedBox(
-          height: 200, // Увеличено для предотвращения переполнения
+          height: listHeight,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
@@ -1152,6 +1156,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     final title = event is EventModel ? event.title : (event as dynamic).title;
     final dateTime = event is EventModel ? event.dateTime : (event as dynamic).date;
     final id = event is EventModel ? event.id : (event as dynamic).id;
+    final actualExpiration = event is EventModel ? event.actualEndDateTime : (event as dynamic).actualExpirationTime;
     
     final hasImage = imageUrl != null && imageUrl.isNotEmpty;
     
@@ -1208,7 +1213,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 child: CachedNetworkImage(
                   imageUrl: imageUrl,
                   width: double.infinity,
-                  height: 100,
+                  height: 92,
                   fit: BoxFit.cover,
                   placeholder: (context, _) => Container(color: Colors.grey.shade100),
                   errorWidget: (context, _, __) => _buildFallbackImageCompact(),
@@ -1217,7 +1222,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             else
               _buildFallbackImageCompact(),
             Padding(
-              padding: const EdgeInsets.only(top: 8, left: 2, right: 2),
+              padding: const EdgeInsets.only(top: 6, left: 2, right: 2),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1232,7 +1237,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
                       const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF7F88B3)),
@@ -1245,6 +1250,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                     ],
                   ),
+                  const SizedBox(height: 4),
+                  EventCountdownTimer(expirationTime: actualExpiration, isMinimal: true),
                 ],
               ),
             ),
@@ -1257,7 +1264,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildFallbackImageCompact() {
     return Container(
       width: double.infinity,
-      height: 100,
+      height: 92,
       decoration: BoxDecoration(
         color: const Color(0xFFF4F5FA),
         borderRadius: BorderRadius.circular(14),
