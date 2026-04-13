@@ -91,7 +91,7 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF4A4D6A),
+                            color: Color(0xFF161823),
                           ),
                         ),
                         const Spacer(),
@@ -115,7 +115,7 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                             style: Theme.of(context).textTheme.labelMedium
                                 ?.copyWith(
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF4A4D6A),
+                                  color: const Color(0xFF161823),
                                 ),
                           ),
                           const SizedBox(height: 12),
@@ -135,11 +135,11 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                                 },
                                 backgroundColor: Colors.transparent,
                                 selectedColor: const Color(
-                                  0xFF5E60CE,
+                                  0xFF75878A,
                                 ).withValues(alpha: 0.2),
                                 labelStyle: TextStyle(
                                   color: isSelected
-                                      ? const Color(0xFF5E60CE)
+                                      ? const Color(0xFF75878A)
                                       : const Color(0xFF9E9E9E),
                                   fontWeight: isSelected
                                       ? FontWeight.w600
@@ -147,7 +147,7 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                                 ),
                                 side: BorderSide(
                                   color: isSelected
-                                      ? const Color(0xFF5E60CE)
+                                      ? const Color(0xFF75878A)
                                       : Colors.grey.shade300,
                                 ),
                               );
@@ -161,7 +161,7 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                             style: Theme.of(context).textTheme.labelMedium
                                 ?.copyWith(
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF4A4D6A),
+                                  color: const Color(0xFF161823),
                                 ),
                           ),
                           const SizedBox(height: 12),
@@ -181,11 +181,11 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                                 },
                                 backgroundColor: Colors.transparent,
                                 selectedColor: const Color(
-                                  0xFF5E60CE,
+                                  0xFF75878A,
                                 ).withValues(alpha: 0.2),
                                 labelStyle: TextStyle(
                                   color: isSelected
-                                      ? const Color(0xFF5E60CE)
+                                      ? const Color(0xFF75878A)
                                       : const Color(0xFF9E9E9E),
                                   fontWeight: isSelected
                                       ? FontWeight.w600
@@ -193,7 +193,7 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                                 ),
                                 side: BorderSide(
                                   color: isSelected
-                                      ? const Color(0xFF5E60CE)
+                                      ? const Color(0xFF75878A)
                                       : Colors.grey.shade300,
                                 ),
                               );
@@ -207,7 +207,7 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                             style: Theme.of(context).textTheme.labelMedium
                                 ?.copyWith(
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF4A4D6A),
+                                  color: const Color(0xFF161823),
                                 ),
                           ),
                           const SizedBox(height: 12),
@@ -226,11 +226,11 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                                 },
                                 backgroundColor: Colors.transparent,
                                 selectedColor: const Color(
-                                  0xFF5E60CE,
+                                  0xFF75878A,
                                 ).withValues(alpha: 0.2),
                                 labelStyle: TextStyle(
                                   color: isSelected
-                                      ? const Color(0xFF5E60CE)
+                                      ? const Color(0xFF75878A)
                                       : const Color(0xFF9E9E9E),
                                   fontWeight: isSelected
                                       ? FontWeight.w600
@@ -238,7 +238,7 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                                 ),
                                 side: BorderSide(
                                   color: isSelected
-                                      ? const Color(0xFF5E60CE)
+                                      ? const Color(0xFF75878A)
                                       : Colors.grey.shade300,
                                 ),
                               );
@@ -285,20 +285,20 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F6FA),
+            color: const Color(0xFFF3F6F6),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.tune, color: Color(0xFF5E60CE), size: 18),
+              const Icon(Icons.tune, color: Color(0xFF75878A), size: 18),
               const SizedBox(width: 8),
               const Text(
                 'Фильтры',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF4A4D6A),
+                  color: Color(0xFF161823),
                 ),
               ),
               if (hasActiveFilters) ...[
@@ -309,7 +309,7 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF5E60CE),
+                    color: const Color(0xFF75878A),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(

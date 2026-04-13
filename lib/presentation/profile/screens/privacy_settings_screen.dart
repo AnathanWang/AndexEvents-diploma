@@ -50,13 +50,13 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF161823)),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
           'Приватность',
           style: TextStyle(
-            color: Color(0xFF4A4D6A),
+            color: Color(0xFF161823),
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -64,7 +64,7 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
         actions: <Widget>[
           TextButton(
             onPressed: _save,
-            child: const Text('Готово', style: TextStyle(color: Color(0xFF5E60CE), fontWeight: FontWeight.w700)),
+            child: const Text('Готово', style: TextStyle(color: Color(0xFF75878A), fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -79,28 +79,28 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                 SwitchListTile(
                   title: const Text('Показывать посещенные события'),
                   value: _showVisitedEvents,
-                  activeThumbColor: const Color(0xFF5E60CE),
+                  activeThumbColor: const Color(0xFF75878A),
                   onChanged: (bool value) => setState(() => _showVisitedEvents = value),
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
                   title: const Text('Показывать профиль в мэтчах'),
                   value: _showInMatches,
-                  activeThumbColor: const Color(0xFF5E60CE),
+                  activeThumbColor: const Color(0xFF75878A),
                   onChanged: (bool value) => setState(() => _showInMatches = value),
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
                   title: const Text('Инкогнито режим (Только взаимные)'),
                   value: _incognitoMode,
-                  activeThumbColor: const Color(0xFF5E60CE),
+                  activeThumbColor: const Color(0xFF75878A),
                   onChanged: (bool value) => setState(() => _incognitoMode = value),
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
                   title: const Text('Скрывать статус "в сети"'),
                   value: _hideOnlineStatus,
-                  activeThumbColor: const Color(0xFF5E60CE),
+                  activeThumbColor: const Color(0xFF75878A),
                   onChanged: (bool value) => setState(() => _hideOnlineStatus = value),
                 ),
               ],

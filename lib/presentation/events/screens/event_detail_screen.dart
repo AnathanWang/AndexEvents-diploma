@@ -87,7 +87,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ],
               ),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF161823)),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ),
@@ -107,7 +107,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 child: IconButton(
                   icon: Icon(
                     _isFavorite ? Icons.favorite : Icons.favorite_outline,
-                    color: _isFavorite ? Colors.red : const Color(0xFF4A4D6A),
+                    color: _isFavorite ? Colors.red : const Color(0xFF161823),
                   ),
                   onPressed: _toggleFavorite,
                 ),
@@ -125,7 +125,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ],
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.share, color: Color(0xFF4A4D6A)),
+                  icon: const Icon(Icons.share, color: Color(0xFF161823)),
                   onPressed: _shareEvent,
                 ),
               ),
@@ -140,8 +140,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: <Color>[
-                          const Color(0xFF5E60CE).withValues(alpha: 0.7),
-                          const Color(0xFF9370DB).withValues(alpha: 0.7),
+                          const Color(0xFF75878A).withValues(alpha: 0.7),
+                          const Color(0xFF81D8D0).withValues(alpha: 0.7),
                         ],
                       ),
                     ),
@@ -181,13 +181,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
+                          color: const Color(0xFF75878A).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
                           widget.event.category,
                           style: const TextStyle(
-                            color: Color(0xFF5E60CE),
+                            color: Color(0xFF75878A),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -221,7 +221,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF4A4D6A),
+                      color: Color(0xFF161823),
                     ),
                   ),
                 ),
@@ -245,12 +245,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF6F8FF),
+                          color: const Color(0xFFEAF7F5),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
                           Icons.timer_outlined,
-                          color: Color(0xFF5E60CE),
+                          color: Color(0xFF75878A),
                           size: 24,
                         ),
                       ),
@@ -271,7 +271,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               expirationTime: widget.event.actualExpirationTime,
                               isMinimal: true,
                               textStyle: const TextStyle(
-                                color: Color(0xFF4A4D6A),
+                                color: Color(0xFF161823),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -301,7 +301,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF4A4D6A),
+                          color: Color(0xFF161823),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -369,7 +369,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF4A4D6A),
+                          color: Color(0xFF161823),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -381,7 +381,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         'Не упустите возможность стать частью нашего сообщества!',
                         style: const TextStyle(
                           fontSize: 16,
-                          color: Color(0xFF4A4D6A),
+                          color: Color(0xFF161823),
                           height: 1.5,
                         ),
                       ),
@@ -401,7 +401,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF4A4D6A),
+                          color: Color(0xFF161823),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -415,7 +415,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           children: <Widget>[
                             CircleAvatar(
                               radius: 30,
-                              backgroundColor: const Color(0xFF5E60CE),
+                              backgroundColor: const Color(0xFF75878A),
                               child: Text(
                                 widget.event.attendeeNames.isNotEmpty
                                     ? widget.event.attendeeNames[0][0].toUpperCase()
@@ -439,7 +439,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFF4A4D6A),
+                                      color: Color(0xFF161823),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -474,7 +474,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 );
                               },
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF5E60CE),
+                                foregroundColor: const Color(0xFF75878A),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -500,7 +500,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF4A4D6A),
+                          color: Color(0xFF161823),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -542,7 +542,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                   label: const Text('Маршрут'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.white,
-                                    foregroundColor: const Color(0xFF5E60CE),
+                                    foregroundColor: const Color(0xFF75878A),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -580,7 +580,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           child: ElevatedButton(
             onPressed: _toggleGoing,
             style: ElevatedButton.styleFrom(
-              backgroundColor: _isGoing ? Colors.grey : const Color(0xFF5E60CE),
+              backgroundColor: _isGoing ? Colors.grey : const Color(0xFF75878A),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
@@ -612,12 +612,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
+                color: const Color(0xFF75878A).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 icon,
-                color: const Color(0xFF5E60CE),
+                color: const Color(0xFF75878A),
                 size: 20,
               ),
             ),
@@ -627,7 +627,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 text,
                 style: const TextStyle(
                   fontSize: 16,
-                  color: Color(0xFF4A4D6A),
+                  color: Color(0xFF161823),
                 ),
               ),
             ),
@@ -645,9 +645,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   Color _getAvatarColor(int index) {
     final List<Color> colors = <Color>[
-      const Color(0xFF5E60CE),
-      const Color(0xFF7B68EE),
-      const Color(0xFF9370DB),
+      const Color(0xFF75878A),
+      const Color(0xFF81D8D0),
+      const Color(0xFF81D8D0),
       const Color(0xFFBA55D3),
     ];
     return colors[index % colors.length];

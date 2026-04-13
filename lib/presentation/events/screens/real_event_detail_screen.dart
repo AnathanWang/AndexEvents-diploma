@@ -197,7 +197,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                 ],
               ),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF161823)),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ),
@@ -217,7 +217,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                 child: IconButton(
                   icon: Icon(
                     _isFavorite ? Icons.favorite : Icons.favorite_outline,
-                    color: _isFavorite ? Colors.red : const Color(0xFF4A4D6A),
+                    color: _isFavorite ? Colors.red : const Color(0xFF161823),
                   ),
                   onPressed: () => _toggleFavorite(event),
                 ),
@@ -235,7 +235,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                   ],
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.share, color: Color(0xFF4A4D6A)),
+                  icon: const Icon(Icons.share, color: Color(0xFF161823)),
                   onPressed: () {},
                 ),
               ),
@@ -402,7 +402,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF4A4D6A),
+                      color: Color(0xFF161823),
                     ),
                   ),
                 ),
@@ -431,12 +431,12 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF6F8FF),
+                          color: const Color(0xFFEAF7F5),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
                           Icons.timer_outlined,
-                          color: Color(0xFF5E60CE),
+                          color: Color(0xFF75878A),
                           size: 24,
                         ),
                       ),
@@ -457,7 +457,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                               expirationTime: event.actualEndDateTime,
                               isMinimal: true,
                               textStyle: const TextStyle(
-                                color: Color(0xFF4A4D6A),
+                                color: Color(0xFF161823),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -487,7 +487,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF4A4D6A),
+                          color: Color(0xFF161823),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -549,7 +549,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                                                           .toUpperCase()
                                                     : '?',
                                                 style: const TextStyle(
-                                                  color: Color(0xFF4A4D6A),
+                                                  color: Color(0xFF161823),
                                                   fontWeight: FontWeight.w700,
                                                 ),
                                               )
@@ -575,7 +575,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF5F6FA),
+                                color: const Color(0xFFF3F6F6),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
@@ -586,7 +586,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                                         ? 'Нет участников'
                                         : '${event.participantsCount} участник${event.participantsCount % 10 == 1 && event.participantsCount != 11 ? '' : 'ов'}',
                                     style: const TextStyle(
-                                      color: Color(0xFF4A4D6A),
+                                      color: Color(0xFF161823),
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -658,7 +658,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF4A4D6A),
+                            color: Color(0xFF161823),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -666,7 +666,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                           event.description,
                           style: const TextStyle(
                             fontSize: 16,
-                            color: Color(0xFF4A4D6A),
+                            color: Color(0xFF161823),
                             height: 1.5,
                           ),
                         ),
@@ -688,7 +688,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF4A4D6A),
+                            color: Color(0xFF161823),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -750,7 +750,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                                       style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
-                                        color: Color(0xFF4A4D6A),
+                                        color: Color(0xFF161823),
                                       ),
                                     ),
                                     const SizedBox(height: 4),
@@ -794,7 +794,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF4A4D6A),
+                            color: Color(0xFF161823),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -933,16 +933,16 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
+                color: const Color(0xFF75878A).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: const Color(0xFF5E60CE), size: 20),
+              child: Icon(icon, color: const Color(0xFF75878A), size: 20),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 text,
-                style: const TextStyle(fontSize: 16, color: Color(0xFF4A4D6A)),
+                style: const TextStyle(fontSize: 16, color: Color(0xFF161823)),
               ),
             ),
             if (onTap != null)
@@ -999,7 +999,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
       case 'other':
         return Colors.grey;
       default:
-        return const Color(0xFF5E60CE);
+        return const Color(0xFF75878A);
     }
   }
 

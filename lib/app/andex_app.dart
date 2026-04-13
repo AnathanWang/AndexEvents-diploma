@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../core/theme/app_colors.dart';
 import '../core/services/logger_service.dart';
 import '../data/services/auth_service.dart';
 import '../presentation/auth/bloc/auth_bloc.dart';
@@ -29,8 +30,13 @@ class AndexApp extends StatelessWidget {
     final String? appFontFamily = isApplePlatform ? '.SF Pro Text' : null;
 
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF5E60CE),
+      seedColor: AppColors.primary,
       brightness: Brightness.light,
+      surface: AppColors.surface,
+    ).copyWith(
+      primary: AppColors.primary,
+      secondary: AppColors.accent,
+      onSurface: AppColors.textPrimary,
     );
 
     return MaterialApp(
@@ -38,12 +44,71 @@ class AndexApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: colorScheme,
+        primaryColor: AppColors.primary,
         fontFamily: appFontFamily,
-        scaffoldBackgroundColor: const Color(0xFFF5F6FA),
+        scaffoldBackgroundColor: AppColors.background,
+        canvasColor: AppColors.surface,
+        cardColor: AppColors.surface,
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: AppColors.surface,
+          surfaceTintColor: Colors.transparent,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.surface,
+          foregroundColor: AppColors.textPrimary,
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+        ),
+        progressIndicatorTheme: const ProgressIndicatorThemeData(
+          color: AppColors.primary,
+        ),
+        switchTheme: SwitchThemeData(
+          thumbColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return AppColors.primary;
+            return null;
+          }),
+          trackColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return AppColors.primary.withValues(alpha: 0.4);
+            }
+            return null;
+          }),
+        ),
+        checkboxTheme: CheckboxThemeData(
+          fillColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return AppColors.primary;
+            return null;
+          }),
+        ),
+        radioTheme: RadioThemeData(
+          fillColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return AppColors.primary;
+            return null;
+          }),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            side: const BorderSide(color: AppColors.primary),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primary,
+          ),
+        ),
         textTheme: const TextTheme(
           headlineSmall: TextStyle(fontWeight: FontWeight.w700, fontSize: 22),
           titleMedium: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-          bodyMedium: TextStyle(fontSize: 14, color: Color(0xFF4A4D6A)),
+          bodyMedium: TextStyle(fontSize: 14, color: AppColors.textSecondary),
         ).apply(fontFamily: appFontFamily),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,

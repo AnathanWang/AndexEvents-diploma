@@ -14,7 +14,7 @@ class SampleData {
       category: 'Комьюнити',
       time: 'Сегодня · 19:00',
       distance: '1,2 км от вас',
-      badgeColor: const Color(0xFF5E60CE),
+      badgeColor: const Color(0xFF75878A),
       attendees: 42,
       date: DateTime.now().add(const Duration(hours: 3)),
       location: 'Кофейня "The Brew", ул. Тверская 12',

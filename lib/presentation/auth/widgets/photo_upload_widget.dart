@@ -47,7 +47,7 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF4A4D6A),
+              color: Color(0xFF161823),
             ),
           ),
         ),
@@ -71,7 +71,7 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
                     color: Colors.grey[100],
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFF5E60CE).withValues(alpha: 0.3),
+                      color: const Color(0xFF75878A).withValues(alpha: 0.3),
                       width: 2,
                       style: BorderStyle.solid,
                     ),
@@ -82,14 +82,14 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
                       Icon(
                         Icons.add_photo_alternate,
                         size: 32,
-                        color: Color(0xFF5E60CE),
+                        color: Color(0xFF75878A),
                       ),
                       SizedBox(height: 8),
                       Text(
                         'Добавить',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF5E60CE),
+                          color: Color(0xFF75878A),
                           fontWeight: FontWeight.w600,
                         ),
                         textAlign: TextAlign.center,

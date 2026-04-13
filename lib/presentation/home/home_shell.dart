@@ -1,5 +1,10 @@
+import 'dart:ui';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../core/theme/app_colors.dart';
 
 import '../models/event_preview.dart';
 import '../models/match_preview.dart';
@@ -27,7 +32,10 @@ class _HomeShellState extends State<HomeShell> {
   final UserService _userService = UserService();
 
   int _index = 0;
+  late final EventBloc _mapEventBloc;
+  late final EventBloc _feedEventBloc;
   late final ProfileBloc _profileBloc;
+  late final List<Widget> _tabs;
   bool _isCreateEventBlocked = false;
   String? _createEventBlockReason;
   bool _isFullBanActive = false;
@@ -35,7 +43,21 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
+    _mapEventBloc = EventBloc();
+    _feedEventBloc = EventBloc();
     _profileBloc = ProfileBloc(userService: UserService());
+    _tabs = <Widget>[
+      BlocProvider<EventBloc>.value(
+        value: _mapEventBloc,
+        child: const MapExploreScreen(),
+      ),
+      BlocProvider<EventBloc>.value(
+        value: _feedEventBloc,
+        child: const EventsFeedScreen(),
+      ),
+      MatchesScreen(matches: _matches),
+      ProfileScreen(events: _events, matches: _matches),
+    ];
     _loadMutualMatches();
     _refreshCreateEventAccess();
   }
@@ -87,6 +109,7 @@ class _HomeShellState extends State<HomeShell> {
 
   void _onNavTapped(int index) {
     if (_isFullBanActive && index != 3) {
+      HapticFeedback.lightImpact();
       _showFullBanMessage();
       setState(() {
         _index = 3;
@@ -94,6 +117,7 @@ class _HomeShellState extends State<HomeShell> {
       return;
     }
 
+    HapticFeedback.selectionClick();
     setState(() => _index = index);
   }
 
@@ -102,6 +126,7 @@ class _HomeShellState extends State<HomeShell> {
     if (!mounted) return;
 
     if (_isCreateEventBlocked) {
+      HapticFeedback.mediumImpact();
       final reason = _createEventBlockReason;
       final message =
           (reason != null && reason.isNotEmpty)
@@ -111,8 +136,9 @@ class _HomeShellState extends State<HomeShell> {
       return;
     }
 
+    HapticFeedback.mediumImpact();
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
+      CupertinoPageRoute<void>(
         builder: (BuildContext context) => BlocProvider(
           create: (context) => EventBloc(),
           child: const CreateEventScreen(),
@@ -150,126 +176,271 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   void dispose() {
+    _mapEventBloc.close();
+    _feedEventBloc.close();
     _profileBloc.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final double bottomInset = MediaQuery.paddingOf(context).bottom;
+    final double floatingBarBottom = bottomInset > 0 ? bottomInset - 2 : 10;
+    final double screenWidth = MediaQuery.sizeOf(context).width;
+    final bool isCompact = screenWidth < 360;
+    final double navItemWidth = isCompact ? 48 : 52;
+    final double sideGap = isCompact ? 6 : 8;
+    final double centerGap = isCompact ? 40 : 52;
+    final double horizontalInset = screenWidth >= 430
+      ? 52
+        : screenWidth >= 390
+        ? 44
+        : isCompact
+          ? 18
+          : 30;
+
     return BlocProvider.value(
       value: _profileBloc,
       child: Scaffold(
-        body: IndexedStack(
-          index: _index,
+        extendBody: true,
+        body: Stack(
           children: <Widget>[
-            BlocProvider(
-              create: (context) => EventBloc(),
-              child: const MapExploreScreen(),
-            ),
-            BlocProvider(
-              create: (context) => EventBloc(),
-              child: const EventsFeedScreen(),
-            ),
-            MatchesScreen(matches: _matches),
-            ProfileScreen(events: _events, matches: _matches),
-          ],
-        ),
-        bottomNavigationBar: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: <Widget>[
-                    _buildNavItem(Icons.map_outlined, 'Карта', 0),
-                    _buildNavItem(Icons.event_outlined, 'Афиша', 1),
-                    const SizedBox(width: 56),
-                    _buildNavItem(Icons.favorite_outline, 'Матчи', 2),
-                    _buildNavItem(Icons.person_outline, 'Профиль', 3),
-                  ],
-                ),
+            Positioned.fill(
+              child: IndexedStack(
+                index: _index,
+                children: _tabs,
               ),
             ),
-            if (!_isFullBanActive)
-              Positioned(
-                left: 0,
-                right: 0,
-                top: -8,
-                child: Center(
-                  child: GestureDetector(
-                    onTap: _openCreateEventScreen,
-                    child: Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color:
-                            _isCreateEventBlocked
-                                ? const Color(0xFF9FA4C8)
-                                : const Color(0xFF5E60CE),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color:
-                                (_isCreateEventBlocked
-                                        ? const Color(0xFF9FA4C8)
-                                        : const Color(0xFF5E60CE))
-                                    .withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        _isCreateEventBlocked ? Icons.block_rounded : Icons.add,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                ),
+            Positioned(
+              left: horizontalInset,
+              right: horizontalInset,
+              bottom: floatingBarBottom,
+              child: _buildFloatingNavBar(
+                navItemWidth: navItemWidth,
+                sideGap: sideGap,
+                centerGap: centerGap,
               ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    final bool isSelected = _index == index;
-    return Expanded(
-      child: InkWell(
-        onTap: () => _onNavTapped(index),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(
-              icon,
-              color: isSelected ? const Color(0xFF5E60CE) : Colors.grey,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: isSelected ? const Color(0xFF5E60CE) : Colors.grey,
+  Widget _buildFloatingNavBar({
+    required double navItemWidth,
+    required double sideGap,
+    required double centerGap,
+  }) {
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.bottomCenter,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(26),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface.withValues(alpha: 0.56),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.dark.withValues(alpha: 0.12),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final double rowWidth =
+                        (navItemWidth * 4) + (sideGap * 2) + centerGap;
+                    final double startX = (constraints.maxWidth - rowWidth) / 2;
+                    final double indicatorWidth = navItemWidth + 2;
+
+                    double itemLeft(int index) {
+                      switch (index) {
+                        case 0:
+                          return startX;
+                        case 1:
+                          return startX + navItemWidth + sideGap;
+                        case 2:
+                          return startX + (navItemWidth * 2) + sideGap + centerGap;
+                        case 3:
+                          return startX + (navItemWidth * 3) + (sideGap * 2) + centerGap;
+                        default:
+                          return startX;
+                      }
+                    }
+
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 320),
+                          curve: Curves.easeOutCubic,
+                          left: (itemLeft(_index) - 1).clamp(
+                            0.0,
+                            constraints.maxWidth - indicatorWidth,
+                          ),
+                          top: 1,
+                          child: IgnorePointer(
+                            child: Container(
+                              width: indicatorWidth,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                gradient: LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [
+                                    AppColors.primary.withValues(alpha: 0.12),
+                                    AppColors.primary.withValues(alpha: 0.22),
+                                    AppColors.primary.withValues(alpha: 0.12),
+                                  ],
+                                  stops: const [0.0, 0.5, 1.0],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(alpha: 0.1),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            _buildNavItem(
+                              CupertinoIcons.map,
+                              'Карта',
+                              0,
+                              itemWidth: navItemWidth,
+                            ),
+                            SizedBox(width: sideGap),
+                            _buildNavItem(
+                              CupertinoIcons.calendar,
+                              'Афиша',
+                              1,
+                              itemWidth: navItemWidth,
+                            ),
+                            SizedBox(width: centerGap),
+                            _buildNavItem(
+                              CupertinoIcons.heart,
+                              'Матчи',
+                              2,
+                              itemWidth: navItemWidth,
+                            ),
+                            SizedBox(width: sideGap),
+                            _buildNavItem(
+                              CupertinoIcons.person,
+                              'Профиль',
+                              3,
+                              itemWidth: navItemWidth,
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
-          ],
+          ),
+        ),
+        if (!_isFullBanActive)
+          Positioned(
+            left: 0,
+            right: 0,
+            top: -10,
+            child: Center(
+              child: GestureDetector(
+                onTap: _openCreateEventScreen,
+                child: Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color:
+                        _isCreateEventBlocked
+                            ? AppColors.dark.withValues(alpha: 0.6)
+                            : AppColors.primary,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.9),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color:
+                            (_isCreateEventBlocked
+                                    ? AppColors.dark.withValues(alpha: 0.6)
+                                    : AppColors.primary)
+                                .withValues(alpha: 0.28),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    _isCreateEventBlocked
+                        ? CupertinoIcons.lock_fill
+                        : CupertinoIcons.add,
+                    color: AppColors.accent,
+                    size: 28,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNavItem(
+    IconData icon,
+    String label,
+    int index, {
+    required double itemWidth,
+  }) {
+    final bool isSelected = _index == index;
+    return SizedBox(
+      width: itemWidth,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => _onNavTapped(index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                icon,
+                color: isSelected ? AppColors.primary : AppColors.dark.withValues(alpha: 0.58),
+                size: 22,
+              ),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? AppColors.primary : AppColors.dark.withValues(alpha: 0.58),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

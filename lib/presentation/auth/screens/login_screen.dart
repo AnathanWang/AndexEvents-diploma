@@ -123,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Icon(
                   Icons.celebration,
                   size: 80,
-                  color: Color(0xFF5E60CE),
+                  color: Color(0xFF75878A),
                 ),
                 const SizedBox(height: 24),
                 const Text(
@@ -132,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF4A4D6A),
+                    color: Color(0xFF161823),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -163,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFF5E60CE), width: 2),
+                      borderSide: const BorderSide(color: Color(0xFF75878A), width: 2),
                     ),
                   ),
                   validator: (String? value) {
@@ -207,7 +207,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFF5E60CE), width: 2),
+                      borderSide: const BorderSide(color: Color(0xFF75878A), width: 2),
                     ),
                   ),
                   validator: (String? value) {
@@ -235,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                     child: const Text(
                       'Забыли пароль?',
-                      style: TextStyle(color: Color(0xFF5E60CE)),
+                      style: TextStyle(color: Color(0xFF75878A)),
                     ),
                   ),
                 ),
@@ -245,7 +245,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ElevatedButton(
                   onPressed: _isLoading ? null : _handleLogin,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5E60CE),
+                    backgroundColor: const Color(0xFF75878A),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -298,7 +298,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   icon: const Icon(Icons.g_mobiledata, size: 32),
                   label: const Text('Войти через Google'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF4A4D6A),
+                    foregroundColor: const Color(0xFF161823),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -322,7 +322,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: const Text(
                         'Зарегистрироваться',
                         style: TextStyle(
-                          color: Color(0xFF5E60CE),
+                          color: Color(0xFF75878A),
                           fontWeight: FontWeight.w600,
                         ),
                       ),

@@ -108,7 +108,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF5E60CE),
+              primary: Color(0xFF75878A),
               onPrimary: Colors.white,
               surface: Colors.white,
             ),
@@ -133,7 +133,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF5E60CE),
+              primary: Color(0xFF75878A),
               onPrimary: Colors.white,
               surface: Colors.white,
             ),
@@ -160,7 +160,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF5E60CE),
+              primary: Color(0xFF75878A),
               onPrimary: Colors.white,
               surface: Colors.white,
             ),
@@ -185,7 +185,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF5E60CE),
+              primary: Color(0xFF75878A),
               onPrimary: Colors.white,
               surface: Colors.white,
             ),
@@ -391,13 +391,13 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Color(0xFF4A4D6A)),
+          icon: const Icon(Icons.close, color: Color(0xFF161823)),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
           'Создать событие',
           style: TextStyle(
-            color: Color(0xFF4A4D6A),
+            color: Color(0xFF161823),
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -449,7 +449,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                                   const Text(
                                     'Нажмите для загрузки',
                                     style: TextStyle(
-                                      color: Color(0xFF5E60CE),
+                                      color: Color(0xFF75878A),
                                       fontSize: 14,
                                     ),
                                   ),
@@ -529,7 +529,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFF5E60CE), width: 2),
+                  borderSide: const BorderSide(color: Color(0xFF75878A), width: 2),
                 ),
               ),
               validator: (String? value) {
@@ -558,7 +558,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFF5E60CE), width: 2),
+                  borderSide: const BorderSide(color: Color(0xFF75878A), width: 2),
                 ),
               ),
               validator: (String? value) {
@@ -663,7 +663,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 title: const Text('Указать дату окончания'),
                 subtitle: const Text('Добавьте дату и время завершения события'),
                 value: _hasEndDateTime,
-                activeColor: const Color(0xFF5E60CE),
+                activeColor: const Color(0xFF75878A),
                 controlAffinity: ListTileControlAffinity.leading,
                 onChanged: (bool? value) {
                   if (value == null) return;
@@ -744,7 +744,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 title: const Text('Онлайн событие'),
                 subtitle: Text(_isOnline ? 'Будет проходить онлайн' : 'Будет проходить оффлайн'),
                 value: _isOnline,
-                activeThumbColor: const Color(0xFF5E60CE),
+                activeThumbColor: const Color(0xFF75878A),
                 onChanged: (bool value) {
                   setState(() {
                     _isOnline = value;
@@ -776,7 +776,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF5E60CE), width: 2),
+                    borderSide: const BorderSide(color: Color(0xFF75878A), width: 2),
                   ),
                 ),
                 onTap: _openMapPicker,
@@ -806,7 +806,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFF5E60CE), width: 2),
+                  borderSide: const BorderSide(color: Color(0xFF75878A), width: 2),
                 ),
               ),
             ),
@@ -816,7 +816,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             ElevatedButton(
               onPressed: _isLoading ? null : _handleCreateEvent,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5E60CE),
+                backgroundColor: const Color(0xFF75878A),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(

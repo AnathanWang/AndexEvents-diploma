@@ -182,7 +182,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
+            icon: const Icon(Icons.arrow_back, color: Color(0xFF161823)),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
@@ -200,7 +200,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF4A4D6A),
+                    color: Color(0xFF161823),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -231,7 +231,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFF5E60CE), width: 2),
+                      borderSide: const BorderSide(color: Color(0xFF75878A), width: 2),
                     ),
                   ),
                   validator: (String? value) {
@@ -268,7 +268,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Color(0xFF5E60CE), width: 2),
+                          borderSide: const BorderSide(color: Color(0xFF75878A), width: 2),
                         ),
                       ),
                       validator: (String? value) {
@@ -321,7 +321,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFF5E60CE), width: 2),
+                      borderSide: const BorderSide(color: Color(0xFF75878A), width: 2),
                     ),
                   ),
                   validator: (String? value) {
@@ -369,7 +369,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFF5E60CE), width: 2),
+                      borderSide: const BorderSide(color: Color(0xFF75878A), width: 2),
                     ),
                   ),
                   validator: (String? value) {
@@ -393,7 +393,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onChanged: (bool? value) {
                         setState(() => _acceptTerms = value ?? false);
                       },
-                      activeColor: const Color(0xFF5E60CE),
+                      activeColor: const Color(0xFF75878A),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(4),
                       ),
@@ -412,7 +412,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               TextSpan(
                                 text: 'Условия использования',
                                 style: const TextStyle(
-                                  color: Color(0xFF5E60CE),
+                                  color: Color(0xFF75878A),
                                   decoration: TextDecoration.underline,
                                 ),
                               ),
@@ -420,7 +420,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               TextSpan(
                                 text: 'Политику конфиденциальности',
                                 style: const TextStyle(
-                                  color: Color(0xFF5E60CE),
+                                  color: Color(0xFF75878A),
                                   decoration: TextDecoration.underline,
                                 ),
                               ),
@@ -440,7 +440,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ? null 
                       : _handleRegister,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5E60CE),
+                    backgroundColor: const Color(0xFF75878A),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -493,7 +493,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   icon: const Icon(Icons.g_mobiledata, size: 32),
                   label: const Text('Регистрация через Google'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF4A4D6A),
+                    foregroundColor: const Color(0xFF161823),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -522,7 +522,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             height: 20,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5E60CE)),
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF75878A)),
             ),
           ),
         );

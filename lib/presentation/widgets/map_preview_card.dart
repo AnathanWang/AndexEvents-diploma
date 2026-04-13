@@ -11,7 +11,7 @@ class MapPreviewCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         gradient: const LinearGradient(
           colors: <Color>[
-            Color(0xFF5E60CE),
+            Color(0xFF75878A),
             Color(0xFF4ECCA3),
           ],
           begin: Alignment.topLeft,
@@ -64,12 +64,12 @@ class MapPreviewCard extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: const <Widget>[
-                  Icon(Icons.map_outlined, color: Color(0xFF5E60CE)),
+                  Icon(Icons.map_outlined, color: Color(0xFF75878A)),
                   SizedBox(width: 8),
                   Text(
                     'Открыть карту',
                     style: TextStyle(
-                      color: Color(0xFF5E60CE),
+                      color: Color(0xFF75878A),
                       fontWeight: FontWeight.w600,
                     ),
                   ),

@@ -101,7 +101,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF5E60CE),
+              primary: Color(0xFF75878A),
               onPrimary: Colors.white,
               surface: Colors.white,
             ),
@@ -126,7 +126,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF5E60CE),
+              primary: Color(0xFF75878A),
               onPrimary: Colors.white,
               surface: Colors.white,
             ),
@@ -618,7 +618,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
                             icon: const Icon(Icons.save),
                             label: const Text('Сохранить'),
                             style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF5E60CE),
+                              backgroundColor: const Color(0xFF75878A),
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),

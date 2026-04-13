@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../core/theme/app_colors.dart';
 
 import '../presentation/admin/screens/admin_web_access_gate_screen.dart';
 
@@ -13,8 +14,13 @@ class AndexAdminWebApp extends StatelessWidget {
     final String? appFontFamily = isApplePlatform ? '.SF Pro Text' : null;
 
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF5E60CE),
+      seedColor: AppColors.primary,
       brightness: Brightness.light,
+      surface: AppColors.surface,
+    ).copyWith(
+      primary: AppColors.primary,
+      secondary: AppColors.accent,
+      onSurface: AppColors.textPrimary,
     );
 
     return MaterialApp(
@@ -23,9 +29,44 @@ class AndexAdminWebApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: colorScheme,
+        primaryColor: AppColors.primary,
         fontFamily: appFontFamily,
+        canvasColor: AppColors.surface,
+        cardColor: AppColors.surface,
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: AppColors.surface,
+          surfaceTintColor: Colors.transparent,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.surface,
+          foregroundColor: AppColors.textPrimary,
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+        ),
+        progressIndicatorTheme: const ProgressIndicatorThemeData(
+          color: AppColors.primary,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            side: const BorderSide(color: AppColors.primary),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primary,
+          ),
+        ),
         textTheme: ThemeData.light().textTheme.apply(fontFamily: appFontFamily),
-        scaffoldBackgroundColor: const Color(0xFFF6F7FF),
+        scaffoldBackgroundColor: AppColors.background,
       ),
       home: const AdminWebAccessGateScreen(),
     );

@@ -8,6 +8,7 @@ import '../../events/bloc/event_event.dart';
 import '../../events/bloc/event_state.dart';
 import '../../events/screens/real_event_detail_screen.dart';
 import '../../../data/models/event_model.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:andexevents/presentation/widgets/event_countdown_timer.dart';
 
 
@@ -61,7 +62,7 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -82,7 +83,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                       child: const Icon(
                         Icons.arrow_back,
-                        color: Color(0xFF4A4D6A),
+                        color: Color(0xFF161823),
                         size: 20,
                       ),
                     ),
@@ -106,13 +107,13 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                         prefixIcon: const Icon(
                           Icons.search,
-                          color: Color(0xFF5E60CE),
+                          color: Color(0xFF75878A),
                           size: 22,
                         ),
                         suffixIcon: _searchController.text.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear),
-                                color: const Color(0xFF5E60CE),
+                                color: const Color(0xFF75878A),
                                 onPressed: () {
                                   _searchController.clear();
                                   setState(() {
@@ -138,7 +139,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
-                            color: Color(0xFF5E60CE),
+                            color: Color(0xFF75878A),
                             width: 2,
                           ),
                         ),
@@ -161,7 +162,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   if (state is EventsLoading) {
                     return const Center(
                       child: CircularProgressIndicator(
-                        color: Color(0xFF5E60CE),
+                        color: Color(0xFF75878A),
                       ),
                     );
                   }
@@ -261,7 +262,7 @@ class _SearchScreenState extends State<SearchScreen> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0xFFE8E8E8), width: 1),
           boxShadow: [
@@ -288,7 +289,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 placeholder: (context, url) => Container(
                   color: const Color(0xFFE8E8E8),
                   child: const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF5E60CE)),
+                    child: CircularProgressIndicator(color: Color(0xFF75878A)),
                   ),
                 ),
                 errorWidget: (context, url, error) => Container(
@@ -312,7 +313,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF4A4D6A),
+                        color: Color(0xFF161823),
                       ),
                     ),
                     const SizedBox(height: 6),

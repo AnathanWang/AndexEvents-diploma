@@ -17,19 +17,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       icon: Icons.celebration,
       title: 'Находите события',
       description: 'Открывайте для себя интересные мероприятия рядом с вами',
-      color: Color(0xFF5E60CE),
+      color: Color(0xFF75878A),
     ),
     const OnboardingPage(
       icon: Icons.people,
       title: 'Встречайте людей',
       description: 'Знакомьтесь с единомышленниками и заводите новых друзей',
-      color: Color(0xFF7B68EE),
+      color: Color(0xFF81D8D0),
     ),
     const OnboardingPage(
       icon: Icons.favorite,
       title: 'Создавайте воспоминания',
       description: 'Посещайте события и делитесь впечатлениями',
-      color: Color(0xFF9370DB),
+      color: Color(0xFF81D8D0),
     ),
   ];
 
@@ -109,7 +109,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   height: 8,
                   decoration: BoxDecoration(
                     color: _currentPage == index
-                        ? const Color(0xFF5E60CE)
+                        ? const Color(0xFF75878A)
                         : const Color(0xFFE0E0E0),
                     borderRadius: BorderRadius.circular(4),
                   ),
@@ -124,7 +124,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: ElevatedButton(
                 onPressed: _nextPage,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5E60CE),
+                  backgroundColor: const Color(0xFF75878A),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -191,7 +191,7 @@ class OnboardingPage extends StatelessWidget {
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF4A4D6A),
+              color: Color(0xFF161823),
             ),
           ),
           const SizedBox(height: 16),

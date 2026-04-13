@@ -201,11 +201,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               event.imageUrl!,
                               fit: BoxFit.cover,
                               errorBuilder: (_, _, _) => Container(
-                                color: const Color(0xFF5E60CE),
+                                color: const Color(0xFF75878A),
                               ),
                             ),
                           if ((event.imageUrl ?? '').trim().isEmpty)
-                            Container(color: const Color(0xFF5E60CE)),
+                            Container(color: const Color(0xFF75878A)),
                           Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
@@ -292,7 +292,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             'Не удалось загрузить события',
             style: TextStyle(
               fontSize: 14,
-              color: Color(0xFF7C84AF),
+              color: Color(0xFF75878A),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -430,17 +430,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       case 'website':
         return (
           icon: Icons.language,
-          gradient: const <Color>[Color(0xFF5E60CE), Color(0xFF9370DB)],
+          gradient: const <Color>[Color(0xFF75878A), Color(0xFF81D8D0)],
         );
       case 'phone':
         return (
           icon: Icons.phone,
-          gradient: const <Color>[Color(0xFF5E60CE), Color(0xFF9370DB)],
+          gradient: const <Color>[Color(0xFF75878A), Color(0xFF81D8D0)],
         );
       default:
         return (
           icon: Icons.link,
-          gradient: const <Color>[Color(0xFF5E60CE), Color(0xFF9370DB)],
+          gradient: const <Color>[Color(0xFF75878A), Color(0xFF81D8D0)],
         );
     }
   }
@@ -458,7 +458,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           children: <Widget>[
             Icon(
               Icons.lock_outline,
-              color: Color(0xFF7C84AF),
+              color: Color(0xFF75878A),
             ),
             SizedBox(width: 12),
             Expanded(
@@ -466,7 +466,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 'Соцсети доступны после взаимного лайка',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF4A4D6A),
+                  color: Color(0xFF161823),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -487,14 +487,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ),
         child: const Row(
           children: <Widget>[
-            Icon(Icons.info_outline, color: Color(0xFF7C84AF)),
+            Icon(Icons.info_outline, color: Color(0xFF75878A)),
             SizedBox(width: 12),
             Expanded(
               child: Text(
                 'Соцсети не указаны',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF4A4D6A),
+                  color: Color(0xFF161823),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -603,7 +603,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ],
               ),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF161823)),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ),
@@ -621,7 +621,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ],
                 ),
                 child: PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: Color(0xFF4A4D6A)),
+                  icon: const Icon(Icons.more_vert, color: Color(0xFF161823)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -768,7 +768,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 style: const TextStyle(
                                   fontSize: 26,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF2F355E),
+                                  color: Color(0xFF161823),
                                 ),
                               ),
                             ),
@@ -810,7 +810,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             '${_user!.age} лет',
                             style: const TextStyle(
                               fontSize: 15,
-                              color: Color(0xFF7F88B3),
+                              color: Color(0xFF75878A),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -837,7 +837,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF6F8FF),
+                      color: const Color(0xFFEAF7F5),
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
                         color: const Color(0xFFDEE4FF),
@@ -853,7 +853,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           ),
                           child: const Icon(
                             Icons.favorite,
-                            color: Color(0xFF5A66D8),
+                            color: Color(0xFF75878A),
                             size: 22,
                           ),
                         ),
@@ -867,7 +867,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF2F355E),
+                                  color: Color(0xFF161823),
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -875,7 +875,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 widget.commonInterests.join(', '),
                                 style: const TextStyle(
                                   fontSize: 13.5,
-                                  color: Color(0xFF7F88B3),
+                                  color: Color(0xFF75878A),
                                 ),
                               ),
                             ],
@@ -924,14 +924,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       ),
       child: Row(
         children: <Widget>[
-          Icon(icon, size: 16, color: const Color(0xFF5A66D8)),
+          Icon(icon, size: 16, color: const Color(0xFF75878A)),
           const SizedBox(width: 8),
           Text(
             title,
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF2F355E),
+              color: Color(0xFF161823),
             ),
           ),
         ],
@@ -952,7 +952,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         text,
         style: const TextStyle(
           fontSize: 14,
-          color: Color(0xFF7C84AF),
+          color: Color(0xFF75878A),
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -969,7 +969,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             color: const Color(0xFFE8EDFF),
             borderRadius: BorderRadius.circular(9),
           ),
-          child: Icon(icon, size: 17, color: const Color(0xFF5A66D8)),
+          child: Icon(icon, size: 17, color: const Color(0xFF75878A)),
         ),
         const SizedBox(width: 9),
         Text(
@@ -977,7 +977,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF2F355E),
+            color: Color(0xFF161823),
           ),
         ),
       ],
@@ -1048,7 +1048,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       child: Text(
         widget.userInitials,
         style: const TextStyle(
-          color: Color(0xFF5E60CE),
+          color: Color(0xFF75878A),
           fontSize: 36,
           fontWeight: FontWeight.bold,
         ),

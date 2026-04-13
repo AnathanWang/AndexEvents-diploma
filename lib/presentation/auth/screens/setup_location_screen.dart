@@ -171,7 +171,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF161823)),
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: <Widget>[
@@ -199,7 +199,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
                     child: Container(
                       height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF5E60CE),
+                        color: const Color(0xFF75878A),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -209,7 +209,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
                     child: Container(
                       height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF5E60CE),
+                        color: const Color(0xFF75878A),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -219,7 +219,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
                     child: Container(
                       height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF5E60CE),
+                        color: const Color(0xFF75878A),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -233,13 +233,13 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
                 width: 140,
                 height: 140,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
+                  color: const Color(0xFF75878A).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   hasPermission ? Icons.check_circle : Icons.location_on,
                   size: 80,
-                  color: const Color(0xFF5E60CE),
+                  color: const Color(0xFF75878A),
                 ),
               ),
               const SizedBox(height: 48),
@@ -251,7 +251,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF4A4D6A),
+                  color: Color(0xFF161823),
                 ),
               ),
               const SizedBox(height: 16),
@@ -274,14 +274,14 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
+                    color: const Color(0xFF75878A).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
                     children: <Widget>[
                       const Icon(
                         Icons.location_city,
-                        color: Color(0xFF5E60CE),
+                        color: Color(0xFF75878A),
                         size: 32,
                       ),
                       const SizedBox(height: 8),
@@ -290,7 +290,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 14,
-                          color: Color(0xFF4A4D6A),
+                          color: Color(0xFF161823),
                         ),
                       ),
                     ],
@@ -328,7 +328,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
                     ? null
                     : (hasPermission ? _completeOnboarding : _requestPermission),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5E60CE),
+                  backgroundColor: const Color(0xFF75878A),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -372,12 +372,12 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
+            color: const Color(0xFF75878A).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
             icon,
-            color: const Color(0xFF5E60CE),
+            color: const Color(0xFF75878A),
             size: 24,
           ),
         ),
@@ -391,7 +391,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF4A4D6A),
+                  color: Color(0xFF161823),
                 ),
               ),
               const SizedBox(height: 4),

@@ -267,7 +267,7 @@ class _AdminWebAccessGateScreenState extends State<AdminWebAccessGateScreen> {
                 shadowColor: const Color(0x235965D8),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24),
-                  side: const BorderSide(color: Color(0xFFDCE3FF)),
+                  side: const BorderSide(color: Color(0xFFCDEBE7)),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(22),
@@ -283,7 +283,7 @@ class _AdminWebAccessGateScreenState extends State<AdminWebAccessGateScreen> {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
                               gradient: const LinearGradient(
-                                colors: [Color(0xFF5965D8), Color(0xFF7D6EEC)],
+                                colors: [Color(0xFF75878A), Color(0xFF7D6EEC)],
                               ),
                             ),
                             child: const Icon(
@@ -298,7 +298,7 @@ class _AdminWebAccessGateScreenState extends State<AdminWebAccessGateScreen> {
                               style: TextStyle(
                                 fontSize: 26,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF2F355E),
+                                color: Color(0xFF161823),
                               ),
                             ),
                           ),

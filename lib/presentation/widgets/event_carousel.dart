@@ -77,7 +77,7 @@ class _EventCarouselState extends State<EventCarousel> {
                 height: 8,
                 decoration: BoxDecoration(
                   color: _currentPage == index
-                      ? const Color(0xFF5E60CE)
+                      ? const Color(0xFF75878A)
                       : Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(4),
                 ),
@@ -308,7 +308,7 @@ class _EventCarouselState extends State<EventCarousel> {
       case 'other':
         return Colors.grey;
       default:
-        return const Color(0xFF5E60CE);
+        return const Color(0xFF75878A);
     }
   }
 }

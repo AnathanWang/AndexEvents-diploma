@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 
 class EventCountdownTimer extends StatefulWidget {
   final DateTime expirationTime;
@@ -79,8 +80,8 @@ class _EventCountdownTimerState extends State<EventCountdownTimer> {
         return Text(
           'Завершено',
           style: (widget.textStyle ?? const TextStyle()).copyWith(
-            color: const Color(0xFFF75555),
-            fontWeight: FontWeight.bold,
+            color: AppColors.dark.withValues(alpha: 0.48),
+            fontWeight: FontWeight.w600,
             fontSize: widget.textStyle?.fontSize ?? 10,
           ),
         );
@@ -88,20 +89,24 @@ class _EventCountdownTimerState extends State<EventCountdownTimer> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF4F4),
+          color: AppColors.dark.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFFFDBDB)),
+          border: Border.all(color: AppColors.dark.withValues(alpha: 0.14)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle_outline, size: 14, color: Color(0xFFF75555)),
+            Icon(
+              Icons.check_circle_outline,
+              size: 14,
+              color: AppColors.dark.withValues(alpha: 0.52),
+            ),
             const SizedBox(width: 4),
             Text(
               'Завершено',
               style: (widget.textStyle ?? const TextStyle()).copyWith(
-                color: const Color(0xFFF75555),
-                fontWeight: FontWeight.bold,
+                color: AppColors.dark.withValues(alpha: 0.52),
+                fontWeight: FontWeight.w600,
                 fontSize: 11,
               ),
             ),
@@ -114,7 +119,7 @@ class _EventCountdownTimerState extends State<EventCountdownTimer> {
       return Text(
         _formatDuration(_timeLeft),
         style: (widget.textStyle ?? const TextStyle()).copyWith(
-          color: const Color(0xFF5E60CE),
+          color: AppColors.primary,
           fontWeight: FontWeight.bold,
           fontSize: widget.textStyle?.fontSize ?? 10,
         ),
@@ -124,19 +129,19 @@ class _EventCountdownTimerState extends State<EventCountdownTimer> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF6F8FF),
+        color: AppColors.accent.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE2E8FF)),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.45)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.timer_outlined, size: 14, color: widget.textStyle?.color ?? const Color(0xFF5E60CE)),
+          Icon(Icons.timer_outlined, size: 14, color: widget.textStyle?.color ?? AppColors.primary),
           const SizedBox(width: 4),
           Text(
             _formatDuration(_timeLeft),
             style: (widget.textStyle ?? const TextStyle()).copyWith(
-              color: const Color(0xFF5E60CE),
+              color: AppColors.primary,
               fontWeight: FontWeight.bold,
               fontSize: 11,
             ),

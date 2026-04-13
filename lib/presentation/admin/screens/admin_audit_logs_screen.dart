@@ -70,7 +70,7 @@ class _AdminAuditLogsScreenState extends State<AdminAuditLogsScreen> {
       appBar: AppBar(
         title: const Text('Журнал действий админа'),
         backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF2F355E),
+        foregroundColor: const Color(0xFF161823),
         elevation: 0,
         actions: [
           IconButton(
@@ -105,7 +105,7 @@ class _AdminAuditLogsScreenState extends State<AdminAuditLogsScreen> {
           ? const Center(
               child: Text(
                 'Журнал пока пуст',
-                style: TextStyle(color: Color(0xFF7D85B0)),
+                style: TextStyle(color: Color(0xFF75878A)),
               ),
             )
           : RefreshIndicator(
@@ -121,7 +121,7 @@ class _AdminAuditLogsScreenState extends State<AdminAuditLogsScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFDCE3FF)),
+                      border: Border.all(color: const Color(0xFFCDEBE7)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -130,7 +130,7 @@ class _AdminAuditLogsScreenState extends State<AdminAuditLogsScreen> {
                           log.action,
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF2F355E),
+                            color: Color(0xFF161823),
                           ),
                         ),
                         const SizedBox(height: 6),

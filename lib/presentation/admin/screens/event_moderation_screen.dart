@@ -224,14 +224,14 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF2F355E),
+                          color: Color(0xFF161823),
                         ),
                       ),
                     ),
                     Text(
                       '${item.pendingReports} pending',
                       style: const TextStyle(
-                        color: Color(0xFF7A82AC),
+                        color: Color(0xFF75878A),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -261,7 +261,7 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                           decoration: BoxDecoration(
                             color: const Color(0xFFF8F9FF),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFDDE3FF)),
+                            border: Border.all(color: const Color(0xFFCDEBE7)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,7 +273,7 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                                       report.reason.displayName,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w700,
-                                        color: Color(0xFF2F355E),
+                                        color: Color(0xFF161823),
                                       ),
                                     ),
                                   ),
@@ -303,7 +303,7 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                                 DateFormat('dd.MM.yyyy HH:mm', 'ru').format(report.createdAt),
                                 style: const TextStyle(
                                   fontSize: 12,
-                                  color: Color(0xFF7A82AC),
+                                  color: Color(0xFF75878A),
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -404,7 +404,7 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
       appBar: AppBar(
         title: const Text('Модерация событий'),
         backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF2F355E),
+        foregroundColor: const Color(0xFF161823),
         elevation: 0,
         actions: [
           IconButton(
@@ -469,7 +469,7 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFDCE3FF)),
+                      border: Border.all(color: const Color(0xFFCDEBE7)),
                       boxShadow: const <BoxShadow>[
                         BoxShadow(
                           color: Color(0x10000000),
@@ -494,7 +494,7 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF2F355E),
+                                  color: Color(0xFF161823),
                                 ),
                               ),
                             ),

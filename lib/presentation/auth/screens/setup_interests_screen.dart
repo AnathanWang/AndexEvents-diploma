@@ -18,18 +18,18 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
   bool _isLoading = false;
 
   final List<InterestItem> _interests = <InterestItem>[
-    const InterestItem(name: 'Музыка', icon: Icons.music_note, color: Color(0xFF5E60CE)),
-    const InterestItem(name: 'Спорт', icon: Icons.sports_soccer, color: Color(0xFF7B68EE)),
-    const InterestItem(name: 'Кино', icon: Icons.movie, color: Color(0xFF9370DB)),
-    const InterestItem(name: 'IT', icon: Icons.computer, color: Color(0xFF5E60CE)),
-    const InterestItem(name: 'Искусство', icon: Icons.palette, color: Color(0xFF7B68EE)),
-    const InterestItem(name: 'Книги', icon: Icons.book, color: Color(0xFF9370DB)),
-    const InterestItem(name: 'Еда', icon: Icons.restaurant, color: Color(0xFF5E60CE)),
-    const InterestItem(name: 'Путешествия', icon: Icons.flight, color: Color(0xFF7B68EE)),
-    const InterestItem(name: 'Фотография', icon: Icons.camera_alt, color: Color(0xFF9370DB)),
-    const InterestItem(name: 'Мода', icon: Icons.checkroom, color: Color(0xFF5E60CE)),
-    const InterestItem(name: 'Танцы', icon: Icons.album, color: Color(0xFF7B68EE)),
-    const InterestItem(name: 'Игры', icon: Icons.videogame_asset, color: Color(0xFF9370DB)),
+    const InterestItem(name: 'Музыка', icon: Icons.music_note, color: Color(0xFF75878A)),
+    const InterestItem(name: 'Спорт', icon: Icons.sports_soccer, color: Color(0xFF81D8D0)),
+    const InterestItem(name: 'Кино', icon: Icons.movie, color: Color(0xFF81D8D0)),
+    const InterestItem(name: 'IT', icon: Icons.computer, color: Color(0xFF75878A)),
+    const InterestItem(name: 'Искусство', icon: Icons.palette, color: Color(0xFF81D8D0)),
+    const InterestItem(name: 'Книги', icon: Icons.book, color: Color(0xFF81D8D0)),
+    const InterestItem(name: 'Еда', icon: Icons.restaurant, color: Color(0xFF75878A)),
+    const InterestItem(name: 'Путешествия', icon: Icons.flight, color: Color(0xFF81D8D0)),
+    const InterestItem(name: 'Фотография', icon: Icons.camera_alt, color: Color(0xFF81D8D0)),
+    const InterestItem(name: 'Мода', icon: Icons.checkroom, color: Color(0xFF75878A)),
+    const InterestItem(name: 'Танцы', icon: Icons.album, color: Color(0xFF81D8D0)),
+    const InterestItem(name: 'Игры', icon: Icons.videogame_asset, color: Color(0xFF81D8D0)),
   ];
 
   void _toggleInterest(String interest) {
@@ -82,7 +82,7 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF161823)),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -98,7 +98,7 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
                     child: Container(
                       height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF5E60CE),
+                        color: const Color(0xFF75878A),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -108,7 +108,7 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
                     child: Container(
                       height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF5E60CE),
+                        color: const Color(0xFF75878A),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -139,7 +139,7 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF4A4D6A),
+                      color: Color(0xFF161823),
                     ),
                   ),
                   SizedBox(height: 8),
@@ -161,7 +161,7 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: _canContinue
-                    ? const Color(0xFF5E60CE).withValues(alpha: 0.1)
+                    ? const Color(0xFF75878A).withValues(alpha: 0.1)
                     : const Color(0xFFE0E0E0).withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -171,7 +171,7 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
                   Icon(
                     _canContinue ? Icons.check_circle : Icons.info_outline,
                     color: _canContinue
-                        ? const Color(0xFF5E60CE)
+                        ? const Color(0xFF75878A)
                         : const Color(0xFF9E9E9E),
                     size: 20,
                   ),
@@ -182,7 +182,7 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: _canContinue
-                          ? const Color(0xFF5E60CE)
+                          ? const Color(0xFF75878A)
                           : const Color(0xFF9E9E9E),
                     ),
                   ),
@@ -241,7 +241,7 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
                                   isSelected ? FontWeight.w600 : FontWeight.normal,
                               color: isSelected
                                   ? interest.color
-                                  : const Color(0xFF4A4D6A),
+                                  : const Color(0xFF161823),
                             ),
                           ),
                         ],
@@ -258,7 +258,7 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _handleNext,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5E60CE),
+                  backgroundColor: const Color(0xFF75878A),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(

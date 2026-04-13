@@ -50,7 +50,7 @@ class MatchCard extends StatelessWidget {
             children: <Widget>[
               CircleAvatar(
                 radius: 24,
-                backgroundColor: const Color(0xFF5E60CE).withValues(alpha: 0.14),
+                backgroundColor: const Color(0xFF75878A).withValues(alpha: 0.14),
                 backgroundImage: match.avatar != null && match.avatar!.isNotEmpty
                     ? NetworkImage(match.avatar!)
                     : null,
@@ -58,7 +58,7 @@ class MatchCard extends StatelessWidget {
                     ? Text(
                         _initials,
                         style: const TextStyle(
-                          color: Color(0xFF5E60CE),
+                          color: Color(0xFF75878A),
                           fontWeight: FontWeight.w700,
                         ),
                       )
@@ -90,7 +90,7 @@ class MatchCard extends StatelessWidget {
               ElevatedButton(
                 onPressed: onOpenProfile,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5E60CE),
+                  backgroundColor: const Color(0xFF75878A),
                   foregroundColor: Colors.white,
                   minimumSize: const Size(0, 36),
                   padding: const EdgeInsets.symmetric(horizontal: 12),

@@ -70,14 +70,14 @@ class AdminDashboardScreen extends StatelessWidget {
                 expandedHeight: 220,
                 pinned: true,
                 automaticallyImplyLeading: false,
-                backgroundColor: const Color(0xFF5E60CE),
+                backgroundColor: const Color(0xFF75878A),
                 flexibleSpace: FlexibleSpaceBar(
                   background: Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: <Color>[Color(0xFF5965D8), Color(0xFF7D6EEC)],
+                        colors: <Color>[Color(0xFF75878A), Color(0xFF7D6EEC)],
                       ),
                     ),
                     child: Padding(
@@ -158,7 +158,7 @@ class AdminDashboardScreen extends StatelessWidget {
                         child: IconButton(
                           icon: const Icon(
                             Icons.arrow_back,
-                            color: Color(0xFF5E60CE),
+                            color: Color(0xFF75878A),
                           ),
                           onPressed: () => Navigator.of(context).pop(),
                         ),
@@ -183,7 +183,7 @@ class AdminDashboardScreen extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF2F355E),
+                        color: Color(0xFF161823),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -194,7 +194,7 @@ class AdminDashboardScreen extends StatelessWidget {
                         subtitle: 'Проверка и отклонение проблемных мероприятий',
                         icon: Icons.event_available_rounded,
                         gradientColors: const [
-                          Color(0xFF5E60CE),
+                          Color(0xFF75878A),
                           Color(0xFF7D6EEC),
                         ],
                         onTap: () => Navigator.push(
@@ -247,7 +247,7 @@ class AdminDashboardScreen extends StatelessWidget {
                         subtitle: 'Аудит изменений ролей и админ-операций',
                         icon: Icons.fact_check_rounded,
                         gradientColors: const [
-                          Color(0xFF5965D8),
+                          Color(0xFF75878A),
                           Color(0xFF4ECDC4),
                         ],
                         onTap: () => Navigator.push(
@@ -304,7 +304,7 @@ class AdminDashboardScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFDCE2FF)),
+          border: Border.all(color: const Color(0xFFCDEBE7)),
           boxShadow: const <BoxShadow>[
             BoxShadow(
               color: Color(0x14000000),
@@ -338,7 +338,7 @@ class AdminDashboardScreen extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF2F355E),
+                      color: Color(0xFF161823),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -346,7 +346,7 @@ class AdminDashboardScreen extends StatelessWidget {
                     subtitle,
                     style: const TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF7D85B0),
+                      color: Color(0xFF75878A),
                     ),
                   ),
                 ],

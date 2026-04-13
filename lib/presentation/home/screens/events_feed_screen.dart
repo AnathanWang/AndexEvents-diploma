@@ -8,6 +8,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../core/services/logger_service.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../data/services/geocoding_service.dart';
 import '../../events/bloc/event_bloc.dart';
 import '../../events/bloc/event_event.dart';
@@ -260,7 +261,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: <Color>[Color(0xFFF3F5FF), Color(0xFFFAFBFF)],
+                  colors: <Color>[AppColors.background, AppColors.surface],
                 ),
               ),
               child: ListView(
@@ -274,9 +275,9 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                   Container(
                     padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: AppColors.surface.withValues(alpha: 0.94),
                       borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: const Color(0xFFDCE3FF)),
+                      border: Border.all(color: const Color(0xFFCDEBE7)),
                       boxShadow: const <BoxShadow>[
                         BoxShadow(
                           color: Color(0x10000000),
@@ -387,18 +388,18 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                           decoration: InputDecoration(
                             hintText: 'Поиск событий...',
                             hintStyle: const TextStyle(
-                              color: Color(0xFF8D95BF),
+                              color: Color(0xFF75878A),
                               fontSize: 14,
                             ),
                             prefixIcon: const Icon(
                               Icons.search,
-                              color: Color(0xFF5965D8),
+                              color: Color(0xFF75878A),
                               size: 20,
                             ),
                             suffixIcon: _searchController.text.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(Icons.clear),
-                                    color: const Color(0xFF5E60CE),
+                                    color: const Color(0xFF75878A),
                                     onPressed: () {
                                       _searchController.clear();
                                       setState(() {
@@ -418,12 +419,12 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
                               borderSide: const BorderSide(
-                                color: Color(0xFF5965D8),
+                                color: Color(0xFF75878A),
                                 width: 1.4,
                               ),
                             ),
                             filled: true,
-                            fillColor: Colors.white.withValues(alpha: 0.9),
+                            fillColor: AppColors.surface.withValues(alpha: 0.96),
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 14,
@@ -441,7 +442,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                                   vertical: 8,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFECF1FF),
+                                  color: const Color(0xFFEAF7F5),
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: Row(
@@ -449,7 +450,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                                   children: <Widget>[
                                     const Icon(
                                       Icons.location_on_outlined,
-                                      color: Color(0xFF5E60CE),
+                                      color: Color(0xFF75878A),
                                       size: 17,
                                     ),
                                     const SizedBox(width: 6),
@@ -458,13 +459,13 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
-                                        color: Color(0xFF3C467E),
+                                        color: Color(0xFF161823),
                                       ),
                                     ),
                                     const SizedBox(width: 2),
                                     const Icon(
                                       Icons.expand_more,
-                                      color: Color(0xFF8F96B8),
+                                      color: Color(0xFF75878A),
                                       size: 17,
                                     ),
                                   ],
@@ -491,7 +492,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                       'Популярные события',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF4A4D6A),
+                        color: const Color(0xFF161823),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -624,7 +625,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
       borderRadius: BorderRadius.circular(28),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(28),
           border: Border.all(color: const Color(0xFFD8DFFC), width: 1),
           boxShadow: const <BoxShadow>[
@@ -656,7 +657,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                         placeholder: (context, url) => Shimmer.fromColors(
                           baseColor: Colors.grey.shade200,
                           highlightColor: Colors.grey.shade50,
-                          child: Container(color: Colors.white),
+                          child: Container(color: AppColors.surface),
                         ),
                         errorWidget: (context, url, error) {
                           LoggerService.error(
@@ -713,7 +714,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: AppColors.surface.withValues(alpha: 0.92),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
@@ -736,7 +737,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: const Color(
-                            0xFF2F355E,
+                            0xFF161823,
                           ).withValues(alpha: 0.82),
                           borderRadius: BorderRadius.circular(999),
                         ),
@@ -765,7 +766,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: const Color(0xFF2F355E),
+                      color: const Color(0xFF161823),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -776,7 +777,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                       const Icon(
                         Icons.place_outlined,
                         size: 16,
-                        color: Color(0xFF5E60CE),
+                        color: Color(0xFF75878A),
                       ),
                       const SizedBox(width: 5),
                       Expanded(
@@ -840,7 +841,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                               highlightColor: Colors.grey.shade50,
                               child: const CircleAvatar(
                                 radius: 13,
-                                backgroundColor: Colors.white,
+                                backgroundColor: AppColors.surface,
                               ),
                             ),
                             errorWidget: (context, url, error) => CircleAvatar(
@@ -850,7 +851,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                                 _creatorInitial(event.creatorName),
                                 style: const TextStyle(
                                   fontSize: 11,
-                                  color: Color(0xFF5965D8),
+                                  color: Color(0xFF75878A),
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -864,7 +865,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                               _creatorInitial(event.creatorName),
                               style: const TextStyle(
                                 fontSize: 11,
-                                color: Color(0xFF5965D8),
+                                color: Color(0xFF75878A),
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -941,7 +942,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
       case 'other':
         return Colors.grey;
       default:
-        return const Color(0xFF5E60CE);
+        return const Color(0xFF75878A);
     }
   }
 
@@ -951,7 +952,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: <Color>[Color(0xFFF3F5FF), Color(0xFFFAFBFF)],
+          colors: <Color>[AppColors.background, AppColors.surface],
         ),
       ),
       child: ListView(
@@ -964,12 +965,12 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
         ),
         children: <Widget>[
           Shimmer.fromColors(
-            baseColor: Colors.white,
-            highlightColor: const Color(0xFFF3F5FF),
+            baseColor: AppColors.surface,
+            highlightColor: AppColors.background,
             child: Container(
               height: 160,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(22),
               ),
             ),
@@ -980,12 +981,12 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
             (_) => Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: Shimmer.fromColors(
-                baseColor: Colors.white,
-                highlightColor: const Color(0xFFF3F5FF),
+                baseColor: AppColors.surface,
+                highlightColor: AppColors.background,
                 child: Container(
                   height: 200,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(24),
                   ),
                 ),
@@ -1194,7 +1195,7 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: <Color>[Color(0xFFF6F8FF), Color(0xFFFFFFFF)],
+                colors: <Color>[Color(0xFFEAF7F5), Color(0xFFFFFFFF)],
               ),
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
@@ -1220,7 +1221,7 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF2F355E),
+                            color: Color(0xFF161823),
                           ),
                         ),
                       ),
@@ -1240,7 +1241,7 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                       hintText: 'Начните вводить город: Москва, Тверь, Омск...',
                       prefixIcon: const Icon(
                         Icons.search,
-                        color: Color(0xFF5965D8),
+                        color: Color(0xFF75878A),
                       ),
                       suffixIcon: _query.trim().isEmpty
                           ? null
@@ -1252,19 +1253,19 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                               },
                             ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppColors.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFFDDE3FF)),
+                        borderSide: const BorderSide(color: Color(0xFFCDEBE7)),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFFDDE3FF)),
+                        borderSide: const BorderSide(color: Color(0xFFCDEBE7)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
                         borderSide: const BorderSide(
-                          color: Color(0xFF5965D8),
+                          color: Color(0xFF75878A),
                           width: 1.5,
                         ),
                       ),
@@ -1294,7 +1295,7 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                                 suggestion.cityName == widget.selectedCity;
 
                             return Material(
-                              color: Colors.white,
+                              color: AppColors.surface,
                               borderRadius: BorderRadius.circular(14),
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(14),
@@ -1346,7 +1347,7 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                                               ? Icons.location_city
                                               : Icons.location_on_outlined,
                                           size: 16,
-                                          color: const Color(0xFF5965D8),
+                                          color: const Color(0xFF75878A),
                                         ),
                                       ),
                                       const SizedBox(width: 10),
@@ -1364,7 +1365,7 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                                                 fontWeight: isSelected
                                                     ? FontWeight.w800
                                                     : FontWeight.w700,
-                                                color: const Color(0xFF2F355E),
+                                                color: const Color(0xFF161823),
                                               ),
                                             ),
                                             const SizedBox(height: 2),
@@ -1374,7 +1375,7 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                                               overflow: TextOverflow.ellipsis,
                                               style: const TextStyle(
                                                 fontSize: 12,
-                                                color: Color(0xFF7D85B0),
+                                                color: Color(0xFF75878A),
                                               ),
                                             ),
                                           ],
@@ -1383,7 +1384,7 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                                       if (isSelected)
                                         const Icon(
                                           Icons.check_circle,
-                                          color: Color(0xFF5E60CE),
+                                          color: Color(0xFF75878A),
                                         ),
                                     ],
                                   ),

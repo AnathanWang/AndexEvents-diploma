@@ -336,7 +336,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF4A4D6A),
+                    color: Color(0xFF161823),
                   ),
                 ),
               ),
@@ -351,7 +351,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF5E60CE),
+                    color: Color(0xFF75878A),
                   ),
                 ),
               ),
@@ -380,7 +380,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: const Color(0xFF5E60CE).withValues(alpha: 0.22),
+                          color: const Color(0xFF75878A).withValues(alpha: 0.22),
                         ),
                       ),
                       child: const Column(
@@ -388,14 +388,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         children: <Widget>[
                           Icon(
                             Icons.add_photo_alternate_outlined,
-                            color: Color(0xFF5E60CE),
+                            color: Color(0xFF75878A),
                             size: 24,
                           ),
                           SizedBox(height: 4),
                           Text(
                             'Фото',
                             style: TextStyle(
-                              color: Color(0xFF5E60CE),
+                              color: Color(0xFF75878A),
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
@@ -563,7 +563,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       color = Colors.black;
     } else {
       icon = Icons.link;
-      color = const Color(0xFF5E60CE);
+      color = const Color(0xFF75878A);
     }
 
     return Icon(icon, color: color);
@@ -696,20 +696,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             backgroundColor: Colors.white,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
+              icon: const Icon(Icons.arrow_back, color: Color(0xFF161823)),
               onPressed: () => Navigator.of(context).pop(),
             ),
             title: const Text(
               'Редактировать профиль',
               style: TextStyle(
-                color: Color(0xFF4A4D6A),
+                color: Color(0xFF161823),
                 fontWeight: FontWeight.w600,
               ),
             ),
             centerTitle: true,
             actions: <Widget>[
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Color(0xFF4A4D6A)),
+                icon: const Icon(Icons.more_vert, color: Color(0xFF161823)),
                 onSelected: (value) {
                   if (value == 'privacy') {
                     _openPrivacySettings();
@@ -759,8 +759,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                         colors: <Color>[
-                                          Color(0xFF5E60CE),
-                                          Color(0xFF9370DB),
+                                          Color(0xFF75878A),
+                                          Color(0xFF81D8D0),
                                         ],
                                       ),
                                     ),
@@ -773,8 +773,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                       colors: <Color>[
-                                        Color(0xFF5E60CE),
-                                        Color(0xFF9370DB),
+                                        Color(0xFF75878A),
+                                        Color(0xFF81D8D0),
                                       ],
                                     ),
                                   ),
@@ -834,7 +834,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       height: 120,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: const Color(0xFF5E60CE),
+                                        color: const Color(0xFF75878A),
                                       ),
                                       child: ClipOval(
                                         child: CachedNetworkImage(
@@ -853,7 +853,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                             return CircleAvatar(
                                               radius: 60,
                                               backgroundColor: const Color(
-                                                0xFF5E60CE,
+                                                0xFF75878A,
                                               ),
                                               child: Text(
                                                 user.displayName?.isNotEmpty ==
@@ -876,7 +876,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   : CircleAvatar(
                                       key: _avatarPreviewKey,
                                       radius: 60,
-                                      backgroundColor: const Color(0xFF5E60CE),
+                                      backgroundColor: const Color(0xFF75878A),
                                       child: Text(
                                         user?.displayName?.isNotEmpty == true
                                             ? user!.displayName![0]
@@ -896,7 +896,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF5E60CE),
+                                    color: const Color(0xFF75878A),
                                     shape: BoxShape.circle,
                                     border: Border.all(
                                       color: Colors.white,
@@ -923,9 +923,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             icon: const Icon(Icons.camera_alt_outlined, size: 18),
                             label: const Text('Аватар'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF5E60CE),
+                              foregroundColor: const Color(0xFF75878A),
                               side: BorderSide(
-                                color: const Color(0xFF5E60CE).withValues(alpha: 0.25),
+                                color: const Color(0xFF75878A).withValues(alpha: 0.25),
                               ),
                             ),
                           ),
@@ -935,9 +935,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
                             label: const Text('Фото'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF5E60CE),
+                              foregroundColor: const Color(0xFF75878A),
                               side: BorderSide(
-                                color: const Color(0xFF5E60CE).withValues(alpha: 0.25),
+                                color: const Color(0xFF75878A).withValues(alpha: 0.25),
                               ),
                             ),
                           ),
@@ -947,9 +947,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             icon: const Icon(Icons.wallpaper_outlined, size: 18),
                             label: const Text('Фон'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF5E60CE),
+                              foregroundColor: const Color(0xFF75878A),
                               side: BorderSide(
-                                color: const Color(0xFF5E60CE).withValues(alpha: 0.25),
+                                color: const Color(0xFF75878A).withValues(alpha: 0.25),
                               ),
                             ),
                           ),
@@ -977,7 +977,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
                             borderSide: const BorderSide(
-                              color: Color(0xFF5E60CE),
+                              color: Color(0xFF75878A),
                               width: 2,
                             ),
                           ),
@@ -1010,7 +1010,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
                             borderSide: const BorderSide(
-                              color: Color(0xFF5E60CE),
+                              color: Color(0xFF75878A),
                               width: 2,
                             ),
                           ),
@@ -1033,7 +1033,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF4A4D6A),
+                              color: Color(0xFF161823),
                             ),
                           ),
                           TextButton.icon(
@@ -1041,7 +1041,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             icon: const Icon(Icons.add),
                             label: const Text('Добавить'),
                             style: TextButton.styleFrom(
-                              foregroundColor: const Color(0xFF5E60CE),
+                              foregroundColor: const Color(0xFF75878A),
                             ),
                           ),
                         ],
@@ -1089,7 +1089,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF4A4D6A),
+                          color: Color(0xFF161823),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -1114,14 +1114,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             onSelected: (bool selected) =>
                                 _toggleInterest(interest),
                             selectedColor: const Color(
-                              0xFF5E60CE,
+                              0xFF75878A,
                             ).withValues(alpha: 0.2),
-                            checkmarkColor: const Color(0xFF5E60CE),
+                            checkmarkColor: const Color(0xFF75878A),
                             backgroundColor: const Color(0xFFF5F5F5),
                             labelStyle: TextStyle(
                               color: isSelected
-                                  ? const Color(0xFF5E60CE)
-                                  : const Color(0xFF4A4D6A),
+                                  ? const Color(0xFF75878A)
+                                  : const Color(0xFF161823),
                               fontWeight: isSelected
                                   ? FontWeight.w600
                                   : FontWeight.normal,
@@ -1130,7 +1130,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               borderRadius: BorderRadius.circular(20),
                               side: BorderSide(
                                 color: isSelected
-                                    ? const Color(0xFF5E60CE)
+                                    ? const Color(0xFF75878A)
                                     : Colors.transparent,
                                 width: 2,
                               ),
@@ -1144,7 +1144,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ElevatedButton(
                         onPressed: _isLoading ? null : _saveProfile,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF5E60CE),
+                          backgroundColor: const Color(0xFF75878A),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(

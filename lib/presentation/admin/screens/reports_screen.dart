@@ -197,7 +197,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   child: Center(
                     child: CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        Color(0xFF5E60CE),
+                        Color(0xFF75878A),
                       ),
                     ),
                   ),
@@ -314,7 +314,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF4A4D6A),
+                                  color: Color(0xFF161823),
                                 ),
                               ),
                               subtitle: Text(
@@ -369,7 +369,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     'Детали:',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFF4A4D6A),
+                                      color: Color(0xFF161823),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -499,7 +499,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Expanded(
             child: SelectableText(
               value,
-              style: const TextStyle(color: Color(0xFF4A4D6A), fontSize: 13),
+              style: const TextStyle(color: Color(0xFF161823), fontSize: 13),
             ),
           ),
         ],
@@ -529,7 +529,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       case 'DISMISSED':
         return const Color(0xFF9E9E9E);
       default:
-        return const Color(0xFF5E60CE);
+        return const Color(0xFF75878A);
     }
   }
 

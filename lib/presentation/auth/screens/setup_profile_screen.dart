@@ -173,7 +173,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF161823)),
           onPressed: _handleBackPress,
         ),
         actions: <Widget>[
@@ -201,7 +201,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                       child: Container(
                         height: 4,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF5E60CE),
+                          color: const Color(0xFF75878A),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -236,7 +236,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF4A4D6A),
+                    color: Color(0xFF161823),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -257,7 +257,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                           height: 120,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
+                            color: const Color(0xFF75878A).withValues(alpha: 0.1),
                             image: _profileImage != null
                                 ? DecorationImage(
                                     image: FileImage(_profileImage!),
@@ -269,7 +269,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                               ? const Icon(
                                   Icons.person,
                                   size: 60,
-                                  color: Color(0xFF5E60CE),
+                                  color: Color(0xFF75878A),
                                 )
                               : null,
                         ),
@@ -280,7 +280,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                             width: 36,
                             height: 36,
                             decoration: const BoxDecoration(
-                              color: Color(0xFF5E60CE),
+                              color: Color(0xFF75878A),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -320,7 +320,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: const BorderSide(
-                        color: Color(0xFF5E60CE),
+                        color: Color(0xFF75878A),
                         width: 2,
                       ),
                     ),
@@ -363,7 +363,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                 ElevatedButton(
                   onPressed: _isLoading ? null : _handleNext,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5E60CE),
+                    backgroundColor: const Color(0xFF75878A),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(

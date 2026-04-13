@@ -90,7 +90,7 @@ class _AdminWebBootstrapAppState extends State<_AdminWebBootstrapApp> {
                     SelectableText(
                       _initError.toString(),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFF4A4D6A)),
+                      style: const TextStyle(color: Color(0xFF161823)),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(

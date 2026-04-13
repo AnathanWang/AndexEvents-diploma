@@ -488,14 +488,14 @@ class _UsersListScreenState extends State<UsersListScreen> {
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF2F355E),
+                          color: Color(0xFF161823),
                         ),
                       ),
                     ),
                     Text(
                       '${item.pendingReports} pending',
                       style: const TextStyle(
-                        color: Color(0xFF7A82AC),
+                        color: Color(0xFF75878A),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -525,7 +525,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                           decoration: BoxDecoration(
                             color: const Color(0xFFF8F9FF),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFDDE3FF)),
+                            border: Border.all(color: const Color(0xFFCDEBE7)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -537,7 +537,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                       report.reason.displayName,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w700,
-                                        color: Color(0xFF2F355E),
+                                        color: Color(0xFF161823),
                                       ),
                                     ),
                                   ),
@@ -567,7 +567,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                 DateFormat('dd.MM.yyyy HH:mm', 'ru').format(report.createdAt),
                                 style: const TextStyle(
                                   fontSize: 12,
-                                  color: Color(0xFF7A82AC),
+                                  color: Color(0xFF75878A),
                                 ),
                               ),
                               if ((report.details ?? '').trim().isNotEmpty) ...[
@@ -664,7 +664,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
       appBar: AppBar(
         title: const Text('Управление пользователями'),
         backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF2F355E),
+        foregroundColor: const Color(0xFF161823),
         elevation: 0,
         actions: [
           IconButton(
@@ -686,11 +686,11 @@ class _UsersListScreenState extends State<UsersListScreen> {
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFDDE3FF)),
+                  borderSide: const BorderSide(color: Color(0xFFCDEBE7)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFDDE3FF)),
+                  borderSide: const BorderSide(color: Color(0xFFCDEBE7)),
                 ),
               ),
             ),
@@ -750,7 +750,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                 ? const Center(
                     child: Text(
                       'Пользователи для модерации не найдены',
-                      style: TextStyle(color: Color(0xFF7D85B0)),
+                      style: TextStyle(color: Color(0xFF75878A)),
                     ),
                   )
                 : RefreshIndicator(
@@ -769,7 +769,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFDCE3FF)),
+                            border: Border.all(color: const Color(0xFFCDEBE7)),
                           ),
                           child: Column(
                             children: [
@@ -789,7 +789,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                                     : user.email)[0]
                                                 .toUpperCase(),
                                             style: const TextStyle(
-                                              color: Color(0xFF5965D8),
+                                              color: Color(0xFF75878A),
                                               fontWeight: FontWeight.w700,
                                             ),
                                           )
@@ -809,7 +809,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
                                             fontWeight: FontWeight.w700,
-                                            color: Color(0xFF2F355E),
+                                            color: Color(0xFF161823),
                                           ),
                                         ),
                                         const SizedBox(height: 2),
@@ -818,7 +818,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
-                                            color: Color(0xFF7A82AC),
+                                            color: Color(0xFF75878A),
                                             fontSize: 12,
                                           ),
                                         ),
@@ -879,7 +879,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                         child: Text(
                                           _roleLabel(user.role),
                                           style: const TextStyle(
-                                            color: Color(0xFF5965D8),
+                                            color: Color(0xFF75878A),
                                             fontWeight: FontWeight.w700,
                                             fontSize: 12,
                                           ),

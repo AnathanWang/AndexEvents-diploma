@@ -310,12 +310,12 @@ class _ProfileScreenState extends State<ProfileScreen>
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: selected
-                  ? const Color(0xFF5965D8)
+                  ? const Color(0xFF75878A)
                   : const Color(0xFFF2F4FF),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
                 color: selected
-                    ? const Color(0xFF5965D8)
+                    ? const Color(0xFF75878A)
                     : const Color(0xFFD8DEFA),
               ),
             ),
@@ -769,7 +769,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
                                             colors: <Color>[
-                                              Color(0xFF5E60CE),
+                                              Color(0xFF75878A),
                                               Color(0xFF8F7CFF),
                                               Color(0xFF49A3FF),
                                             ],
@@ -783,7 +783,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                       colors: <Color>[
-                                        Color(0xFF5E60CE),
+                                        Color(0xFF75878A),
                                         Color(0xFF8F7CFF),
                                         Color(0xFF49A3FF),
                                       ],
@@ -859,7 +859,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                               offset: Offset(0, 8),
                             ),
                           ],
-                          color: const Color(0xFF5E60CE),
+                          color: const Color(0xFF75878A),
                         ),
                         child: ClipOval(
                           child:
@@ -948,7 +948,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                               vertical: 5,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFDDE3FF),
+                              color: const Color(0xFFCDEBE7),
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
@@ -1007,7 +1007,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     entry.key,
                                     style: const TextStyle(
                                       fontSize: 12,
-                                      color: Color(0xFF4A4D6A),
+                                      color: Color(0xFF161823),
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -1031,7 +1031,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           ),
                           label: const Text('Изменить'),
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF5965D8),
+                            backgroundColor: const Color(0xFF75878A),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 11),
                           ),
@@ -1107,7 +1107,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       color = Colors.black;
     } else {
       icon = Icons.link;
-      color = const Color(0xFF5E60CE);
+      color = const Color(0xFF75878A);
     }
 
     return Icon(icon, size: 16, color: color);
@@ -1129,7 +1129,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF2F355E),
+              color: Color(0xFF161823),
             ),
           ),
         ),
@@ -1231,7 +1231,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF2F355E),
+                      color: Color(0xFF161823),
                       height: 1.2,
                     ),
                     maxLines: 2,
@@ -1240,12 +1240,12 @@ class _ProfileScreenState extends State<ProfileScreen>
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF7F88B3)),
+                      const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF75878A)),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           _formatDate(dateTime),
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF7F88B3)),
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF75878A)),
                         ),
                       ),
                     ],
@@ -1297,7 +1297,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: const Color(0xFFD9E0FE)),
             ),
-            child: Icon(icon, size: 18, color: const Color(0xFF5A66D8)),
+            child: Icon(icon, size: 18, color: const Color(0xFF75878A)),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1309,7 +1309,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF2F355E),
+                    color: Color(0xFF161823),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -1350,7 +1350,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               color: const Color(0xFFE9EDFF),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: const Color(0xFF5965D8), size: 19),
+            child: Icon(icon, color: const Color(0xFF75878A), size: 19),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1370,7 +1370,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   subtitle,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF7C84AF),
+                    color: Color(0xFF75878A),
                   ),
                 ),
               ],
@@ -1402,7 +1402,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       case 'Бизнес':
         return Colors.blueGrey;
       default:
-        return const Color(0xFF5E60CE);
+        return const Color(0xFF75878A);
     }
   }
 
@@ -1473,7 +1473,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Widget _buildProfileAvatarFallback(UserModel user) {
     return Container(
-      color: const Color(0xFF5E60CE),
+      color: const Color(0xFF75878A),
       alignment: Alignment.center,
       child: Text(
         user.displayName?.isNotEmpty == true

@@ -518,7 +518,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
     Widget content;
     if (_isLoading) {
       content = const Center(
-        child: CircularProgressIndicator(color: Color(0xFF5E60CE)),
+        child: CircularProgressIndicator(color: Color(0xFF75878A)),
       );
     } else if (!_isProfileComplete) {
       content = _buildProfileIncompleteScreen();
@@ -558,13 +558,13 @@ class _EventMatchScreenState extends State<EventMatchScreen>
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
+                color: const Color(0xFF75878A).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.favorite_border,
                 size: 64,
-                color: Color(0xFF5E60CE),
+                color: Color(0xFF75878A),
               ),
             ),
             const SizedBox(height: 24),
@@ -573,7 +573,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 22,
-                color: Color(0xFF4A4D6A),
+                color: Color(0xFF161823),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -589,7 +589,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
               icon: const Icon(Icons.edit, size: 20),
               label: const Text('Заполнить профиль'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5E60CE),
+                backgroundColor: const Color(0xFF75878A),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
@@ -632,7 +632,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 22,
-                color: Color(0xFF4A4D6A),
+                color: Color(0xFF161823),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -648,7 +648,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
               icon: const Icon(Icons.refresh, size: 20),
               label: const Text('Обновить подборку'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5E60CE),
+                backgroundColor: const Color(0xFF75878A),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 28,
@@ -666,8 +666,8 @@ class _EventMatchScreenState extends State<EventMatchScreen>
               icon: const Icon(Icons.edit_outlined, size: 20),
               label: const Text('Редактировать профиль'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF5E60CE),
-                side: const BorderSide(color: Color(0xFF5E60CE), width: 2),
+                foregroundColor: const Color(0xFF75878A),
+                side: const BorderSide(color: Color(0xFF75878A), width: 2),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
                   vertical: 16,
@@ -953,14 +953,14 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                               children: [
                                 const Icon(
                                   Icons.favorite_rounded,
-                                  color: Color(0xFF5563C3),
+                                  color: Color(0xFF75878A),
                                   size: 14,
                                 ),
                                 const SizedBox(width: 5),
                                 Text(
                                   '${match.matchPercentage}% совпадение',
                                   style: const TextStyle(
-                                    color: Color(0xFF5563C3),
+                                    color: Color(0xFF75878A),
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                   ),
