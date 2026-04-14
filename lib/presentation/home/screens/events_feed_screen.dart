@@ -257,32 +257,38 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
               context.read<EventBloc>().add(const EventsLoadRequested());
             },
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: <Color>[AppColors.background, AppColors.surface],
+                  colors: <Color>[
+                    AppColors.surface.withValues(alpha: 0.94),
+                    AppColors.accent.withValues(alpha: 0.74),
+                    AppColors.surface.withValues(alpha: 0.98),
+                  ],
                 ),
               ),
               child: ListView(
                 padding: EdgeInsets.only(
-                  left: 20,
-                  right: 20,
+                  left: 16,
+                  right: 16,
                   top: MediaQuery.of(context).padding.top + 8,
-                  bottom: 16,
+                  bottom: 12,
                 ),
                 children: <Widget>[
                   Container(
-                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                     decoration: BoxDecoration(
-                      color: AppColors.surface.withValues(alpha: 0.94),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: const Color(0xFFCDEBE7)),
-                      boxShadow: const <BoxShadow>[
+                      color: AppColors.surface.withValues(alpha: 0.66),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.16),
+                      ),
+                      boxShadow: <BoxShadow>[
                         BoxShadow(
-                          color: Color(0x10000000),
-                          blurRadius: 16,
-                          offset: Offset(0, 8),
+                          color: AppColors.dark.withValues(alpha: 0.1),
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
                         ),
                       ],
                     ),
@@ -291,40 +297,43 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                       children: <Widget>[
                         Row(
                           children: <Widget>[
-                            const Expanded(
+                            Expanded(
                               child: Text(
                                 'Афиша города',
                                 style: TextStyle(
-                                  fontSize: 21,
+                                  fontSize: 19,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF2F3662),
+                                  color: AppColors.dark.withValues(alpha: 0.88),
                                   height: 1.15,
                                 ),
                               ),
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 9,
-                                vertical: 5,
+                                horizontal: 8,
+                                vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEEF2FF),
+                                color: AppColors.accent.withValues(alpha: 0.92),
                                 borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: AppColors.primary.withValues(alpha: 0.2),
+                                ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: <Widget>[
-                                  const Icon(
+                                  Icon(
                                     Icons.event_outlined,
-                                    size: 14,
-                                    color: Color(0xFF4C5BAA),
+                                    size: 13,
+                                    color: AppColors.primary.withValues(alpha: 0.9),
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
                                     '${_filteredEvents.length}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w700,
-                                      color: Color(0xFF42509C),
+                                      color: AppColors.primary,
                                     ),
                                   ),
                                 ],
@@ -332,7 +341,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         TextField(
                           controller: _searchController,
                           onTap: () {
@@ -387,19 +396,19 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                           },
                           decoration: InputDecoration(
                             hintText: 'Поиск событий...',
-                            hintStyle: const TextStyle(
-                              color: Color(0xFF75878A),
+                            hintStyle: TextStyle(
+                              color: AppColors.dark.withValues(alpha: 0.52),
                               fontSize: 14,
                             ),
-                            prefixIcon: const Icon(
+                            prefixIcon: Icon(
                               Icons.search,
-                              color: Color(0xFF75878A),
+                              color: AppColors.dark.withValues(alpha: 0.6),
                               size: 20,
                             ),
                             suffixIcon: _searchController.text.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(Icons.clear),
-                                    color: const Color(0xFF75878A),
+                                    color: AppColors.dark.withValues(alpha: 0.6),
                                     onPressed: () {
                                       _searchController.clear();
                                       setState(() {
@@ -409,70 +418,73 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                                   )
                                 : null,
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(14),
                               borderSide: BorderSide.none,
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(14),
                               borderSide: BorderSide.none,
                             ),
                             focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(
-                                color: Color(0xFF75878A),
-                                width: 1.4,
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                color: AppColors.primary.withValues(alpha: 0.28),
+                                width: 1.2,
                               ),
                             ),
                             filled: true,
-                            fillColor: AppColors.surface.withValues(alpha: 0.96),
+                            fillColor: AppColors.surface.withValues(alpha: 0.84),
                             contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 14,
+                              horizontal: 12,
+                              vertical: 12,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         Row(
                           children: <Widget>[
                             GestureDetector(
                               onTap: _showCityBottomSheet,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
+                                  horizontal: 10,
+                                  vertical: 7,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFEAF7F5),
-                                  borderRadius: BorderRadius.circular(14),
+                                  color: AppColors.accent.withValues(alpha: 0.9),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.primary.withValues(alpha: 0.18),
+                                  ),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: <Widget>[
-                                    const Icon(
+                                    Icon(
                                       Icons.location_on_outlined,
-                                      color: Color(0xFF75878A),
-                                      size: 17,
+                                      color: AppColors.primary.withValues(alpha: 0.86),
+                                      size: 16,
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
                                       _selectedCity,
-                                      style: const TextStyle(
-                                        fontSize: 14,
+                                      style: TextStyle(
+                                        fontSize: 13,
                                         fontWeight: FontWeight.w700,
-                                        color: Color(0xFF161823),
+                                        color: AppColors.dark.withValues(alpha: 0.84),
                                       ),
                                     ),
                                     const SizedBox(width: 2),
-                                    const Icon(
+                                    Icon(
                                       Icons.expand_more,
-                                      color: Color(0xFF75878A),
-                                      size: 17,
+                                      color: AppColors.dark.withValues(alpha: 0.58),
+                                      size: 16,
                                     ),
                                   ],
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: EventFiltersWidget(
                                 initialFilters: _currentFilters,
@@ -484,18 +496,15 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 14),
 
                   // Carousel section
                   if (state.events.isNotEmpty) ...[
-                    Text(
-                      'Популярные события',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF161823),
-                      ),
+                    _buildFeedSectionTitle(
+                      title: 'Популярные события',
+                      icon: Icons.local_fire_department_rounded,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     EventCarousel(
                       events: state.events,
                       onEventSelected: (event) {
@@ -540,18 +549,15 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                         );
                       },
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                   ],
 
                   // Regular events list
-                  Text(
-                    'Все события',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF323B69),
-                    ),
+                  _buildFeedSectionTitle(
+                    title: 'Все события',
+                    icon: Icons.view_list_rounded,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
 
                   if (_filteredEvents.isEmpty)
                     Center(
@@ -568,7 +574,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                   else
                     ...(_filteredEvents.map((EventModel event) {
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.only(bottom: 12),
                         child: _buildEventCard(context, event),
                       );
                     }).toList()),
@@ -622,17 +628,20 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
           ),
         );
       },
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(22),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: const Color(0xFFD8DFFC), width: 1),
-          boxShadow: const <BoxShadow>[
+          color: AppColors.surface.withValues(alpha: 0.68),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.14),
+            width: 1,
+          ),
+          boxShadow: <BoxShadow>[
             BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 20,
-              offset: Offset(0, 14),
+              color: AppColors.dark.withValues(alpha: 0.1),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -641,11 +650,11 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
           children: <Widget>[
             ClipRRect(
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(28),
-                topRight: Radius.circular(28),
+                topLeft: Radius.circular(22),
+                topRight: Radius.circular(22),
               ),
               child: SizedBox(
-                height: 170,
+                height: 158,
                 width: double.infinity,
                 child: Stack(
                   fit: StackFit.expand,
@@ -706,39 +715,40 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                       ),
                     ),
                     Positioned(
-                      left: 14,
-                      top: 14,
+                      left: 12,
+                      top: 12,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                          horizontal: 8,
+                          vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.surface.withValues(alpha: 0.92),
+                          color: AppColors.surface.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.16),
+                          ),
                         ),
                         child: Text(
                           categoryName,
                           style: TextStyle(
                             color: categoryColor,
                             fontWeight: FontWeight.w700,
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         ),
                       ),
                     ),
                     Positioned(
-                      right: 14,
-                      top: 14,
+                      right: 12,
+                      top: 12,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                          horizontal: 8,
+                          vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(
-                            0xFF161823,
-                          ).withValues(alpha: 0.82),
+                          color: AppColors.dark.withValues(alpha: 0.74),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
@@ -746,7 +756,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         ),
                       ),
@@ -757,7 +767,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
             ),
 
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
@@ -766,25 +776,25 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: const Color(0xFF161823),
+                      color: AppColors.dark.withValues(alpha: 0.86),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
 
                   Row(
                     children: <Widget>[
                       const Icon(
                         Icons.place_outlined,
-                        size: 16,
-                        color: Color(0xFF75878A),
+                        size: 15,
+                        color: AppColors.primary,
                       ),
-                      const SizedBox(width: 5),
+                      const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           event.location,
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: const Color(0xFF666E99),
+                            color: AppColors.dark.withValues(alpha: 0.62),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -792,40 +802,43 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
 
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: <Widget>[
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 7,
+                          horizontal: 9,
+                          vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF3F6FF),
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppColors.accent.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.16),
+                          ),
                         ),
                         child: Text(
                           event.participantsCount == 1
                               ? '1 участник'
                               : '${event.participantsCount} участников',
-                          style: const TextStyle(
-                            fontSize: 12,
+                          style: TextStyle(
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF4A5393),
+                            color: AppColors.primary,
                           ),
                         ),
                       ),
-                      const Icon(
+                      Icon(
                         Icons.arrow_forward_rounded,
-                        size: 18,
-                        color: Color(0xFF6974BB),
+                        size: 17,
+                        color: AppColors.primary.withValues(alpha: 0.9),
                       ),
                     ],
                   ),
                   if (event.creatorName != null) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Row(
                       children: <Widget>[
                         if (event.creatorPhotoUrl != null)
@@ -846,12 +859,12 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                             ),
                             errorWidget: (context, url, error) => CircleAvatar(
                               radius: 13,
-                              backgroundColor: const Color(0xFFE9EEFF),
+                              backgroundColor: AppColors.accent.withValues(alpha: 0.92),
                               child: Text(
                                 _creatorInitial(event.creatorName),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
-                                  color: Color(0xFF75878A),
+                                  color: AppColors.dark.withValues(alpha: 0.62),
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -860,12 +873,12 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                         else
                           CircleAvatar(
                             radius: 13,
-                            backgroundColor: const Color(0xFFE9EEFF),
+                            backgroundColor: AppColors.accent.withValues(alpha: 0.92),
                             child: Text(
                               _creatorInitial(event.creatorName),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: Color(0xFF75878A),
+                                color: AppColors.dark.withValues(alpha: 0.62),
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -874,9 +887,9 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                         Expanded(
                           child: Text(
                             'Организатор: ${event.creatorName!}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Color(0xFF7A81A8),
+                              color: AppColors.dark.withValues(alpha: 0.62),
                               fontWeight: FontWeight.w600,
                             ),
                             maxLines: 1,
@@ -886,7 +899,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                       ],
                     ),
                   ],
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   EventCountdownTimer(
                     expirationTime: event.actualEndDateTime,
                     isMinimal: false,
@@ -946,48 +959,90 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
     }
   }
 
+  Widget _buildFeedSectionTitle({
+    required String title,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 14, color: AppColors.primary),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.dark.withValues(alpha: 0.86),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLoadingSkeleton(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: <Color>[AppColors.background, AppColors.surface],
+          colors: <Color>[
+            AppColors.surface.withValues(alpha: 0.94),
+            AppColors.accent.withValues(alpha: 0.74),
+            AppColors.surface.withValues(alpha: 0.98),
+          ],
         ),
       ),
       child: ListView(
         physics: const NeverScrollableScrollPhysics(),
         padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
+          left: 16,
+          right: 16,
           top: MediaQuery.of(context).padding.top + 8,
-          bottom: 16,
+          bottom: 12,
         ),
         children: <Widget>[
           Shimmer.fromColors(
             baseColor: AppColors.surface,
             highlightColor: AppColors.background,
             child: Container(
-              height: 160,
+              height: 146,
               decoration: BoxDecoration(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(20),
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           ...List.generate(
             3,
             (_) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.only(bottom: 12),
               child: Shimmer.fromColors(
                 baseColor: AppColors.surface,
                 highlightColor: AppColors.background,
                 child: Container(
-                  height: 200,
+                  height: 186,
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                 ),
               ),
