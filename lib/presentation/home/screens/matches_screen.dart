@@ -5,6 +5,7 @@ import '../../../core/services/logger_service.dart';
 import '../../../data/services/user_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/match_seen_service.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../models/match_preview.dart';
 import '../../profile/screens/edit_profile_screen.dart';
 import '../../profile/screens/user_profile_screen.dart';
@@ -507,7 +508,7 @@ class _MatchesScreenState extends State<MatchesScreen>
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF75878A)),
+        child: CircularProgressIndicator(color: AppColors.primary),
       );
     }
 
@@ -532,30 +533,33 @@ class _MatchesScreenState extends State<MatchesScreen>
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: const Color(0xFF75878A).withValues(alpha: 0.1),
+                color: AppColors.primary.withValues(alpha: 0.14),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.favorite_border,
                 size: 64,
-                color: Color(0xFF75878A),
+                color: AppColors.primary,
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Заполните профиль для матчей',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 22,
-                color: Color(0xFF161823),
+                color: AppColors.textPrimary,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Добавьте имя, фото, описание о себе и интересы, чтобы найти людей с похожими увлечениями',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 15, color: Color(0xFF9699A8)),
+              style: TextStyle(
+                fontSize: 15,
+                color: AppColors.dark.withValues(alpha: 0.58),
+              ),
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
@@ -563,8 +567,8 @@ class _MatchesScreenState extends State<MatchesScreen>
               icon: const Icon(Icons.edit, size: 20),
               label: const Text('Заполнить профиль'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF75878A),
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.accent,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
                   vertical: 16,
@@ -591,13 +595,13 @@ class _MatchesScreenState extends State<MatchesScreen>
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: const Color(0xFFE8E8E8).withValues(alpha: 0.5),
+                color: AppColors.surface.withValues(alpha: 0.56),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.search_off,
                 size: 64,
-                color: Color(0xFF9699A8),
+                color: AppColors.dark.withValues(alpha: 0.46),
               ),
             ),
             const SizedBox(height: 24),
@@ -606,15 +610,18 @@ class _MatchesScreenState extends State<MatchesScreen>
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 22,
-                color: Color(0xFF161823),
+                color: AppColors.textPrimary,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Посещайте мероприятия, чтобы встретить людей с похожими интересами',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 15, color: Color(0xFF9699A8)),
+              style: TextStyle(
+                fontSize: 15,
+                color: AppColors.dark.withValues(alpha: 0.58),
+              ),
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
@@ -622,8 +629,8 @@ class _MatchesScreenState extends State<MatchesScreen>
               icon: const Icon(Icons.refresh, size: 20),
               label: const Text('Обновить подборку'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF75878A),
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.accent,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 28,
                   vertical: 14,
@@ -640,8 +647,11 @@ class _MatchesScreenState extends State<MatchesScreen>
               icon: const Icon(Icons.edit_outlined, size: 20),
               label: const Text('Редактировать профиль'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF75878A),
-                side: const BorderSide(color: Color(0xFF75878A), width: 2),
+                foregroundColor: AppColors.primary,
+                side: BorderSide(
+                  color: AppColors.primary.withValues(alpha: 0.4),
+                  width: 1.6,
+                ),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
                   vertical: 16,
@@ -674,9 +684,9 @@ class _MatchesScreenState extends State<MatchesScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: <Color>[
-                  const Color(0xFFF4F7FF),
-                  const Color(0xFFEFF3FF),
-                  const Color(0xFFF7FAFF),
+                  AppColors.surface.withValues(alpha: 0.78),
+                  AppColors.accent.withValues(alpha: 0.72),
+                  AppColors.surface.withValues(alpha: 0.9),
                 ],
               ),
             ),

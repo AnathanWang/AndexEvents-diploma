@@ -1,3 +1,6 @@
+import 'dart:ui';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../../../core/services/logger_service.dart';
 import '../../widgets/common/custom_notification.dart';
@@ -21,6 +24,7 @@ import '../../../data/services/user_service.dart';
 import '../../profile/screens/user_profile_screen.dart';
 import '../../profile/widgets/photo_gallery_sheet.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:andexevents/presentation/widgets/event_countdown_timer.dart';
 
 enum _ProfileMatchFilter { mutual, incoming, liked, skipped, postponed }
@@ -39,6 +43,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
   final UserService _userService = UserService();
   final GlobalKey _avatarKey = GlobalKey();
+  final ScrollController _scrollController = ScrollController();
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0);
   AnimationController? _entranceController;
 
   _ProfileMatchFilter _filter = _ProfileMatchFilter.mutual;
@@ -55,6 +61,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   void initState() {
     super.initState();
     _ensureEntranceController();
+    _scrollController.addListener(_onScroll);
 
     // Загружаем профиль при открытии экрана
     context.read<ProfileBloc>().add(const ProfileLoadRequested());
@@ -65,8 +72,18 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   void dispose() {
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    _scrollOffsetNotifier.dispose();
     _entranceController?.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    _scrollOffsetNotifier.value = _scrollController.hasClients
+        ? _scrollController.offset
+        : 0;
   }
 
   void _ensureEntranceController() {
@@ -191,46 +208,56 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF3E6),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFFD9B3)),
+        color: AppColors.surface.withValues(alpha: 0.56),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.gavel_rounded, color: Color(0xFFD16A3A), size: 18),
-              SizedBox(width: 8),
+              Icon(
+                Icons.gavel_rounded,
+                color: AppColors.dark.withValues(alpha: 0.66),
+                size: 16,
+              ),
+              const SizedBox(width: 6),
               Text(
                 'Активные ограничения аккаунта',
                 style: TextStyle(
-                  color: Color(0xFF8B4D24),
+                  color: AppColors.dark.withValues(alpha: 0.78),
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             _formatSanctionType(first.type),
-            style: const TextStyle(
-              color: Color(0xFF8B4D24),
+            style: TextStyle(
+              color: AppColors.dark.withValues(alpha: 0.72),
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             first.reason,
-            style: const TextStyle(color: Color(0xFF9C643E), fontSize: 12),
+            style: TextStyle(
+              color: AppColors.dark.withValues(alpha: 0.62),
+              fontSize: 12,
+            ),
           ),
           if (_activeSanctions.length > 1) ...[
             const SizedBox(height: 6),
             Text(
               'И ещё активных ограничений: ${_activeSanctions.length - 1}',
-              style: const TextStyle(color: Color(0xFF9C643E), fontSize: 12),
+              style: TextStyle(
+                color: AppColors.dark.withValues(alpha: 0.62),
+                fontSize: 12,
+              ),
             ),
           ],
         ],
@@ -260,19 +287,19 @@ class _ProfileScreenState extends State<ProfileScreen>
     final label = _formatSanctionType(first.type);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFB680).withValues(alpha: 0.28),
+        color: AppColors.primary.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: const Color(0xFFFFD2AE).withValues(alpha: 0.92),
+          color: AppColors.primary.withValues(alpha: 0.24),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          const Icon(Icons.gavel_rounded, size: 12, color: Colors.white),
-          const SizedBox(width: 4),
+          const Icon(Icons.gavel_rounded, size: 11, color: AppColors.primary),
+          const SizedBox(width: 3),
           Text(
             _activeSanctions.length > 1
                 ? 'Санкция: $label +${_activeSanctions.length - 1}'
@@ -280,8 +307,8 @@ class _ProfileScreenState extends State<ProfileScreen>
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
+              color: AppColors.primary,
+              fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -307,24 +334,27 @@ class _ProfileScreenState extends State<ProfileScreen>
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: selected
-                  ? const Color(0xFF75878A)
-                  : const Color(0xFFF2F4FF),
+                  ? AppColors.primary.withValues(alpha: 0.16)
+                  : AppColors.surface.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
                 color: selected
-                    ? const Color(0xFF75878A)
-                    : const Color(0xFFD8DEFA),
+                    ? AppColors.primary.withValues(alpha: 0.34)
+                    : AppColors.dark.withValues(alpha: 0.14),
               ),
             ),
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : const Color(0xFF48508D),
+                color:
+                    selected
+                        ? AppColors.primary
+                        : AppColors.dark.withValues(alpha: 0.72),
               ),
             ),
           ),
@@ -338,13 +368,13 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Row(
         children: <Widget>[
           chip(_ProfileMatchFilter.mutual, 'Взаимные'),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           chip(_ProfileMatchFilter.incoming, 'Меня лайкнули'),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           chip(_ProfileMatchFilter.liked, 'Лайкнул'),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           chip(_ProfileMatchFilter.skipped, 'Пропустил'),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           chip(_ProfileMatchFilter.postponed, 'Отложил'),
         ],
       ),
@@ -363,13 +393,13 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (_matchesLoading) {
       content = const Padding(
         key: ValueKey<String>('matches-loading'),
-        padding: EdgeInsets.symmetric(vertical: 12),
+        padding: EdgeInsets.symmetric(vertical: 8),
         child: Center(child: CircularProgressIndicator()),
       );
     } else if (_matchesError != null) {
       content = Padding(
         key: ValueKey<String>('matches-error'),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Text(
           'Не удалось загрузить список: $_matchesError',
           style: const TextStyle(color: Colors.redAccent),
@@ -378,7 +408,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     } else if (matches.isEmpty) {
       content = const Padding(
         key: ValueKey<String>('matches-empty'),
-        padding: EdgeInsets.symmetric(vertical: 12),
+        padding: EdgeInsets.symmetric(vertical: 8),
         child: Text('Пока пусто.'),
       );
     } else {
@@ -388,34 +418,21 @@ class _ProfileScreenState extends State<ProfileScreen>
             .take(10)
             .map(
               (match) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: const <BoxShadow>[
-                      BoxShadow(
-                        color: Color(0x12000000),
-                        blurRadius: 14,
-                        offset: Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: MatchCard(
-                    match: match,
-                    onOpenProfile: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (context) => UserProfileScreen.fromUser(
-                            user: match.userModel,
-                            matchPercentage: match.matchPercentage,
-                            commonInterests: match.commonInterests,
-                            canViewSensitiveInfo: canViewSensitiveInfo,
-                          ),
+                padding: const EdgeInsets.only(bottom: 8),
+                child: MatchCard(
+                  match: match,
+                  onOpenProfile: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (context) => UserProfileScreen.fromUser(
+                          user: match.userModel,
+                          matchPercentage: match.matchPercentage,
+                          commonInterests: match.commonInterests,
+                          canViewSensitiveInfo: canViewSensitiveInfo,
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
               ),
             )
@@ -468,6 +485,32 @@ class _ProfileScreenState extends State<ProfileScreen>
               alignment: Alignment.topCenter,
               child: child,
             ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildScrollRevealSection({
+    required Widget child,
+    required int order,
+  }) {
+    return ValueListenableBuilder<double>(
+      valueListenable: _scrollOffsetNotifier,
+      child: child,
+      builder: (context, offset, child) {
+        final double threshold = order * 180;
+        final double scrollProgress = ((offset + 320 - threshold) / 220)
+            .clamp(0.0, 1.0)
+            .toDouble();
+        final double entrance = _entranceController?.value ?? 1;
+        final double value = math.max(scrollProgress, entrance);
+
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * 18),
+            child: child,
           ),
         );
       },
@@ -541,170 +584,151 @@ class _ProfileScreenState extends State<ProfileScreen>
 
         _ensureLoaded(user);
         final canAccessModeratorPanel = _canAccessModeratorPanel(user);
-
-        return RefreshIndicator(
-          onRefresh: () async {
-            context.read<ProfileBloc>().add(const ProfileLoadRequested());
-          },
-          child: ListView(
-            padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: MediaQuery.of(context).padding.top + 16,
-              bottom: 16,
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[
+                AppColors.surface.withValues(alpha: 0.92),
+                AppColors.accent.withValues(alpha: 0.74),
+                AppColors.surface.withValues(alpha: 0.98),
+              ],
             ),
-            children: <Widget>[
-              _buildAnimatedSection(
-                start: 0.0,
-                child: _buildProfileCard(context, user, theme),
+          ),
+          child: RefreshIndicator(
+            onRefresh: () async {
+              context.read<ProfileBloc>().add(const ProfileLoadRequested());
+            },
+            child: ListView(
+              controller: _scrollController,
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: MediaQuery.of(context).padding.top + 12,
+                bottom: 12,
+              ),
+              children: <Widget>[
+              _buildScrollRevealSection(
+                order: 0,
+                child: _buildAnimatedSection(
+                  start: 0.0,
+                  child: _buildProfileCard(
+                    context,
+                    user,
+                    theme,
+                  ),
+                ),
               ),
               if (_activeSanctions.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _buildAnimatedSection(start: 0.06, child: _buildSanctionsBanner()),
+                const SizedBox(height: 10),
+                _buildScrollRevealSection(
+                  order: 1,
+                  child: _buildAnimatedSection(
+                    start: 0.06,
+                    child: _buildSanctionsBanner(),
+                  ),
+                ),
               ],
-              const SizedBox(height: 20),
-              _buildAnimatedSection(
-                start: 0.12,
-                child: Column(
-                  children: <Widget>[
-                    _buildSectionBadge(
-                      title: 'Мероприятия',
-                      caption: 'Созданные, запланированные и понравившиеся',
-                      icon: Icons.event_note_rounded,
-                    ),
-                    const SizedBox(height: 12),
-                    if (state is ProfileLoaded &&
-                        state.userEvents.isEmpty &&
-                        state.goingEvents.isEmpty &&
-                        state.interestedEvents.isEmpty)
-                      _buildEmptyStateCard(
-                        icon: Icons.auto_awesome_rounded,
-                        title: 'Мероприятий пока нет',
-                        subtitle:
-                            'Вы еще не создали и не сохранили ни одного события.',
-                      )
-                    else if (state is ProfileLoaded) ...[
-                      _buildEventsRow('Созданные мной', state.userEvents,
-                          context, isEditable: true),
-                      _buildEventsRow('Я иду', state.goingEvents, context,
-                          isEditable: false),
-                      _buildEventsRow('Мне понравилось', state.interestedEvents,
-                          context, isEditable: false),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              _buildAnimatedSection(
-                start: 0.24,
-                child: Column(
-                  children: <Widget>[
-                    _buildSectionBadge(
-                      title: 'Связи и совпадения',
-                      caption: 'Последние матчи и приглашения',
-                      icon: Icons.hub_rounded,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildMatchFilterChips(user),
-                    const SizedBox(height: 12),
-                    _buildMatchesList(),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              if (canAccessModeratorPanel)
-                _buildAnimatedSection(
-                  start: 0.36,
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AdminDashboardScreen(
-                            userRole: user.role ?? 'UNKNOWN',
-                          ),
+              const SizedBox(height: 16),
+              _buildScrollRevealSection(
+                order: 2,
+                child: _buildAnimatedSection(
+                  start: 0.12,
+                  child: _buildSurfaceSection(
+                    child: Column(
+                      children: <Widget>[
+                        _buildSectionBadge(
+                          title: 'Мероприятия',
+                          caption: 'Созданные, запланированные и понравившиеся',
+                          icon: Icons.event_note_rounded,
                         ),
-                      );
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: <Color>[Color(0xFF2F365F), Color(0xFF4650A8)],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: const <BoxShadow>[
-                          BoxShadow(
-                            color: Color(0x14000000),
-                            blurRadius: 16,
-                            offset: Offset(0, 10),
-                          ),
+                        const SizedBox(height: 10),
+                        if (state is ProfileLoaded &&
+                            state.userEvents.isEmpty &&
+                            state.goingEvents.isEmpty &&
+                            state.interestedEvents.isEmpty)
+                          _buildEmptyStateCard(
+                            icon: Icons.auto_awesome_rounded,
+                            title: 'Мероприятий пока нет',
+                            subtitle:
+                                'Вы еще не создали и не сохранили ни одного события.',
+                          )
+                        else if (state is ProfileLoaded) ...[
+                          _buildEventsRow('Созданные мной', state.userEvents,
+                              context, isEditable: true),
+                          _buildEventsRow('Я иду', state.goingEvents, context,
+                              isEditable: false),
+                          _buildEventsRow('Мне понравилось', state.interestedEvents,
+                              context, isEditable: false),
                         ],
-                      ),
-                      child: Row(
-                        children: <Widget>[
-                          Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.14),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.admin_panel_settings_rounded,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Text(
-                                  canAccessModeratorPanel &&
-                                          (user.role ?? '').trim().toUpperCase() ==
-                                              'ADMIN'
-                                      ? 'Панель администратора'
-                                      : 'Панель модератора',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                SizedBox(height: 2),
-                                Text(
-                                  (user.role ?? '').trim().toUpperCase() ==
-                                          'ADMIN'
-                                      ? 'События, пользователи, санкции и аудит'
-                                      : 'Модерация событий и жалоб на них',
-                                  style: TextStyle(
-                                    color: Color(0xFFDFE5FF),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
                 ),
-              const SizedBox(height: 100),
-            ],
+              ),
+              const SizedBox(height: 16),
+              _buildScrollRevealSection(
+                order: 3,
+                child: _buildAnimatedSection(
+                  start: 0.24,
+                  child: _buildSurfaceSection(
+                    child: Column(
+                      children: <Widget>[
+                        _buildSectionBadge(
+                          title: 'Связи и совпадения',
+                          caption: 'Последние матчи и приглашения',
+                          icon: Icons.hub_rounded,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildMatchFilterChips(user),
+                        const SizedBox(height: 10),
+                        _buildMatchesList(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (canAccessModeratorPanel)
+                _buildScrollRevealSection(
+                  order: 4,
+                  child: _buildAnimatedSection(
+                    start: 0.36,
+                    child: _buildAdminAccessCard(context, user),
+                  ),
+                ),
+              const SizedBox(height: 88),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSurfaceSection({required Widget child}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: 0.56),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.dark.withValues(alpha: 0.12),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ),
     );
   }
 
@@ -723,37 +747,41 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: <Color>[Color(0xFFEFF1FF), Color(0xFFF8F9FF)],
+          colors: <Color>[
+            AppColors.surface.withValues(alpha: 0.76),
+            AppColors.accent.withValues(alpha: 0.66),
+          ],
         ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: const <BoxShadow>[
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.14)),
+        boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 24,
-            offset: Offset(0, 16),
+            color: AppColors.dark.withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
+          color: AppColors.surface.withValues(alpha: 0.62),
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             SizedBox(
-              height: 168,
+              height: 150,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: <Widget>[
                   Positioned.fill(
                     child: ClipRRect(
                       borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(28),
+                        top: Radius.circular(24),
                       ),
                       child: Stack(
                         fit: StackFit.expand,
@@ -764,28 +792,28 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   fit: BoxFit.cover,
                                   errorWidget: (context, url, error) =>
                                       Container(
-                                        decoration: const BoxDecoration(
+                                        decoration: BoxDecoration(
                                           gradient: LinearGradient(
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
                                             colors: <Color>[
-                                              Color(0xFF75878A),
-                                              Color(0xFF8F7CFF),
-                                              Color(0xFF49A3FF),
+                                              AppColors.primary.withValues(alpha: 0.88),
+                                              AppColors.primary.withValues(alpha: 0.72),
+                                              AppColors.dark.withValues(alpha: 0.72),
                                             ],
                                           ),
                                         ),
                                       ),
                                 )
                               : Container(
-                                  decoration: const BoxDecoration(
+                                  decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                       colors: <Color>[
-                                        Color(0xFF75878A),
-                                        Color(0xFF8F7CFF),
-                                        Color(0xFF49A3FF),
+                                        AppColors.primary.withValues(alpha: 0.88),
+                                        AppColors.primary.withValues(alpha: 0.72),
+                                        AppColors.dark.withValues(alpha: 0.72),
                                       ],
                                     ),
                                   ),
@@ -807,9 +835,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                   ),
                   Positioned(
-                    left: 16,
-                    bottom: 16,
-                    right: 104,
+                    left: 14,
+                    bottom: 14,
+                    right: 96,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
@@ -820,13 +848,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                           style: theme.textTheme.titleLarge?.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
-                            fontSize: 22,
+                            fontSize: 20,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
+                          spacing: 5,
+                          runSpacing: 5,
                           children: <Widget>[
                             if (user.age != null)
                               _buildHeaderMetaChip('${user.age} лет'),
@@ -839,27 +867,27 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                   ),
                   Positioned(
-                    right: 16,
-                    bottom: -30,
+                    right: 14,
+                    bottom: -26,
                     child: GestureDetector(
                       onTap: () async {
                         _openPhotosGallery(user);
                       },
                       child: Container(
                         key: _avatarKey,
-                        width: 82,
-                        height: 82,
+                        width: 74,
+                        height: 74,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 4),
-                          boxShadow: const <BoxShadow>[
+                          border: Border.all(color: AppColors.accent, width: 2.5),
+                          boxShadow: <BoxShadow>[
                             BoxShadow(
-                              color: Color(0x33000000),
-                              blurRadius: 14,
-                              offset: Offset(0, 8),
+                              color: AppColors.dark.withValues(alpha: 0.24),
+                              blurRadius: 12,
+                              offset: const Offset(0, 8),
                             ),
                           ],
-                          color: const Color(0xFF75878A),
+                          color: AppColors.primary,
                         ),
                         child: ClipOval(
                           child:
@@ -890,7 +918,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 40, 16, 14),
+              padding: const EdgeInsets.fromLTRB(14, 34, 14, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
@@ -898,12 +926,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+                        horizontal: 10,
+                        vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF6F7FF),
-                        borderRadius: BorderRadius.circular(14),
+                        color: AppColors.surface.withValues(alpha: 0.42),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                        ),
                       ),
                       child: Text(
                         user.bio!,
@@ -911,31 +942,34 @@ class _ProfileScreenState extends State<ProfileScreen>
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           height: 1.35,
-                          color: const Color(0xFF353857),
+                          color: AppColors.dark.withValues(alpha: 0.78),
                         ),
                       ),
                     ),
                   if (visibleInterests.isNotEmpty) ...<Widget>[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     Wrap(
-                      spacing: 7,
-                      runSpacing: 7,
+                      spacing: 6,
+                      runSpacing: 6,
                       children: <Widget>[
                         ...visibleInterests.map((interest) {
                           return Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
+                              horizontal: 9,
+                              vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEEF1FF),
+                              color: AppColors.primary.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.2),
+                              ),
                             ),
                             child: Text(
                               interest,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF4650A8),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.dark.withValues(alpha: 0.76),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -944,18 +978,21 @@ class _ProfileScreenState extends State<ProfileScreen>
                         if (hiddenInterestsCount > 0)
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
+                              horizontal: 9,
+                              vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFCDEBE7),
+                              color: AppColors.accent.withValues(alpha: 0.92),
                               borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.22),
+                              ),
                             ),
                             child: Text(
                               '+$hiddenInterestsCount',
                               style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF36418B),
+                                fontSize: 11,
+                                color: AppColors.primary,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -965,13 +1002,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ],
                   if (user.socialLinks != null &&
                       user.socialLinks!.isNotEmpty) ...<Widget>[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     SizedBox(
-                      height: 34,
+                      height: 32,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: user.socialLinks!.entries.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        separatorBuilder: (_, __) => const SizedBox(width: 6),
                         itemBuilder: (context, index) {
                           final entry = user.socialLinks!.entries.elementAt(
                             index,
@@ -988,14 +1025,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                             borderRadius: BorderRadius.circular(20),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
+                                horizontal: 9,
+                                vertical: 5,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
+                                color: AppColors.surface.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(18),
                                 border: Border.all(
-                                  color: const Color(0xFFD9DEF8),
+                                  color: AppColors.primary.withValues(alpha: 0.14),
                                 ),
                               ),
                               child: Row(
@@ -1005,9 +1042,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   const SizedBox(width: 6),
                                   Text(
                                     entry.key,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Color(0xFF161823),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.dark.withValues(alpha: 0.82),
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -1019,41 +1056,43 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                     ),
                   ],
-                  const SizedBox(height: 14),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: () => _openEditProfile(context),
-                          icon: const Icon(
-                            Icons.auto_fix_high_rounded,
-                            size: 16,
+                  const SizedBox(height: 12),
+                  Text(
+                    'Быстрые действия',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.dark.withValues(alpha: 0.86),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final tileWidth = (constraints.maxWidth - 8) / 2;
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: <Widget>[
+                          SizedBox(
+                            width: tileWidth,
+                            child: _buildQuickActionTile(
+                              icon: Icons.auto_fix_high_rounded,
+                              title: 'Изменить профиль',
+                              subtitle: 'Фото, био и интересы',
+                              onTap: () => _openEditProfile(context),
+                            ),
                           ),
-                          label: const Text('Изменить'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF75878A),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 11),
+                          SizedBox(
+                            width: tileWidth,
+                            child: _buildQuickActionTile(
+                              icon: Icons.shield_moon_outlined,
+                              title: 'Приватность',
+                              subtitle: 'Кто видит ваш профиль',
+                              onTap: () => _openPrivacySettings(user),
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _openPrivacySettings(user),
-                          icon: const Icon(
-                            Icons.shield_moon_outlined,
-                            size: 16,
-                          ),
-                          label: const Text('Приватность'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 11),
-                            foregroundColor: const Color(0xFF3D467E),
-                            side: const BorderSide(color: Color(0xFFC8D0F3)),
-                          ),
-                        ),
-                      ),
-                    ],
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -1064,9 +1103,171 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  Widget _buildQuickActionTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Ink(
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: 0.42),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.14),
+            ),
+          ),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  size: 13,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.dark.withValues(alpha: 0.84),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.dark.withValues(alpha: 0.62),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminAccessCard(BuildContext context, UserModel user) {
+    final bool isAdmin = (user.role ?? '').trim().toUpperCase() == 'ADMIN';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AdminDashboardScreen(userRole: user.role ?? 'UNKNOWN'),
+            ),
+          );
+        },
+        child: Ink(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: 0.58),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: AppColors.dark.withValues(alpha: 0.1),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.94),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                ),
+                child: const Icon(
+                  Icons.admin_panel_settings_rounded,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      isAdmin ? 'Панель администратора' : 'Панель модератора',
+                      style: TextStyle(
+                        color: AppColors.dark.withValues(alpha: 0.86),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isAdmin
+                          ? 'События, пользователи, санкции и аудит'
+                          : 'Модерация событий и жалоб на них',
+                      style: TextStyle(
+                        color: AppColors.dark.withValues(alpha: 0.62),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_rounded,
+                  color: AppColors.primary,
+                  size: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeaderMetaChip(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(999),
@@ -1076,7 +1277,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         text,
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -1117,36 +1318,36 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (events.isEmpty) return const SizedBox.shrink();
 
     final double textScale = MediaQuery.textScalerOf(context).scale(1);
-    final double listHeight = (178 + ((textScale - 1) * 24)).clamp(178, 202).toDouble();
+    final double listHeight = (166 + ((textScale - 1) * 20)).clamp(166, 188).toDouble();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 8, left: 16, right: 16),
+          padding: const EdgeInsets.only(top: 6, bottom: 6, left: 12, right: 12),
           child: Text(
             title,
-            style: const TextStyle(
-              fontSize: 18,
+            style: TextStyle(
+              fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF161823),
+              color: AppColors.dark.withValues(alpha: 0.82),
             ),
           ),
         ),
         SizedBox(
           height: listHeight,
           child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             scrollDirection: Axis.horizontal,
             itemCount: events.length,
             clipBehavior: Clip.none,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
             itemBuilder: (context, index) {
               return _buildCompactEventCard(events[index], context, isEditable: isEditable);
             },
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
       ],
     );
   }
@@ -1190,16 +1391,17 @@ class _ProfileScreenState extends State<ProfileScreen>
         }
       },
       child: Container(
-        width: 160,
-        padding: const EdgeInsets.all(10),
+        width: 148,
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [
+          color: AppColors.surface.withValues(alpha: 0.64),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+          boxShadow: [
             BoxShadow(
-              color: Color(0x0A000000),
-              blurRadius: 12,
-              offset: Offset(0, 6),
+              color: AppColors.dark.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -1209,48 +1411,57 @@ class _ProfileScreenState extends State<ProfileScreen>
           children: [
             if (hasImage)
               ClipRRect(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 child: CachedNetworkImage(
                   imageUrl: imageUrl,
                   width: double.infinity,
-                  height: 92,
+                  height: 84,
                   fit: BoxFit.cover,
-                  placeholder: (context, _) => Container(color: Colors.grey.shade100),
+                  placeholder: (context, _) => Container(
+                    color: AppColors.surface.withValues(alpha: 0.42),
+                  ),
                   errorWidget: (context, _, __) => _buildFallbackImageCompact(),
                 ),
               )
             else
               _buildFallbackImageCompact(),
             Padding(
-              padding: const EdgeInsets.only(top: 6, left: 2, right: 2),
+              padding: const EdgeInsets.only(top: 5, left: 2, right: 2),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title ?? '',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF161823),
+                      color: AppColors.dark.withValues(alpha: 0.84),
                       height: 1.2,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF75878A)),
+                      Icon(
+                        Icons.calendar_today_outlined,
+                        size: 12,
+                        color: AppColors.dark.withValues(alpha: 0.56),
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           _formatDate(dateTime),
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF75878A)),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.dark.withValues(alpha: 0.56),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   EventCountdownTimer(expirationTime: actualExpiration, isMinimal: true),
                 ],
               ),
@@ -1264,13 +1475,17 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildFallbackImageCompact() {
     return Container(
       width: double.infinity,
-      height: 92,
+      height: 84,
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F5FA),
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.surface.withValues(alpha: 0.48),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: const Center(
-        child: Icon(Icons.event_outlined, color: Color(0xFFBAC0E1), size: 28),
+      child: Center(
+        child: Icon(
+          Icons.event_outlined,
+          color: AppColors.dark.withValues(alpha: 0.32),
+          size: 24,
+        ),
       ),
     );
   }
@@ -1281,43 +1496,43 @@ class _ProfileScreenState extends State<ProfileScreen>
     required IconData icon,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFDFE5FF)),
+        color: AppColors.surface.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: <Widget>[
           Container(
-            width: 34,
-            height: 34,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFD9E0FE)),
+              color: AppColors.accent.withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
             ),
-            child: Icon(icon, size: 18, color: const Color(0xFF75878A)),
+            child: Icon(icon, size: 16, color: AppColors.primary),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 15,
+                  style: TextStyle(
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF161823),
+                    color: AppColors.dark.withValues(alpha: 0.84),
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   caption,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF7B83AE),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.dark.withValues(alpha: 0.58),
                   ),
                 ),
               ],
@@ -1335,42 +1550,42 @@ class _ProfileScreenState extends State<ProfileScreen>
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E6FA)),
+        color: AppColors.surface.withValues(alpha: 0.46),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: <Widget>[
           Container(
-            width: 34,
-            height: 34,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
-              color: const Color(0xFFE9EDFF),
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.accent.withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: const Color(0xFF75878A), size: 19),
+            child: Icon(icon, color: AppColors.primary, size: 17),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF353B67),
+                    color: AppColors.dark.withValues(alpha: 0.82),
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF75878A),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.dark.withValues(alpha: 0.58),
                   ),
                 ),
               ],
@@ -1379,31 +1594,6 @@ class _ProfileScreenState extends State<ProfileScreen>
         ],
       ),
     );
-  }
-
-  Color _getCategoryColor(String category) {
-    switch (category) {
-      case 'Спорт':
-        return Colors.orange;
-      case 'Музыка':
-        return Colors.purple;
-      case 'Искусство':
-        return Colors.pink;
-      case 'Еда':
-        return Colors.green;
-      case 'Технологии':
-        return Colors.blue;
-      case 'IT':
-        return Colors.indigo;
-      case 'Образование':
-        return Colors.teal;
-      case 'Развлечения':
-        return Colors.amber;
-      case 'Бизнес':
-        return Colors.blueGrey;
-      default:
-        return const Color(0xFF75878A);
-    }
   }
 
   String _formatDate(DateTime dateTime) {
