@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
+
 class EventFiltersWidget extends StatefulWidget {
   final Function(Map<String, dynamic> filters) onFiltersChanged;
   final Map<String, dynamic> initialFilters;
@@ -62,50 +64,71 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
   void _showFiltersBottomSheet() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 10),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      AppColors.surface.withValues(alpha: 0.98),
+                      AppColors.accent.withValues(alpha: 0.84),
+                    ],
+                  ),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(22),
+                  ),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.14),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                  const SizedBox(height: 8),
                   Container(
-                    width: 44,
-                    height: 5,
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE0E0E0),
+                      color: AppColors.primary.withValues(alpha: 0.28),
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       children: [
-                        const Text(
+                        Text(
                           'Фильтры',
                           style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF161823),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.dark.withValues(alpha: 0.88),
                           ),
                         ),
                         const Spacer(),
                         IconButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close),
+                          icon: Icon(
+                            Icons.close,
+                            color: AppColors.dark.withValues(alpha: 0.68),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -115,13 +138,13 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                             style: Theme.of(context).textTheme.labelMedium
                                 ?.copyWith(
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF161823),
+                                  color: AppColors.dark.withValues(alpha: 0.84),
                                 ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
+                            spacing: 6,
+                            runSpacing: 6,
                             children: _categories.map((category) {
                               final isSelected =
                                   _selectedCategory == category['value'];
@@ -133,27 +156,27 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                                     _selectedCategory = category['value']!;
                                   });
                                 },
-                                backgroundColor: Colors.transparent,
-                                selectedColor: const Color(
-                                  0xFF75878A,
-                                ).withValues(alpha: 0.2),
+                                showCheckmark: false,
+                                backgroundColor: AppColors.surface.withValues(alpha: 0.5),
+                                selectedColor: AppColors.primary.withValues(alpha: 0.14),
                                 labelStyle: TextStyle(
                                   color: isSelected
-                                      ? const Color(0xFF75878A)
-                                      : const Color(0xFF9E9E9E),
+                                      ? AppColors.primary
+                                      : AppColors.dark.withValues(alpha: 0.64),
                                   fontWeight: isSelected
                                       ? FontWeight.w600
                                       : FontWeight.w400,
+                                  fontSize: 12,
                                 ),
                                 side: BorderSide(
                                   color: isSelected
-                                      ? const Color(0xFF75878A)
-                                      : Colors.grey.shade300,
+                                      ? AppColors.primary.withValues(alpha: 0.34)
+                                      : AppColors.dark.withValues(alpha: 0.14),
                                 ),
                               );
                             }).toList(),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 18),
 
                           // Date filter
                           Text(
@@ -161,13 +184,13 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                             style: Theme.of(context).textTheme.labelMedium
                                 ?.copyWith(
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF161823),
+                                  color: AppColors.dark.withValues(alpha: 0.84),
                                 ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
+                            spacing: 6,
+                            runSpacing: 6,
                             children: _dateFilters.map((dateFilter) {
                               final isSelected =
                                   _selectedDate == dateFilter['value'];
@@ -179,27 +202,27 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                                     _selectedDate = dateFilter['value']!;
                                   });
                                 },
-                                backgroundColor: Colors.transparent,
-                                selectedColor: const Color(
-                                  0xFF75878A,
-                                ).withValues(alpha: 0.2),
+                                showCheckmark: false,
+                                backgroundColor: AppColors.surface.withValues(alpha: 0.5),
+                                selectedColor: AppColors.primary.withValues(alpha: 0.14),
                                 labelStyle: TextStyle(
                                   color: isSelected
-                                      ? const Color(0xFF75878A)
-                                      : const Color(0xFF9E9E9E),
+                                      ? AppColors.primary
+                                      : AppColors.dark.withValues(alpha: 0.64),
                                   fontWeight: isSelected
                                       ? FontWeight.w600
                                       : FontWeight.w400,
+                                  fontSize: 12,
                                 ),
                                 side: BorderSide(
                                   color: isSelected
-                                      ? const Color(0xFF75878A)
-                                      : Colors.grey.shade300,
+                                      ? AppColors.primary.withValues(alpha: 0.34)
+                                      : AppColors.dark.withValues(alpha: 0.14),
                                 ),
                               );
                             }).toList(),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 18),
 
                           // Sort filter
                           Text(
@@ -207,13 +230,13 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                             style: Theme.of(context).textTheme.labelMedium
                                 ?.copyWith(
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF161823),
+                                  color: AppColors.dark.withValues(alpha: 0.84),
                                 ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
+                            spacing: 6,
+                            runSpacing: 6,
                             children: _sortOptions.map((sortOption) {
                               final isSelected = _sortBy == sortOption['value'];
                               return FilterChip(
@@ -224,33 +247,33 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                                     _sortBy = sortOption['value']!;
                                   });
                                 },
-                                backgroundColor: Colors.transparent,
-                                selectedColor: const Color(
-                                  0xFF75878A,
-                                ).withValues(alpha: 0.2),
+                                showCheckmark: false,
+                                backgroundColor: AppColors.surface.withValues(alpha: 0.5),
+                                selectedColor: AppColors.primary.withValues(alpha: 0.14),
                                 labelStyle: TextStyle(
                                   color: isSelected
-                                      ? const Color(0xFF75878A)
-                                      : const Color(0xFF9E9E9E),
+                                      ? AppColors.primary
+                                      : AppColors.dark.withValues(alpha: 0.64),
                                   fontWeight: isSelected
                                       ? FontWeight.w600
                                       : FontWeight.w400,
+                                  fontSize: 12,
                                 ),
                                 side: BorderSide(
                                   color: isSelected
-                                      ? const Color(0xFF75878A)
-                                      : Colors.grey.shade300,
+                                      ? AppColors.primary.withValues(alpha: 0.34)
+                                      : AppColors.dark.withValues(alpha: 0.14),
                                 ),
                               );
                             }).toList(),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 18),
                         ],
                       ),
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
                     child: SizedBox(
                       width: double.infinity,
                       child: FilledButton(
@@ -258,11 +281,20 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                           _notifyFiltersChanged();
                           Navigator.pop(context);
                         },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.accent,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                         child: const Text('Применить'),
                       ),
                     ),
                   ),
-                ],
+                  ],
+                ),
               ),
             );
           },
@@ -277,54 +309,86 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
         _selectedCategory != 'all' ||
         _selectedDate != 'week' ||
         _sortBy != 'nearest';
+    final int activeFiltersCount =
+      (_selectedCategory != 'all' ? 1 : 0) +
+      (_selectedDate != 'week' ? 1 : 0) +
+      (_sortBy != 'nearest' ? 1 : 0);
 
     return Align(
       alignment: Alignment.centerRight,
-      child: GestureDetector(
-        onTap: _showFiltersBottomSheet,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF3F6F6),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.tune, color: Color(0xFF75878A), size: 18),
-              const SizedBox(width: 8),
-              const Text(
-                'Фильтры',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF161823),
-                ),
-              ),
-              if (hasActiveFilters) ...[
-                const SizedBox(width: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _showFiltersBottomSheet,
+          borderRadius: BorderRadius.circular(12),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 44),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.tune,
+                    color: AppColors.primary.withValues(alpha: 0.86),
+                    size: 16,
                   ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF75878A),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    '⚙️',
+                  const SizedBox(width: 6),
+                  Text(
+                    'Фильтры',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: AppColors.dark.withValues(alpha: 0.84),
                     ),
                   ),
-                ),
-              ],
-              const SizedBox(width: 4),
-              const Icon(Icons.expand_more, color: Color(0xFF9E9E9E), size: 18),
-            ],
+                  const SizedBox(width: 4),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    switchInCurve: Curves.easeOutBack,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) {
+                      return ScaleTransition(
+                        scale: Tween<double>(begin: 0.84, end: 1).animate(animation),
+                        child: FadeTransition(opacity: animation, child: child),
+                      );
+                    },
+                    child: hasActiveFilters
+                        ? Container(
+                            key: ValueKey<int>(activeFiltersCount),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '$activeFiltersCount',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.accent,
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(key: ValueKey<String>('no-badge')),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.expand_more,
+                    color: AppColors.dark.withValues(alpha: 0.58),
+                    size: 16,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

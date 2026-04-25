@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:intl/intl.dart';
+
 import '../../data/models/event_model.dart';
+import '../../core/theme/app_colors.dart';
 import 'package:andexevents/presentation/widgets/event_countdown_timer.dart';
 
 class EventCarousel extends StatefulWidget {
@@ -42,7 +45,7 @@ class _EventCarouselState extends State<EventCarousel> {
     return Column(
       children: [
         SizedBox(
-          height: 310,
+          height: 286,
           child: PageView.builder(
             controller: _pageController,
             onPageChanged: (index) {
@@ -53,33 +56,52 @@ class _EventCarouselState extends State<EventCarousel> {
             itemCount: widget.events.length,
             itemBuilder: (context, index) {
               final event = widget.events[index];
-              return _buildCarouselCard(context, event);
+              final isCurrent = _currentPage == index;
+
+              return AnimatedScale(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                scale: isCurrent ? 1 : 0.97,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 240),
+                  curve: Curves.easeOutCubic,
+                  opacity: isCurrent ? 1 : 0.9,
+                  child: _buildCarouselCard(context, event),
+                ),
+              );
             },
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         // Dots indicator
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
             widget.events.length,
-            (index) => GestureDetector(
-              onTap: () {
-                _pageController.animateToPage(
-                  index,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
-              },
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                width: _currentPage == index ? 24 : 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: _currentPage == index
-                      ? const Color(0xFF75878A)
-                      : Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(4),
+            (index) => SizedBox(
+              width: 32,
+              height: 32,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  _pageController.animateToPage(
+                    index,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                child: Center(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: _currentPage == index ? 20 : 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: _currentPage == index
+                          ? AppColors.primary.withValues(alpha: 0.86)
+                          : AppColors.primary.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -91,18 +113,19 @@ class _EventCarouselState extends State<EventCarousel> {
 
   Widget _buildCarouselCard(BuildContext context, EventModel event) {
     final categoryColor = _getCategoryColor(event.category);
+    final formattedDate = DateFormat('dd MMM, HH:mm', 'ru').format(event.dateTime);
 
     return GestureDetector(
       onTap: () => widget.onEventSelected(event),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
             BoxShadow(
-              color: Color(0x1A000000),
-              blurRadius: 24,
-              offset: Offset(0, 8),
+              color: AppColors.dark.withValues(alpha: 0.14),
+              blurRadius: 18,
+              offset: const Offset(0, 7),
             ),
           ],
         ),
@@ -112,12 +135,12 @@ class _EventCarouselState extends State<EventCarousel> {
             // Background image
             if (event.imageUrl != null)
               ClipRRect(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(18),
                 child: CachedNetworkImage(
                   imageUrl: event.imageUrl!,
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(
-                    color: Colors.grey.shade200,
+                    color: AppColors.surface.withValues(alpha: 0.84),
                     child: const Center(child: CircularProgressIndicator()),
                   ),
                   errorWidget: (context, url, error) {
@@ -134,7 +157,7 @@ class _EventCarouselState extends State<EventCarousel> {
                         child: Icon(
                           Icons.image_not_supported,
                           size: 48,
-                          color: Colors.grey,
+                          color: Colors.white70,
                         ),
                       ),
                     );
@@ -150,25 +173,28 @@ class _EventCarouselState extends State<EventCarousel> {
                       categoryColor.withValues(alpha: 0.2),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(18),
                 ),
               ),
 
             // Overlay gradient
             Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(18),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+                  colors: [
+                    Colors.black.withValues(alpha: 0.08),
+                    Colors.black.withValues(alpha: 0.68),
+                  ],
                 ),
               ),
             ),
 
             // Content
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,17 +202,20 @@ class _EventCarouselState extends State<EventCarousel> {
                   // Category badge
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                      horizontal: 10,
+                      vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: categoryColor,
-                      borderRadius: BorderRadius.circular(20),
+                      color: AppColors.accent.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Text(
                       _getCategoryName(event.category),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: categoryColor,
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
                       ),
@@ -205,11 +234,11 @@ class _EventCarouselState extends State<EventCarousel> {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
 
                       // Date and location
                       Row(
@@ -222,7 +251,7 @@ class _EventCarouselState extends State<EventCarousel> {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              event.dateTime.toString().split(' ')[0],
+                              formattedDate,
                               style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 12,
@@ -231,7 +260,7 @@ class _EventCarouselState extends State<EventCarousel> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 5),
                       Row(
                         children: [
                           const Icon(
@@ -253,7 +282,7 @@ class _EventCarouselState extends State<EventCarousel> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       EventCountdownTimer(expirationTime: event.actualEndDateTime, isMinimal: true),
                     ],
                   ),
@@ -292,21 +321,21 @@ class _EventCarouselState extends State<EventCarousel> {
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'concert':
-        return Colors.purple;
+        return const Color(0xFF2E7DFF);
       case 'sport':
-        return Colors.orange;
+        return const Color(0xFF0FA958);
       case 'exhibition':
-        return Colors.teal;
+        return const Color(0xFF0D8F8A);
       case 'conference':
-        return Colors.blue;
+        return const Color(0xFF3B66D9);
       case 'party':
-        return Colors.pink;
+        return const Color(0xFFF48A2A);
       case 'theater':
-        return Colors.red;
+        return const Color(0xFFCC4B4B);
       case 'cinema':
-        return Colors.indigo;
+        return const Color(0xFF4D5B7C);
       case 'other':
-        return Colors.grey;
+        return const Color(0xFF75878A);
       default:
         return const Color(0xFF75878A);
     }

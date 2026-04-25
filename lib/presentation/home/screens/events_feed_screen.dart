@@ -73,8 +73,9 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
         await showModalBottomSheet<_CitySelection>(
           context: context,
           isScrollControlled: true,
+          backgroundColor: Colors.transparent,
           shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
           ),
           builder: (BuildContext context) => _CityPickerSheet(
             cityOptions: cityOptions,
@@ -227,23 +228,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
         }
 
         if (state is EventError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                const SizedBox(height: 16),
-                Text(state.message),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    context.read<EventBloc>().add(const EventsLoadRequested());
-                  },
-                  child: const Text('Попробовать снова'),
-                ),
-              ],
-            ),
-          );
+          return _buildFeedErrorState(context, state.message);
         }
 
         if (state is EventsLoaded) {
@@ -301,7 +286,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                               child: Text(
                                 'Афиша города',
                                 style: TextStyle(
-                                  fontSize: 19,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.dark.withValues(alpha: 0.88),
                                   height: 1.15,
@@ -398,7 +383,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                             hintText: 'Поиск событий...',
                             hintStyle: TextStyle(
                               color: AppColors.dark.withValues(alpha: 0.52),
-                              fontSize: 14,
+                              fontSize: 13,
                             ),
                             prefixIcon: Icon(
                               Icons.search,
@@ -443,44 +428,56 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                         const SizedBox(height: 10),
                         Row(
                           children: <Widget>[
-                            GestureDetector(
-                              onTap: _showCityBottomSheet,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 7,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.accent.withValues(alpha: 0.9),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppColors.primary.withValues(alpha: 0.18),
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _showCityBottomSheet,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Ink(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 7,
                                   ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    Icon(
-                                      Icons.location_on_outlined,
-                                      color: AppColors.primary.withValues(alpha: 0.86),
-                                      size: 16,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accent.withValues(alpha: 0.9),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: AppColors.primary.withValues(alpha: 0.18),
                                     ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      _selectedCity,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.dark.withValues(alpha: 0.84),
-                                      ),
+                                  ),
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(minHeight: 44),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: <Widget>[
+                                        Icon(
+                                          Icons.location_on_outlined,
+                                          color: AppColors.primary.withValues(alpha: 0.86),
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        ConstrainedBox(
+                                          constraints: const BoxConstraints(maxWidth: 110),
+                                          child: Text(
+                                            _selectedCity,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.dark.withValues(alpha: 0.84),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Icon(
+                                          Icons.expand_more,
+                                          color: AppColors.dark.withValues(alpha: 0.58),
+                                          size: 16,
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 2),
-                                    Icon(
-                                      Icons.expand_more,
-                                      color: AppColors.dark.withValues(alpha: 0.58),
-                                      size: 16,
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -559,25 +556,41 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  if (_filteredEvents.isEmpty)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Text(
-                          _searchController.text.isEmpty
-                              ? 'Пока нет событий. Добавьте своё!'
-                              : 'События не найдены',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    )
-                  else
-                    ...(_filteredEvents.map((EventModel event) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildEventCard(context, event),
-                      );
-                    }).toList()),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 260),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    child: _filteredEvents.isEmpty
+                        ? KeyedSubtree(
+                            key: const ValueKey<String>('feed-empty'),
+                            child: _buildFeedEmptyState(
+                              hasSearchQuery: _searchController.text.isNotEmpty,
+                            ),
+                          )
+                        : KeyedSubtree(
+                            key: ValueKey<String>(
+                              'feed-list-${_filteredEvents.length}-${_selectedCity}',
+                            ),
+                            child: Column(
+                              children: _filteredEvents
+                                  .asMap()
+                                  .entries
+                                  .map((entry) {
+                                    final index = entry.key;
+                                    final event = entry.value;
+
+                                    return _buildAnimatedFeedListItem(
+                                      index: index,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(bottom: 12),
+                                        child: _buildEventCard(context, event),
+                                      ),
+                                    );
+                                  })
+                                  .toList(),
+                            ),
+                          ),
+                  ),
                 ],
               ),
             ),
@@ -734,7 +747,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                           style: TextStyle(
                             color: categoryColor,
                             fontWeight: FontWeight.w700,
-                            fontSize: 11,
+                            fontSize: 12,
                           ),
                         ),
                       ),
@@ -776,6 +789,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium?.copyWith(
+                      fontSize: 16,
                       color: AppColors.dark.withValues(alpha: 0.86),
                       fontWeight: FontWeight.w700,
                     ),
@@ -794,6 +808,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                         child: Text(
                           event.location,
                           style: theme.textTheme.bodyMedium?.copyWith(
+                            fontSize: 13,
                             color: AppColors.dark.withValues(alpha: 0.62),
                           ),
                           maxLines: 1,
@@ -824,16 +839,24 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                               ? '1 участник'
                               : '${event.participantsCount} участников',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: AppColors.primary,
                           ),
                         ),
                       ),
-                      Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 17,
-                        color: AppColors.primary.withValues(alpha: 0.9),
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.chevron_right_rounded,
+                          size: 19,
+                          color: AppColors.primary.withValues(alpha: 0.9),
+                        ),
                       ),
                     ],
                   ),
@@ -888,7 +911,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                           child: Text(
                             'Организатор: ${event.creatorName!}',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               color: AppColors.dark.withValues(alpha: 0.62),
                               fontWeight: FontWeight.w600,
                             ),
@@ -910,6 +933,34 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAnimatedFeedListItem({
+    required int index,
+    required Widget child,
+  }) {
+    final int clampedIndex = index.clamp(0, 7);
+    final int durationMs = 220 + (clampedIndex * 45);
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: Duration(milliseconds: durationMs),
+      curve: Curves.easeOutCubic,
+      child: child,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * 18),
+            child: Transform.scale(
+              scale: 0.98 + (0.02 * value),
+              alignment: Alignment.topCenter,
+              child: child,
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -939,21 +990,21 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'concert':
-        return Colors.purple;
+        return const Color(0xFF2E7DFF);
       case 'sport':
-        return Colors.orange;
+        return const Color(0xFF0FA958);
       case 'exhibition':
-        return Colors.teal;
+        return const Color(0xFF0D8F8A);
       case 'conference':
-        return Colors.blue;
+        return const Color(0xFF3B66D9);
       case 'party':
-        return Colors.pink;
+        return const Color(0xFFF48A2A);
       case 'theater':
-        return Colors.red;
+        return const Color(0xFFCC4B4B);
       case 'cinema':
-        return Colors.indigo;
+        return const Color(0xFF4D5B7C);
       case 'other':
-        return Colors.grey;
+        return const Color(0xFF75878A);
       default:
         return const Color(0xFF75878A);
     }
@@ -986,13 +1037,139 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
             child: Text(
               title,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: AppColors.dark.withValues(alpha: 0.86),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFeedEmptyState({required bool hasSearchQuery}) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.56),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.94),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(
+              hasSearchQuery ? Icons.search_off_rounded : Icons.event_busy_rounded,
+              size: 18,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              hasSearchQuery
+                  ? 'События не найдены, попробуйте другие фильтры'
+                  : 'Пока нет событий. Добавьте свое!',
+              style: TextStyle(
+                color: AppColors.dark.withValues(alpha: 0.78),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeedErrorState(BuildContext context, String message) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            AppColors.surface.withValues(alpha: 0.94),
+            AppColors.accent.withValues(alpha: 0.74),
+            AppColors.surface.withValues(alpha: 0.98),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface.withValues(alpha: 0.64),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.14)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.error_outline_rounded,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Не удалось загрузить афишу',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.dark.withValues(alpha: 0.86),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.dark.withValues(alpha: 0.64),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: () {
+                    context.read<EventBloc>().add(const EventsLoadRequested());
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text('Обновить'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.accent,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1246,57 +1423,64 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
         child: FractionallySizedBox(
           heightFactor: 0.78,
           child: Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: <Color>[Color(0xFFEAF7F5), Color(0xFFFFFFFF)],
+                colors: <Color>[
+                  AppColors.surface.withValues(alpha: 0.98),
+                  AppColors.accent.withValues(alpha: 0.82),
+                ],
               ),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.14)),
             ),
             child: Column(
               children: <Widget>[
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 Container(
-                  width: 44,
-                  height: 5,
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFD7DDFB),
+                    color: AppColors.primary.withValues(alpha: 0.28),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: <Widget>[
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Города России',
                           style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF161823),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.dark.withValues(alpha: 0.86),
                           ),
                         ),
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close),
+                        icon: Icon(
+                          Icons.close,
+                          color: AppColors.dark.withValues(alpha: 0.68),
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: TextField(
                     controller: _citySearchController,
                     onChanged: _onQueryChanged,
                     decoration: InputDecoration(
                       hintText: 'Начните вводить город: Москва, Тверь, Омск...',
-                      prefixIcon: const Icon(
+                      prefixIcon: Icon(
                         Icons.search,
-                        color: Color(0xFF75878A),
+                        color: AppColors.dark.withValues(alpha: 0.58),
                       ),
                       suffixIcon: _query.trim().isEmpty
                           ? null
@@ -1308,26 +1492,26 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                               },
                             ),
                       filled: true,
-                      fillColor: AppColors.surface,
+                      fillColor: AppColors.surface.withValues(alpha: 0.84),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFFCDEBE7)),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFFCDEBE7)),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(
-                          color: Color(0xFF75878A),
-                          width: 1.5,
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: AppColors.primary.withValues(alpha: 0.28),
+                          width: 1.2,
                         ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 if (_isSearching)
                   const Padding(
                     padding: EdgeInsets.only(bottom: 8),
@@ -1340,20 +1524,20 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                 Expanded(
                   child: suggestions.isNotEmpty
                       ? ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                          padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
                           itemCount: suggestions.length,
                           separatorBuilder: (_, __) =>
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
                           itemBuilder: (context, index) {
                             final suggestion = suggestions[index];
                             final isSelected =
                                 suggestion.cityName == widget.selectedCity;
 
                             return Material(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(14),
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
                               child: InkWell(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(12),
                                 onTap: () {
                                   FocusScope.of(context).unfocus();
                                   Navigator.pop(
@@ -1368,44 +1552,45 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 12,
+                                    horizontal: 12,
+                                    vertical: 10,
                                   ),
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(14),
+                                    color: AppColors.surface.withValues(alpha: 0.66),
+                                    borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: isSelected
-                                          ? const Color(0xFFB9C6FF)
-                                          : const Color(0xFFE3E8FF),
+                                          ? AppColors.primary.withValues(alpha: 0.34)
+                                          : AppColors.primary.withValues(alpha: 0.14),
                                     ),
-                                    boxShadow: const <BoxShadow>[
+                                    boxShadow: <BoxShadow>[
                                       BoxShadow(
-                                        color: Color(0x08000000),
+                                        color: AppColors.dark.withValues(alpha: 0.08),
                                         blurRadius: 8,
-                                        offset: Offset(0, 4),
+                                        offset: const Offset(0, 4),
                                       ),
                                     ],
                                   ),
                                   child: Row(
                                     children: <Widget>[
                                       Container(
-                                        width: 30,
-                                        height: 30,
+                                        width: 28,
+                                        height: 28,
                                         decoration: BoxDecoration(
                                           color: suggestion.fromApi
-                                              ? const Color(0xFFEAF0FF)
-                                              : const Color(0xFFF1F3FA),
+                                              ? AppColors.primary.withValues(alpha: 0.14)
+                                              : AppColors.accent.withValues(alpha: 0.94),
                                           shape: BoxShape.circle,
                                         ),
                                         child: Icon(
                                           suggestion.fromApi
                                               ? Icons.location_city
                                               : Icons.location_on_outlined,
-                                          size: 16,
-                                          color: const Color(0xFF75878A),
+                                          size: 15,
+                                          color: AppColors.primary,
                                         ),
                                       ),
-                                      const SizedBox(width: 10),
+                                      const SizedBox(width: 8),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment:
@@ -1416,11 +1601,11 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                               style: TextStyle(
-                                                fontSize: 15,
+                                                fontSize: 14,
                                                 fontWeight: isSelected
                                                     ? FontWeight.w800
                                                     : FontWeight.w700,
-                                                color: const Color(0xFF161823),
+                                                color: AppColors.dark.withValues(alpha: 0.84),
                                               ),
                                             ),
                                             const SizedBox(height: 2),
@@ -1428,18 +1613,19 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                                               suggestion.address,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 12,
-                                                color: Color(0xFF75878A),
+                                                color: AppColors.dark.withValues(alpha: 0.58),
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
                                       if (isSelected)
-                                        const Icon(
+                                        Icon(
                                           Icons.check_circle,
-                                          color: Color(0xFF75878A),
+                                          color: AppColors.primary,
+                                          size: 18,
                                         ),
                                     ],
                                   ),
@@ -1449,17 +1635,26 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                           },
                         )
                       : ListView(
-                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                           children: <Widget>[
                             ListTile(
                               contentPadding: const EdgeInsets.all(0),
-                              leading: const Icon(
+                              leading: Icon(
                                 Icons.search_off,
-                                color: Color(0xFF8790BD),
+                                color: AppColors.primary.withValues(alpha: 0.64),
                               ),
-                              title: const Text('Город не найден'),
-                              subtitle: const Text(
+                              title: Text(
+                                'Город не найден',
+                                style: TextStyle(
+                                  color: AppColors.dark.withValues(alpha: 0.84),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
                                 'Проверьте написание или введите другой запрос',
+                                style: TextStyle(
+                                  color: AppColors.dark.withValues(alpha: 0.6),
+                                ),
                               ),
                             ),
                           ],
