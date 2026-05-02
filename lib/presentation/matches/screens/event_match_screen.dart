@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
 import 'dart:math' as math;
+import '../../../core/constants/event_messages.dart';
 import '../../../core/services/logger_service.dart';
 import '../../../data/services/user_service.dart';
 import '../../../data/models/user_model.dart';
@@ -11,6 +12,7 @@ import '../../profile/screens/user_profile_screen.dart';
 import '../../widgets/common/custom_notification.dart';
 
 import '../../../data/services/event_service.dart';
+import '../../../core/theme/app_colors.dart';
 
 class EventMatchScreen extends StatefulWidget {
   const EventMatchScreen({super.key, required this.eventId});
@@ -25,6 +27,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
     with TickerProviderStateMixin {
   int _currentIndex = 0;
   bool _isLoading = true;
+  bool _isEventFinished = false;
   UserModel? _currentUser;
   List<MatchPreview> _matches = [];
 
@@ -180,6 +183,8 @@ class _EventMatchScreenState extends State<EventMatchScreen>
     try {
       LoggerService.debug('🔵 [EventMatchScreen] Loading current user...');
       final user = await _userService.getCurrentUser();
+      final event = await _eventService.getEventById(widget.eventId);
+      final isFinished = !_isEventStillActive(event.actualEndDateTime);
 
       LoggerService.info(
         '🟢 [EventMatchScreen] User loaded: name=${user.displayName}, onboardingCompleted=${user.isOnboardingCompleted}',
@@ -188,8 +193,16 @@ class _EventMatchScreenState extends State<EventMatchScreen>
       if (mounted) {
         setState(() {
           _currentUser = user;
+          _isEventFinished = isFinished;
           _isLoading = false;
         });
+
+        if (isFinished) {
+          LoggerService.warning(
+            '🟡 [EventMatchScreen] Event is finished, matches are disabled',
+          );
+          return;
+        }
 
         // После загрузки текущего пользователя, загружаем матчи
         if (user.isOnboardingCompleted) {
@@ -407,6 +420,11 @@ class _EventMatchScreenState extends State<EventMatchScreen>
   }
 
   void _handleLike() {
+    if (_isEventFinished) {
+      CustomNotification.show(context, EventMessages.eventFinishedMatchesUnavailable);
+      return;
+    }
+
     final match = _matches[_currentIndex];
     LoggerService.info('🟢 [_handleLike] Like: ${match.name}');
 
@@ -432,6 +450,11 @@ class _EventMatchScreenState extends State<EventMatchScreen>
   }
 
   void _handleDislike() {
+    if (_isEventFinished) {
+      CustomNotification.show(context, EventMessages.eventFinishedMatchesUnavailable);
+      return;
+    }
+
     final match = _matches[_currentIndex];
     LoggerService.debug('🔴 [_handleDislike] Dislike: ${match.name}');
 
@@ -457,6 +480,11 @@ class _EventMatchScreenState extends State<EventMatchScreen>
   }
 
   void _handleSuperLike() {
+    if (_isEventFinished) {
+      CustomNotification.show(context, EventMessages.eventFinishedMatchesUnavailable);
+      return;
+    }
+
     final match = _matches[_currentIndex];
     LoggerService.debug('🔵 [_handleSuperLike] Super Like: ${match.name}');
 
@@ -513,6 +541,124 @@ class _EventMatchScreenState extends State<EventMatchScreen>
     return '';
   }
 
+  Widget _buildEmptyStateShell({
+    required IconData icon,
+    required List<Color> iconGradient,
+    required String title,
+    required String subtitle,
+    List<Widget> actions = const <Widget>[],
+  }) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            Color(0xFFEAF2FF),
+            Color(0xFFD9E8FF),
+            Color(0xFFEFF5FF),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: <Widget>[
+          Positioned(
+            top: -80,
+            right: -50,
+            child: Container(
+              width: 220,
+              height: 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF7D8CFF).withValues(alpha: 0.14),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -100,
+            left: -70,
+            child: Container(
+              width: 260,
+              height: 260,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF63C9B6).withValues(alpha: 0.14),
+              ),
+            ),
+          ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(maxWidth: 420),
+                padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.84),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: const Color(0xFFDCE4FF)),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: const Color(0xFF365892).withValues(alpha: 0.10),
+                      blurRadius: 24,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Container(
+                      width: 98,
+                      height: 98,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: iconGradient),
+                        shape: BoxShape.circle,
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: iconGradient.first.withValues(alpha: 0.22),
+                            blurRadius: 22,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Icon(icon, size: 46, color: Colors.white),
+                    ),
+                    const SizedBox(height: 22),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        color: Color(0xFF1F3552),
+                        fontWeight: FontWeight.w800,
+                        height: 1.15,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      subtitle,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Color(0xFF66739B),
+                        height: 1.42,
+                      ),
+                    ),
+                    if (actions.isNotEmpty) ...<Widget>[
+                      const SizedBox(height: 28),
+                      ...actions,
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     Widget content;
@@ -520,6 +666,8 @@ class _EventMatchScreenState extends State<EventMatchScreen>
       content = const Center(
         child: CircularProgressIndicator(color: Color(0xFF75878A)),
       );
+    } else if (_isEventFinished) {
+      content = _buildEventFinishedScreen();
     } else if (!_isProfileComplete) {
       content = _buildProfileIncompleteScreen();
     } else if (_matches.isEmpty) {
@@ -529,158 +677,112 @@ class _EventMatchScreenState extends State<EventMatchScreen>
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Участники',
           style: TextStyle(
-            color: Color(0xFF1E2022),
+            color: Color(0xFF1F3552),
             fontSize: 20,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w800,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Color(0xFF1E2022)),
+        iconTheme: const IconThemeData(color: Color(0xFF243252)),
       ),
       body: content,
     );
   }
 
   Widget _buildProfileIncompleteScreen() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: const Color(0xFF75878A).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+    return _buildEmptyStateShell(
+      icon: Icons.favorite_border_rounded,
+      iconGradient: const <Color>[Color(0xFF5F76FF), Color(0xFF62A9FF)],
+      title: 'Заполните профиль для мэтчей',
+      subtitle:
+          'Добавьте имя, фото, описание о себе и интересы, чтобы находить людей с похожими увлечениями.',
+      actions: <Widget>[
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _openEditProfile,
+            icon: const Icon(Icons.edit, size: 20),
+            label: const Text('Заполнить профиль'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF5F76FF),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(
-                Icons.favorite_border,
-                size: 64,
-                color: Color(0xFF75878A),
-              ),
+              elevation: 0,
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'Заполните профиль для матчей',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 22,
-                color: Color(0xFF161823),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Добавьте имя, фото, описание о себе и интересы, чтобы найти людей с похожими увлечениями',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 15, color: Color(0xFF9699A8)),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: _openEditProfile,
-              icon: const Icon(Icons.edit, size: 20),
-              label: const Text('Заполнить профиль'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF75878A),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
   Widget _buildNoEventMatchScreen() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8E8E8).withValues(alpha: 0.5),
-                shape: BoxShape.circle,
+    return _buildEmptyStateShell(
+      icon: Icons.search_off_rounded,
+      iconGradient: const <Color>[Color(0xFF63C9B6), Color(0xFF62A9FF)],
+      title: 'Совпадений пока нет',
+      subtitle:
+          'Посещайте мероприятия и обновляйте профиль, чтобы встретить людей с похожими интересами.',
+      actions: <Widget>[
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => _refreshMatches(resetSeen: true),
+            icon: const Icon(Icons.refresh, size: 20),
+            label: const Text('Обновить подборку'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF5F76FF),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(
-                Icons.search_off,
-                size: 64,
-                color: Color(0xFF9699A8),
-              ),
+              elevation: 0,
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'Совпадений пока нет',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 22,
-                color: Color(0xFF161823),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Посещайте мероприятия, чтобы встретить людей с похожими интересами',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 15, color: Color(0xFF9699A8)),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () => _refreshMatches(resetSeen: true),
-              icon: const Icon(Icons.refresh, size: 20),
-              label: const Text('Обновить подборку'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF75878A),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 28,
-                  vertical: 14,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _openEditProfile,
-              icon: const Icon(Icons.edit_outlined, size: 20),
-              label: const Text('Редактировать профиль'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF75878A),
-                side: const BorderSide(color: Color(0xFF75878A), width: 2),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _openEditProfile,
+            icon: const Icon(Icons.edit_outlined, size: 20),
+            label: const Text('Редактировать профиль'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF5F76FF),
+              side: const BorderSide(color: Color(0xFFBFD3FF), width: 1.6),
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
+  }
+
+  Widget _buildEventFinishedScreen() {
+    return _buildEmptyStateShell(
+      icon: Icons.event_busy_outlined,
+      iconGradient: const <Color>[Color(0xFF8FA3FF), Color(0xFF63C9B6)],
+      title: EventMessages.eventFinishedMatchesTitle,
+      subtitle: EventMessages.eventFinishedMatchesDescription,
+    );
+  }
+
+  bool _isEventStillActive(DateTime actualEndDateTime) {
+    return actualEndDateTime.toUtc().isAfter(DateTime.now().toUtc());
   }
 
   Widget _buildMainContent() {
@@ -700,9 +802,9 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: <Color>[
-                  const Color(0xFFF4F7FF),
-                  const Color(0xFFEFF3FF),
-                  const Color(0xFFF7FAFF),
+                  const Color(0xFFEAF2FF),
+                  const Color(0xFFD9E8FF),
+                  const Color(0xFFEFF5FF),
                 ],
               ),
             ),
@@ -769,10 +871,10 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.88),
+                      color: Colors.white.withValues(alpha: 0.84),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: const Color(0xFFDCE3FB),
+                        color: const Color(0xFFDCE4FF),
                         width: 1,
                       ),
                     ),
@@ -851,7 +953,11 @@ class _EventMatchScreenState extends State<EventMatchScreen>
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [const Color(0xFF7C8AFF), const Color(0xFF67D2BF)],
+                    colors: const <Color>[
+                      Color(0xFF5F76FF),
+                      Color(0xFF62A9FF),
+                      Color(0xFF63C9B6),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -867,9 +973,10 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                       return Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [
-                              const Color(0xFF7C8AFF),
-                              const Color(0xFF67D2BF),
+                            colors: const <Color>[
+                              Color(0xFF5F76FF),
+                              Color(0xFF62A9FF),
+                              Color(0xFF63C9B6),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -945,7 +1052,12 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                               vertical: 5,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE8EEFF),
+                              gradient: const LinearGradient(
+                                colors: <Color>[
+                                  Color(0xFFE8EEFF),
+                                  Color(0xFFE7F6F2),
+                                ],
+                              ),
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Row(
@@ -962,7 +1074,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                                   style: const TextStyle(
                                     color: Color(0xFF75878A),
                                     fontSize: 12,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],
@@ -995,8 +1107,11 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                                         vertical: 5,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFF0F3FF),
+                                        color: Colors.white.withValues(alpha: 0.72),
                                         borderRadius: BorderRadius.circular(999),
+                                        border: Border.all(
+                                          color: const Color(0xFFDCE4FF),
+                                        ),
                                       ),
                                       child: Text(
                                         interest,

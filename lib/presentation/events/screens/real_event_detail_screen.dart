@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
+import '../../../core/constants/event_messages.dart';
 
 import '../bloc/event_bloc.dart';
 import '../bloc/event_event.dart';
@@ -13,6 +14,7 @@ import '../../../data/services/external_route_service.dart';
 import '../widgets/event_participants_dialog.dart';
 import '../../matches/screens/event_match_screen.dart';
 import '../../widgets/event_countdown_timer.dart';
+import '../../../core/theme/app_colors.dart';
 
 
 class RealEventDetailScreen extends StatefulWidget {
@@ -25,10 +27,14 @@ class RealEventDetailScreen extends StatefulWidget {
 }
 
 class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
-  bool _isFavorite = false;
-  bool _isGoing = false;
-  bool _isParticipationLoading = false;
+  final ValueNotifier<bool> _isFavoriteNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _isGoingNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _isFavoriteLoadingNotifier =
+      ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _isGoingLoadingNotifier =
+      ValueNotifier<bool>(false);
   int _currentImageIndex = 0;
+  EventModel? _cachedEvent;
   final ExternalRouteService _routeService = ExternalRouteService();
 
   @override
@@ -41,7 +47,18 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   }
 
   void _toggleFavorite(EventModel event) {
-    if (!_isFavorite) {
+    if (_isEventFinished(event)) {
+      CustomNotification.show(
+        context,
+        EventMessages.eventFinishedActionBlocked,
+      );
+      _isFavoriteLoadingNotifier.value = false;
+      return;
+    }
+
+    _isFavoriteLoadingNotifier.value = true;
+
+    if (!_isFavoriteNotifier.value) {
       context.read<EventBloc>().add(
         EventParticipateRequested(eventId: event.id, status: 'INTERESTED'),
       );
@@ -53,11 +70,18 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   }
 
   void _toggleGoing(EventModel event) {
-    setState(() {
-      _isParticipationLoading = true;
-    });
+    if (_isEventFinished(event)) {
+      CustomNotification.show(
+        context,
+        EventMessages.eventFinishedActionBlocked,
+      );
+      _isGoingLoadingNotifier.value = false;
+      return;
+    }
 
-    if (!_isGoing) {
+    _isGoingLoadingNotifier.value = true;
+
+    if (!_isGoingNotifier.value) {
       context.read<EventBloc>().add(
         EventParticipateRequested(eventId: event.id, status: 'GOING'),
       );
@@ -66,6 +90,15 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
         EventCancelParticipationRequested(event.id),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _isFavoriteNotifier.dispose();
+    _isGoingNotifier.dispose();
+    _isFavoriteLoadingNotifier.dispose();
+    _isGoingLoadingNotifier.dispose();
+    super.dispose();
   }
 
   Future<void> _openRoute(EventModel event) async {
@@ -92,6 +125,52 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
     }
   }
 
+  Widget _buildSectionContainer({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFDCE4FF)),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: const Color(0xFF365892).withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildSectionTitle(String title, {String? subtitle}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF243252),
+          ),
+        ),
+        if (subtitle != null) ...<Widget>[
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF66739B),
+              height: 1.35,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<EventBloc, EventState>(
@@ -101,33 +180,43 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
       },
       listener: (context, state) {
         if (state is EventDetailLoaded) {
-          setState(() {
-            _isGoing = state.event.userParticipationStatus == 'GOING';
-            _isFavorite = state.event.userParticipationStatus == 'INTERESTED';
-            _isParticipationLoading = false;
-          });
+          _isGoingNotifier.value = state.event.userParticipationStatus == 'GOING';
+          _isFavoriteNotifier.value =
+              state.event.userParticipationStatus == 'INTERESTED';
+          _isFavoriteLoadingNotifier.value = false;
+          _isGoingLoadingNotifier.value = false;
         } else if (state is EventParticipationUpdating) {
-          setState(() {
-            _isParticipationLoading = true;
-          });
+          // Локальные индикаторы уже включаются при нажатии соответствующей кнопки.
         } else if (state is EventParticipationUpdated) {
-          // Состояние обновлено, ждем новые данные события
-          setState(() {
-            _isParticipationLoading = true;
-          });
+          // Ждем EventDetailLoaded, где индикаторы выключаются точечно.
         } else if (state is EventError) {
-          setState(() {
-            _isParticipationLoading = false;
-          });
+          _isFavoriteLoadingNotifier.value = false;
+          _isGoingLoadingNotifier.value = false;
           CustomNotification.show(context, state.message, isError: true);
         }
       },
       buildWhen: (previous, current) {
-        // Не перестраиваем основной экран при загрузке участников
-        return current is! EventParticipantsLoading &&
-            current is! EventParticipantsLoaded;
+        if (current is EventParticipantsLoading ||
+            current is EventParticipantsLoaded ||
+            current is EventParticipationUpdating ||
+            current is EventParticipationUpdated) {
+          return false;
+        }
+
+        // После первого успешного лоада не перестраиваем весь экран
+        // на detail-reload после нажатий лайк/участвовать.
+        if (_cachedEvent != null &&
+            (current is EventDetailLoading || current is EventDetailLoaded)) {
+          return false;
+        }
+
+        return true;
       },
       builder: (context, state) {
+        if (_cachedEvent != null) {
+          return _buildEventDetail(context, _cachedEvent!);
+        }
+
         if (state is EventDetailLoading) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -160,6 +249,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
         }
 
         if (state is EventDetailLoaded) {
+          _cachedEvent = state.event;
           return _buildEventDetail(context, state.event);
         }
 
@@ -171,6 +261,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   Widget _buildEventDetail(BuildContext context, EventModel event) {
     final categoryColor = _getCategoryColor(event.category);
     final categoryName = _getCategoryName(event.category);
+    final isEventFinished = _isEventFinished(event);
     final imageGallery = event.imageUrls.isNotEmpty
         ? event.imageUrls
         : <String>[
@@ -178,6 +269,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
           ];
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
           // App Bar с изображением
@@ -187,55 +279,38 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
             leading: Container(
               margin: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.white.withValues(alpha: 0.86),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 8,
+                    color: const Color(0xFF365892).withValues(alpha: 0.14),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF161823)),
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF243252)),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ),
             actions: [
+              _buildFavoriteAction(event),
               Container(
                 margin: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Colors.white.withValues(alpha: 0.86),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 8,
+                      color: const Color(0xFF365892).withValues(alpha: 0.14),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
                 child: IconButton(
-                  icon: Icon(
-                    _isFavorite ? Icons.favorite : Icons.favorite_outline,
-                    color: _isFavorite ? Colors.red : const Color(0xFF161823),
-                  ),
-                  onPressed: () => _toggleFavorite(event),
-                ),
-              ),
-              Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.share, color: Color(0xFF161823)),
+                  icon: const Icon(Icons.share, color: Color(0xFF243252)),
                   onPressed: () {},
                 ),
               ),
@@ -265,8 +340,9 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  categoryColor.withValues(alpha: 0.7),
-                                  categoryColor.withValues(alpha: 0.5),
+                                  categoryColor.withValues(alpha: 0.88),
+                                  AppColors.primary.withValues(alpha: 0.64),
+                                  AppColors.accent.withValues(alpha: 0.44),
                                 ],
                               ),
                             ),
@@ -284,8 +360,9 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            categoryColor.withValues(alpha: 0.7),
-                            categoryColor.withValues(alpha: 0.5),
+                            categoryColor.withValues(alpha: 0.88),
+                            AppColors.primary.withValues(alpha: 0.64),
+                            AppColors.accent.withValues(alpha: 0.44),
                           ],
                         ),
                       ),
@@ -302,8 +379,9 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
+                            Colors.white.withValues(alpha: 0.04),
                             Colors.transparent,
-                            Colors.black.withValues(alpha: 0.7),
+                            Colors.black.withValues(alpha: 0.46),
                           ],
                         ),
                       ),
@@ -355,8 +433,16 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: categoryColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
+                          gradient: LinearGradient(
+                            colors: <Color>[
+                              categoryColor.withValues(alpha: 0.18),
+                              categoryColor.withValues(alpha: 0.08),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: categoryColor.withValues(alpha: 0.26),
+                          ),
                         ),
                         child: Text(
                           categoryName,
@@ -374,9 +460,14 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: event.price == 0
-                              ? Colors.green.withValues(alpha: 0.1)
-                              : Colors.orange.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
+                              ? const Color(0xFFE5F7EF)
+                              : const Color(0xFFFFF0DB),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: event.price == 0
+                                ? const Color(0xFFBEE8D1)
+                                : const Color(0xFFF6D3A3),
+                          ),
                         ),
                         child: Text(
                           event.price == 0
@@ -400,98 +491,112 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                   child: Text(
                     event.title,
                     style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF161823),
+                      fontSize: 30,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1F3552),
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
 
                 // Дата и время (с учетом даты окончания)
-                _buildInfoRow(
-                  Icons.calendar_today,
-                  event.endDateTime != null &&
-                          !_isSameCalendarDate(event.dateTime, event.endDateTime!)
-                      ? '${_formatDate(event.dateTime)} - ${_formatDate(event.endDateTime!)}'
-                      : _formatDate(event.dateTime),
-                ),
-                const SizedBox(height: 12),
-                _buildInfoRow(
-                  Icons.access_time,
-                  event.endDateTime != null
-                      ? '${_formatTime(event.dateTime)} - ${_formatTime(event.endDateTime!)}'
-                      : _formatTime(event.dateTime),
-                ),
-                const SizedBox(height: 12),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEAF7F5),
-                          borderRadius: BorderRadius.circular(12),
+                  child: _buildSectionContainer(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSectionTitle(
+                          'Когда и где',
+                          subtitle: 'Дата, время, таймер и локация события',
                         ),
-                        child: const Icon(
-                          Icons.timer_outlined,
-                          color: Color(0xFF75878A),
-                          size: 24,
-                        ),
+                        const SizedBox(height: 14),
+                      _buildInfoRow(
+                        Icons.calendar_today,
+                        event.endDateTime != null &&
+                                !_isSameCalendarDate(event.dateTime, event.endDateTime!)
+                            ? '${_formatDate(event.dateTime)} - ${_formatDate(event.endDateTime!)}'
+                            : _formatDate(event.dateTime),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'До окончания',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF8D8D8D),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            EventCountdownTimer(
-                              expirationTime: event.actualEndDateTime,
-                              isMinimal: true,
-                              textStyle: const TextStyle(
-                                color: Color(0xFF161823),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
+                      const SizedBox(height: 12),
+                      _buildInfoRow(
+                        Icons.access_time,
+                        event.endDateTime != null
+                            ? '${_formatTime(event.dateTime)} - ${_formatTime(event.endDateTime!)}'
+                            : _formatTime(event.dateTime),
                       ),
-                    ],
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: <Color>[
+                                  Color(0xFFE8EEFF),
+                                  Color(0xFFE7F6F2),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(
+                              Icons.timer_outlined,
+                              color: Color(0xFF5F76FF),
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'До окончания',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF66739B),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                EventCountdownTimer(
+                                  expirationTime: event.actualEndDateTime,
+                                  isMinimal: true,
+                                  textStyle: const TextStyle(
+                                    color: Color(0xFF243252),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _buildInfoRow(
+                        Icons.location_on,
+                        event.location,
+                        onTap: event.isOnline ? null : () => _openRoute(event),
+                      ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                _buildInfoRow(
-                  Icons.location_on,
-                  event.location,
-                  onTap: event.isOnline ? null : () => _openRoute(event),
                 ),
                 const SizedBox(height: 24),
 
                 // Участники
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Участники',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF161823),
+                    child: _buildSectionContainer(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                        _buildSectionTitle(
+                          'Участники',
+                          subtitle: 'Кто уже идет и кто может совпасть с вами',
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
+                        const SizedBox(height: 12),
+                        Row(
                         children: [
                           // Avatars
                           if (event.previewParticipants.isNotEmpty)
@@ -575,8 +680,9 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF3F6F6),
+                                color: const Color(0xFFF5F8FF),
                                 borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: const Color(0xFFE2E9FB)),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -586,7 +692,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                                         ? 'Нет участников'
                                         : '${event.participantsCount} участник${event.participantsCount % 10 == 1 && event.participantsCount != 11 ? '' : 'ов'}',
                                     style: const TextStyle(
-                                      color: Color(0xFF161823),
+                                      color: Color(0xFF243252),
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -605,43 +711,62 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                           ),
                           const Spacer(),
                           // Matches Button (видима только если статус = GOING)
-                          if (_isGoing)
-                            Container(
-                              decoration: BoxDecoration(
-                                color: categoryColor.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => EventMatchScreen(eventId: event.id),
-                                      ),
-                                    );
-                                  },
+                          ValueListenableBuilder<bool>(
+                            valueListenable: _isGoingNotifier,
+                            builder: (context, isGoing, _) {
+                              if (!isGoing || isEventFinished) {
+                                return const SizedBox.shrink();
+                              }
+
+                              return Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: <Color>[
+                                      categoryColor.withValues(alpha: 0.16),
+                                      categoryColor.withValues(alpha: 0.08),
+                                    ],
+                                  ),
                                   borderRadius: BorderRadius.circular(20),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                    child: Text(
-                                      'Метчи',
-                                      style: TextStyle(
-                                        color: categoryColor,
-                                        fontWeight: FontWeight.w600,
+                                  border: Border.all(
+                                    color: categoryColor.withValues(alpha: 0.22),
+                                  ),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => EventMatchScreen(
+                                            eventId: event.id,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 8,
+                                      ),
+                                      child: Text(
+                                        'Метчи',
+                                        style: TextStyle(
+                                          color: categoryColor,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
+                          ),
                         ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -650,27 +775,25 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                 if (event.description.isNotEmpty) ...[
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Описание',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF161823),
+                    child: _buildSectionContainer(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSectionTitle(
+                            'Описание',
+                            subtitle: 'Что будет происходить на событии',
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          event.description,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF161823),
-                            height: 1.5,
+                          const SizedBox(height: 12),
+                          Text(
+                            event.description,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF4B5877),
+                              height: 1.55,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -680,104 +803,104 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                 if (event.creatorName != null) ...[
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Организатор',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF161823),
+                    child: _buildSectionContainer(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSectionTitle(
+                            'Организатор',
+                            subtitle: 'Кто создал событие',
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF5F5F5),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            children: [
-                              if (event.creatorPhotoUrl != null)
-                                CachedNetworkImage(
-                                  imageUrl: event.creatorPhotoUrl!,
-                                  imageBuilder: (context, imageProvider) =>
-                                      CircleAvatar(
-                                        radius: 30,
-                                        backgroundImage: imageProvider,
-                                      ),
-                                  placeholder: (context, url) =>
-                                      const CircleAvatar(
-                                        radius: 30,
-                                        child: CircularProgressIndicator(),
-                                      ),
-                                  errorWidget: (context, url, error) =>
-                                      CircleAvatar(
-                                        radius: 30,
-                                        backgroundColor: categoryColor,
-                                        child: Text(
-                                          event.creatorName![0].toUpperCase(),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.w600,
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF7FAFF),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: const Color(0xFFE2E9FB)),
+                            ),
+                            child: Row(
+                              children: [
+                                if (event.creatorPhotoUrl != null)
+                                  CachedNetworkImage(
+                                    imageUrl: event.creatorPhotoUrl!,
+                                    imageBuilder: (context, imageProvider) =>
+                                        CircleAvatar(
+                                          radius: 30,
+                                          backgroundImage: imageProvider,
+                                        ),
+                                    placeholder: (context, url) =>
+                                        const CircleAvatar(
+                                          radius: 30,
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                    errorWidget: (context, url, error) =>
+                                        CircleAvatar(
+                                          radius: 30,
+                                          backgroundColor: categoryColor,
+                                          child: Text(
+                                            event.creatorName![0].toUpperCase(),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                )
-                              else
-                                CircleAvatar(
-                                  radius: 30,
-                                  backgroundColor: categoryColor,
-                                  child: Text(
-                                    event.creatorName![0].toUpperCase(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      event.creatorName!,
+                                  )
+                                else
+                                  CircleAvatar(
+                                    radius: 30,
+                                    backgroundColor: categoryColor,
+                                    child: Text(
+                                      event.creatorName![0].toUpperCase(),
                                       style: const TextStyle(
-                                        fontSize: 16,
+                                        color: Colors.white,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.w600,
-                                        color: Color(0xFF161823),
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    const Text(
-                                      'Организатор событий',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Color(0xFF9E9E9E),
+                                  ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        event.creatorName!,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF243252),
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              OutlinedButton(
-                                onPressed: () {},
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: categoryColor,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        'Организатор событий',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Color(0xFF66739B),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                child: const Text('Профиль'),
-                              ),
-                            ],
+                                OutlinedButton(
+                                  onPressed: () {},
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF5F76FF),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    side: const BorderSide(color: Color(0xFFBFD3FF)),
+                                  ),
+                                  child: const Text('Профиль'),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -786,77 +909,75 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                 if (!event.isOnline) ...[
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Маршрут',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF161823),
+                    child: _buildSectionContainer(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSectionTitle(
+                            'Маршрут',
+                            subtitle: 'Карта и быстрый переход в навигацию',
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: SizedBox(
-                            height: 180,
-                            child: IgnorePointer(
-                              child: YandexMap(
-                                onMapCreated: (controller) {
-                                  controller.moveCamera(
-                                    CameraUpdate.newCameraPosition(
-                                      CameraPosition(
-                                        target: Point(
-                                          latitude: event.latitude,
-                                          longitude: event.longitude,
+                          const SizedBox(height: 12),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: SizedBox(
+                              height: 180,
+                              child: IgnorePointer(
+                                child: YandexMap(
+                                  onMapCreated: (controller) {
+                                    controller.moveCamera(
+                                      CameraUpdate.newCameraPosition(
+                                        CameraPosition(
+                                          target: Point(
+                                            latitude: event.latitude,
+                                            longitude: event.longitude,
+                                          ),
+                                          zoom: 15,
                                         ),
-                                        zoom: 15,
+                                      ),
+                                    );
+                                  },
+                                  mapObjects: [
+                                    PlacemarkMapObject(
+                                      mapId: const MapObjectId('event_detail_point'),
+                                      point: Point(
+                                        latitude: event.latitude,
+                                        longitude: event.longitude,
+                                      ),
+                                      icon: PlacemarkIcon.single(
+                                        PlacemarkIconStyle(
+                                          image: BitmapDescriptor.fromAssetImage(
+                                            'assets/icons/map_arrow.png',
+                                          ),
+                                          scale: 0.3,
+                                        ),
                                       ),
                                     ),
-                                  );
-                                },
-                                mapObjects: [
-                                  PlacemarkMapObject(
-                                    mapId: const MapObjectId('event_detail_point'),
-                                    point: Point(
-                                      latitude: event.latitude,
-                                      longitude: event.longitude,
-                                    ),
-                                    icon: PlacemarkIcon.single(
-                                      PlacemarkIconStyle(
-                                        image: BitmapDescriptor.fromAssetImage(
-                                          'assets/icons/map_arrow.png',
-                                        ),
-                                        scale: 0.3,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () => _openRoute(event),
-                            icon: const Icon(Icons.route),
-                            label: const Text('Построить маршрут'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: categoryColor,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () => _openRoute(event),
+                              icon: const Icon(Icons.route),
+                              label: const Text('Построить маршрут'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF5F76FF),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 0,
                               ),
-                              elevation: 0,
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -873,86 +994,152 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
       bottomSheet: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.white.withValues(alpha: 0.95),
+          border: const Border(
+            top: BorderSide(color: Color(0xFFDCE4FF)),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: const Color(0xFF365892).withValues(alpha: 0.10),
               blurRadius: 20,
               offset: const Offset(0, -4),
             ),
           ],
         ),
         child: SafeArea(
-          child: ElevatedButton(
-            onPressed: _isParticipationLoading
-                ? null
-                : () => _toggleGoing(event),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _isParticipationLoading
-                  ? Colors.grey.shade400
-                  : (_isGoing ? Colors.grey : categoryColor),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 0,
-              minimumSize: const Size(double.infinity, 0),
-            ),
-            child: _isParticipationLoading
-                ? SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.white.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  )
-                : Text(
-                    _isGoing ? 'Отменить участие' : 'Участвовать',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-          ),
+          child: _buildParticipationButton(event, categoryColor),
         ),
       ),
     );
   }
 
+  Widget _buildFavoriteAction(EventModel event) {
+    return Container(
+      margin: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.86),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF365892).withValues(alpha: 0.14),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ValueListenableBuilder<bool>(
+        valueListenable: _isFavoriteNotifier,
+        builder: (context, isFavorite, _) {
+          return ValueListenableBuilder<bool>(
+            valueListenable: _isFavoriteLoadingNotifier,
+            builder: (context, isLoading, __) {
+              final isEventFinished = _isEventFinished(event);
+              return IconButton(
+                icon: Icon(
+                  isFavorite ? Icons.favorite : Icons.favorite_outline,
+                  color: isFavorite ? const Color(0xFFDE5A77) : const Color(0xFF243252),
+                ),
+                onPressed: (isLoading || isEventFinished)
+                    ? null
+                    : () => _toggleFavorite(event),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildParticipationButton(EventModel event, Color categoryColor) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isGoingLoadingNotifier,
+      builder: (context, isLoading, _) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: _isGoingNotifier,
+          builder: (context, isGoing, __) {
+            final isEventFinished = _isEventFinished(event);
+            final disabled = isLoading || isEventFinished;
+
+            return ElevatedButton(
+              onPressed: disabled ? null : () => _toggleGoing(event),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: disabled
+                    ? Colors.grey.shade400
+                    : (isGoing ? const Color(0xFF7E8AA4) : const Color(0xFF5F76FF)),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 0,
+                minimumSize: const Size(double.infinity, 0),
+              ),
+                child: isLoading
+                  ? SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Colors.white.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    )
+                    : Text(
+                      isEventFinished
+                        ? EventMessages.eventFinishedButtonTitle
+                        : (isGoing ? 'Отменить участие' : 'Участвовать'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  bool _isEventFinished(EventModel event) {
+    return !event.actualEndDateTime.toUtc().isAfter(DateTime.now().toUtc());
+  }
+
   Widget _buildInfoRow(IconData icon, String text, {VoidCallback? onTap}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: InkWell(
-        onTap: onTap,
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF75878A).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: <Color>[Color(0xFFE8EEFF), Color(0xFFE7F6F2)],
               ),
-              child: Icon(icon, color: const Color(0xFF75878A), size: 20),
+              borderRadius: BorderRadius.circular(14),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                text,
-                style: const TextStyle(fontSize: 16, color: Color(0xFF161823)),
+            child: Icon(icon, color: const Color(0xFF5F76FF), size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 15,
+                color: Color(0xFF243252),
+                height: 1.35,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            if (onTap != null)
-              const Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Color(0xFF9E9E9E),
-              ),
-          ],
-        ),
+          ),
+          if (onTap != null)
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 15,
+              color: Color(0xFF8EA0C5),
+            ),
+        ],
       ),
     );
   }

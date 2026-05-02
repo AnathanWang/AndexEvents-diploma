@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
 import '../../../core/services/logger_service.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../bloc/profile_bloc.dart';
@@ -96,6 +97,44 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController.dispose();
     _bioController.dispose();
     super.dispose();
+  }
+
+  InputDecoration _buildInputDecoration({
+    required String label,
+    IconData? icon,
+    String? hint,
+    bool alignLabelWithHint = false,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      alignLabelWithHint: alignLabelWithHint,
+      prefixIcon: icon != null ? Icon(icon, color: const Color(0xFF5F76FF)) : null,
+      filled: true,
+      fillColor: const Color(0xFFF5F8FF),
+      labelStyle: const TextStyle(color: Color(0xFF5D668C)),
+      hintStyle: const TextStyle(color: Color(0xFF97A0C4)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFE3E9FF)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFF637DFF), width: 1.8),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFDE5A77)),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFDE5A77), width: 1.6),
+      ),
+    );
   }
 
   Future<void> _pickImage() async {
@@ -322,8 +361,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F8FC),
+        gradient: const LinearGradient(
+          colors: <Color>[Color(0xFFF7FAFF), Color(0xFFF1F7FF)],
+        ),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E9FB)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,7 +385,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: const Color(0xFFEAF1FF),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -351,7 +393,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF75878A),
+                    color: Color(0xFF5F76FF),
                   ),
                 ),
               ),
@@ -377,10 +419,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     borderRadius: BorderRadius.circular(14),
                     child: Ink(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        gradient: const LinearGradient(
+                          colors: <Color>[Colors.white, Color(0xFFF4F8FF)],
+                        ),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: const Color(0xFF75878A).withValues(alpha: 0.22),
+                          color: const Color(0xFFBFD3FF),
                         ),
                       ),
                       child: const Column(
@@ -388,14 +432,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         children: <Widget>[
                           Icon(
                             Icons.add_photo_alternate_outlined,
-                            color: Color(0xFF75878A),
+                            color: Color(0xFF5F76FF),
                             size: 24,
                           ),
                           SizedBox(height: 4),
                           Text(
                             'Фото',
                             style: TextStyle(
-                              color: Color(0xFF75878A),
+                              color: Color(0xFF5F76FF),
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
@@ -691,25 +735,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         final user = state is ProfileLoaded ? state.user : _currentUser;
 
         return Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.background,
           appBar: AppBar(
-            backgroundColor: Colors.white,
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Color(0xFF161823)),
+              icon: const Icon(Icons.arrow_back, color: Color(0xFF243252)),
               onPressed: () => Navigator.of(context).pop(),
             ),
             title: const Text(
               'Редактировать профиль',
               style: TextStyle(
-                color: Color(0xFF161823),
-                fontWeight: FontWeight.w600,
+                color: Color(0xFF1F3552),
+                fontWeight: FontWeight.w700,
               ),
             ),
             centerTitle: true,
             actions: <Widget>[
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Color(0xFF161823)),
+                icon: const Icon(Icons.more_vert, color: Color(0xFF243252)),
                 onSelected: (value) {
                   if (value == 'privacy') {
                     _openPrivacySettings();
@@ -732,10 +777,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           body: _isLoading && user == null
               ? const Center(child: CircularProgressIndicator())
-              : Form(
-                  key: _formKey,
-                  child: ListView(
-                    padding: const EdgeInsets.all(24.0),
+              : DecoratedBox(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: <Color>[
+                        Color(0xFFEAF2FF),
+                        Color(0xFFD9E8FF),
+                        Color(0xFFEFF5FF),
+                      ],
+                    ),
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
                     children: <Widget>[
                       // Обложка профиля
                       ClipRRect(
@@ -759,8 +816,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                         colors: <Color>[
-                                          Color(0xFF75878A),
-                                          Color(0xFF81D8D0),
+                                          Color(0xFF5F76FF),
+                                          Color(0xFF62A9FF),
+                                          Color(0xFF63C9B5),
                                         ],
                                       ),
                                     ),
@@ -773,8 +831,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                       colors: <Color>[
-                                        Color(0xFF75878A),
-                                        Color(0xFF81D8D0),
+                                        Color(0xFF5F76FF),
+                                        Color(0xFF62A9FF),
+                                        Color(0xFF63C9B5),
                                       ],
                                     ),
                                   ),
@@ -923,9 +982,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             icon: const Icon(Icons.camera_alt_outlined, size: 18),
                             label: const Text('Аватар'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF75878A),
+                              foregroundColor: const Color(0xFF5F76FF),
                               side: BorderSide(
-                                color: const Color(0xFF75878A).withValues(alpha: 0.25),
+                                color: const Color(0xFFBFD3FF),
                               ),
                             ),
                           ),
@@ -935,9 +994,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
                             label: const Text('Фото'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF75878A),
+                              foregroundColor: const Color(0xFF5F76FF),
                               side: BorderSide(
-                                color: const Color(0xFF75878A).withValues(alpha: 0.25),
+                                color: const Color(0xFFBFD3FF),
                               ),
                             ),
                           ),
@@ -947,9 +1006,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             icon: const Icon(Icons.wallpaper_outlined, size: 18),
                             label: const Text('Фон'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF75878A),
+                              foregroundColor: const Color(0xFF5F76FF),
                               side: BorderSide(
-                                color: const Color(0xFF75878A).withValues(alpha: 0.25),
+                                color: const Color(0xFFBFD3FF),
                               ),
                             ),
                           ),
@@ -962,25 +1021,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       // Имя
                       TextFormField(
                         controller: _nameController,
-                        decoration: InputDecoration(
-                          labelText: 'Имя',
-                          prefixIcon: const Icon(Icons.person_outline),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFE0E0E0),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF75878A),
-                              width: 2,
-                            ),
-                          ),
+                        decoration: _buildInputDecoration(
+                          label: 'Имя',
+                          icon: Icons.person_outline,
                         ),
                         validator: (String? value) {
                           if (value == null || value.isEmpty) {
@@ -995,25 +1038,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       TextFormField(
                         controller: _bioController,
                         maxLines: 4,
-                        decoration: InputDecoration(
-                          labelText: 'О себе',
+                        decoration: _buildInputDecoration(
+                          label: 'О себе',
+                          hint: 'Пара строк о вас, интересах и том, что вы ищете',
                           alignLabelWithHint: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFE0E0E0),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF75878A),
-                              width: 2,
-                            ),
-                          ),
                         ),
                         validator: (String? value) {
                           if (value == null || value.isEmpty) {
@@ -1041,7 +1069,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             icon: const Icon(Icons.add),
                             label: const Text('Добавить'),
                             style: TextButton.styleFrom(
-                              foregroundColor: const Color(0xFF75878A),
+                              foregroundColor: const Color(0xFF5F76FF),
                             ),
                           ),
                         ],
@@ -1052,13 +1080,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           'Добавьте ссылки на свои социальные сети',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Color(0xFF9E9E9E),
+                            color: Color(0xFF66739B),
                           ),
                         )
                       else
                         ..._socialLinks.entries.map(
                           (entry) => Card(
                             margin: const EdgeInsets.only(bottom: 8),
+                            color: const Color(0xFFF7FAFF),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                              side: const BorderSide(color: Color(0xFFE2E9FB)),
+                            ),
                             child: ListTile(
                               leading: _getSocialIcon(entry.key),
                               title: Text(entry.key),
@@ -1097,7 +1131,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         'Выберите минимум 3 интереса',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Color(0xFF9E9E9E),
+                          color: Color(0xFF66739B),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -1114,25 +1148,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             onSelected: (bool selected) =>
                                 _toggleInterest(interest),
                             selectedColor: const Color(
-                              0xFF75878A,
+                              0xFF5F76FF,
                             ).withValues(alpha: 0.2),
-                            checkmarkColor: const Color(0xFF75878A),
-                            backgroundColor: const Color(0xFFF5F5F5),
+                            checkmarkColor: const Color(0xFF5F76FF),
+                            backgroundColor: const Color(0xFFF5F8FF),
                             labelStyle: TextStyle(
                               color: isSelected
-                                  ? const Color(0xFF75878A)
-                                  : const Color(0xFF161823),
+                                  ? const Color(0xFF5F76FF)
+                                  : const Color(0xFF243252),
                               fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.normal,
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                               side: BorderSide(
                                 color: isSelected
-                                    ? const Color(0xFF75878A)
-                                    : Colors.transparent,
-                                width: 2,
+                                    ? const Color(0xFF5F76FF)
+                                    : const Color(0xFFE2E9FB),
+                                width: 1.4,
                               ),
                             ),
                           );
@@ -1144,7 +1178,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ElevatedButton(
                         onPressed: _isLoading ? null : _saveProfile,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF75878A),
+                          backgroundColor: const Color(0xFF5F76FF),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -1167,7 +1201,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 'Сохранить изменения',
                                 style: TextStyle(
                                   fontSize: 16,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                       ),
@@ -1228,10 +1262,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 32),
-                    ],
-                  ),
-                ),
-        );
+	                    ],
+	                  ),
+	                ),
+	              ),
+	        );
       },
     );
   }

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/constants/event_messages.dart';
 import '../../../data/services/event_service.dart';
 import 'event_event.dart';
 import 'event_state.dart';
@@ -131,9 +132,14 @@ class EventBloc extends Bloc<EventEvent, EventState> {
     EventParticipateRequested event,
     Emitter<EventState> emit,
   ) async {
-    emit(const EventParticipationUpdating());
-
     try {
+      final eventModel = await _eventService.getEventById(event.eventId);
+      if (_isEventFinished(eventModel.actualEndDateTime)) {
+        emit(const EventError(EventMessages.eventFinishedParticipationUnavailable));
+        return;
+      }
+
+      emit(const EventParticipationUpdating());
       await _eventService.participateInEvent(event.eventId, event.status);
       emit(const EventParticipationUpdated());
       // Перезагрузим данные события после участия
@@ -141,6 +147,10 @@ class EventBloc extends Bloc<EventEvent, EventState> {
     } catch (e) {
       emit(EventError('Не удалось участвовать в событии: $e'));
     }
+  }
+
+  bool _isEventFinished(DateTime actualEndDateTime) {
+    return !actualEndDateTime.toUtc().isAfter(DateTime.now().toUtc());
   }
 
   Future<void> _onEventCancelParticipationRequested(

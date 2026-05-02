@@ -10,6 +10,7 @@ import '../../widgets/common/custom_dropdown.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import 'login_screen.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Экран 1: Настройка базового профиля
 /// Фото, возраст, пол
@@ -159,6 +160,65 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
     return false;
   }
 
+  InputDecoration _buildInputDecoration({
+    required String label,
+    required String hint,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon, color: const Color(0xFF637DFF)),
+      filled: true,
+      fillColor: const Color(0xFFF5F8FF),
+      labelStyle: const TextStyle(color: Color(0xFF5D668C)),
+      hintStyle: const TextStyle(color: Color(0xFF97A0C4)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFE3E9FF)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFF637DFF), width: 1.8),
+      ),
+    );
+  }
+
+  Future<void> _continueWithoutPhoto() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await _userService.updateProfile(
+        age: int.tryParse(_ageController.text),
+        gender: _selectedGender,
+      );
+
+      if (!context.mounted) return;
+      setState(() => _isLoading = false);
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (BuildContext context) => const SetupInterestsScreen(),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      setState(() => _isLoading = false);
+      CustomNotification.show(
+        context,
+        'Ошибка при обновлении профиля: $e',
+        isError: true,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -168,276 +228,304 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
         await _handleBackPress();
       },
       child: Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF161823)),
-          onPressed: _handleBackPress,
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: _handleSkip,
-            child: const Text(
-              'Пропустить',
-              style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 16),
-            ),
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Color(0xFF273043)),
+            onPressed: _handleBackPress,
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                // Прогресс
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Container(
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF75878A),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE0E0E0),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE0E0E0),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                  ],
+          actions: <Widget>[
+            TextButton(
+              onPressed: _isLoading ? null : _handleSkip,
+              child: const Text(
+                'Пропустить',
+                style: TextStyle(
+                  color: Color(0xFF4D5A89),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(height: 32),
-
-                // Заголовок
-                const Text(
-                  'Расскажите о себе',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF161823),
-                  ),
+              ),
+            ),
+          ],
+        ),
+        body: Stack(
+          children: <Widget>[
+            Positioned(
+              top: -110,
+              right: -70,
+              child: Container(
+                width: 250,
+                height: 250,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF7E8CFF).withValues(alpha: 0.17),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Это поможет найти интересных людей',
-                  style: TextStyle(fontSize: 16, color: Color(0xFF9E9E9E)),
+              ),
+            ),
+            Positioned(
+              bottom: -130,
+              left: -90,
+              child: Container(
+                width: 280,
+                height: 280,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF63C9B6).withValues(alpha: 0.14),
                 ),
-                const SizedBox(height: 40),
-
-                // Фото профиля
-                Center(
-                  child: GestureDetector(
-                    onTap: _pickImage,
-                    child: Stack(
-                      children: <Widget>[
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFF75878A).withValues(alpha: 0.1),
-                            image: _profileImage != null
-                                ? DecorationImage(
-                                    image: FileImage(_profileImage!),
-                                    fit: BoxFit.cover,
-                                  )
-                                : null,
-                          ),
-                          child: _profileImage == null
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 60,
-                                  color: Color(0xFF75878A),
-                                )
-                              : null,
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF75878A),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Добавить фото (опционально)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
-                ),
-                const SizedBox(height: 40),
-
-                // Возраст
-                TextFormField(
-                  controller: _ageController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Возраст',
-                    hintText: 'Введите ваш возраст',
-                    prefixIcon: const Icon(Icons.cake_outlined),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF75878A),
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  validator: (String? value) {
-                    if (value == null || value.isEmpty) {
-                      return null; // Опционально
-                    }
-                    final int? age = int.tryParse(value);
-                    if (age == null || age < 18 || age > 100) {
-                      return 'Введите корректный возраст (18-100)';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Пол
-                CustomDropdown<String>(
-                  label: 'Пол',
-                  value: _selectedGender,
-                  prefixIcon: Icons.wc_outlined,
-                  items: _genders.map((String gender) {
-                    return DropdownMenuItem<String>(
-                      value: gender,
-                      child: Text(gender),
-                    );
-                  }).toList(),
-                  onChanged: (String? value) {
-                    setState(() {
-                      _selectedGender = value;
-                    });
-                  },
-                  useBottomSheet: true,
-                  showBottomSheetCount: false,
-                ),
-                const SizedBox(height: 40),
-
-                // Кнопка продолжить
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _handleNext,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF75878A),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
-                        )
-                      : const Text(
-                          'Продолжить',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Кнопка пропустить фото
-                TextButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () async {
-                          if (_formKey.currentState?.validate() ?? false) {
-                            setState(() => _isLoading = true);
-
-                            try {
-                              // Отправляем только возраст и пол, без фото
-                              await _userService.updateProfile(
-                                age: int.tryParse(_ageController.text),
-                                gender: _selectedGender,
-                              );
-
-                              if (!context.mounted) return;
-                              setState(() => _isLoading = false);
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (BuildContext context) =>
-                                      const SetupInterestsScreen(),
+              ),
+            ),
+            SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Container(
+                              height: 8,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: <Color>[
+                                    Color(0xFF637DFF),
+                                    Color(0xFF6AA8FF),
+                                  ],
                                 ),
-                              );
-                            } catch (e) {
-                              if (!context.mounted) return;
-                              setState(() => _isLoading = false);
-                              CustomNotification.show(
-                                context,
-                                'Ошибка при обновлении профиля: $e',
-                                isError: true,
-                              );
-                            }
-                          }
-                        },
-                  child: Text(
-                    'Пропустить добавление фото',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Container(
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDCE4FF),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Container(
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDCE4FF),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 26),
+                      const Text(
+                        'Расскажите о себе',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1A2441),
+                          height: 1.08,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Соберем базовый профиль, чтобы рекомендовать людей и события точнее.',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Color(0xFF5D668C),
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.82),
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(
+                            color: const Color(0xFFDCE4FF),
+                          ),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: const Color(0xFF5762A8).withValues(alpha: 0.09),
+                              blurRadius: 30,
+                              offset: const Offset(0, 12),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: <Widget>[
+                            GestureDetector(
+                              onTap: _isLoading ? null : _pickImage,
+                              child: Stack(
+                                children: <Widget>[
+                                  Container(
+                                    padding: const EdgeInsets.all(3),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: const LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: <Color>[
+                                          Color(0xFF6578FF),
+                                          Color(0xFF62C9B5),
+                                        ],
+                                      ),
+                                    ),
+                                    child: Container(
+                                      width: 118,
+                                      height: 118,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: const Color(0xFFEFF3FF),
+                                        image: _profileImage != null
+                                            ? DecorationImage(
+                                                image: FileImage(_profileImage!),
+                                                fit: BoxFit.cover,
+                                              )
+                                            : null,
+                                      ),
+                                      child: _profileImage == null
+                                          ? const Icon(
+                                              Icons.person_rounded,
+                                              size: 58,
+                                              color: Color(0xFF637DFF),
+                                            )
+                                          : null,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 4,
+                                    right: 4,
+                                    child: Container(
+                                      width: 34,
+                                      height: 34,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF637DFF),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.camera_alt_rounded,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              'Добавить фото (опционально)',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF67739A),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            TextFormField(
+                              controller: _ageController,
+                              keyboardType: TextInputType.number,
+                              decoration: _buildInputDecoration(
+                                label: 'Возраст',
+                                hint: 'Введите ваш возраст',
+                                icon: Icons.cake_outlined,
+                              ),
+                              validator: (String? value) {
+                                if (value == null || value.isEmpty) {
+                                  return null;
+                                }
+                                final int? age = int.tryParse(value);
+                                if (age == null || age < 18 || age > 100) {
+                                  return 'Введите корректный возраст (18-100)';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                            CustomDropdown<String>(
+                              label: 'Пол',
+                              value: _selectedGender,
+                              prefixIcon: Icons.wc_outlined,
+                              items: _genders.map((String gender) {
+                                return DropdownMenuItem<String>(
+                                  value: gender,
+                                  child: Text(gender),
+                                );
+                              }).toList(),
+                              onChanged: (String? value) {
+                                setState(() {
+                                  _selectedGender = value;
+                                });
+                              },
+                              useBottomSheet: true,
+                              showBottomSheetCount: false,
+                            ),
+                            const SizedBox(height: 22),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _isLoading ? null : _handleNext,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF5F76FF),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            Colors.white,
+                                          ),
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Продолжить',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            TextButton(
+                              onPressed: _isLoading ? null : _continueWithoutPhoto,
+                              child: const Text(
+                                'Продолжить без фото',
+                                style: TextStyle(
+                                  color: Color(0xFF606B94),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
-      ), // Scaffold
     ); // PopScope
   }
 }

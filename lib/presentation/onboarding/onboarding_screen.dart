@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 import '../auth/screens/login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -12,24 +13,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<OnboardingPage> _pages = <OnboardingPage>[
-    const OnboardingPage(
+  final List<OnboardingPageData> _pages = <OnboardingPageData>[
+    const OnboardingPageData(
       icon: Icons.celebration,
       title: 'Находите события',
       description: 'Открывайте для себя интересные мероприятия рядом с вами',
-      color: Color(0xFF75878A),
+      color: Color(0xFF0961F6),
     ),
-    const OnboardingPage(
+    const OnboardingPageData(
       icon: Icons.people,
       title: 'Встречайте людей',
       description: 'Знакомьтесь с единомышленниками и заводите новых друзей',
-      color: Color(0xFF81D8D0),
+      color: Color(0xFF2E8BFF),
     ),
-    const OnboardingPage(
+    const OnboardingPageData(
       icon: Icons.favorite,
       title: 'Создавайте воспоминания',
       description: 'Посещайте события и делитесь впечатлениями',
-      color: Color(0xFF81D8D0),
+      color: Color(0xFF5AA8FF),
     ),
   ];
 
@@ -66,83 +67,170 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isLastPage = _currentPage == _pages.length - 1;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
+      backgroundColor: AppColors.background,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[Color(0xFFEAF2FF), Color(0xFFD9E8FF), Color(0xFFEFF5FF)],
+          ),
+        ),
+        child: Stack(
           children: <Widget>[
-            // Кнопка пропустить
+            Positioned(
+              top: -90,
+              right: -60,
+              child: Container(
+                width: 250,
+                height: 250,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF0F6CF8).withValues(alpha: 0.16),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -100,
+              left: -70,
+              child: Container(
+                width: 290,
+                height: 290,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF8CB9FF).withValues(alpha: 0.18),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Column(
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: <Widget>[
+                        TextButton(
+                          onPressed: _navigateToLogin,
+                          child: const Text(
+                            'Пропустить',
+                            style: TextStyle(
+                              color: Color(0xFF4A6285),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: PageView.builder(
+                      controller: _pageController,
+                      onPageChanged: _onPageChanged,
+                      itemCount: _pages.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        return OnboardingPage(data: _pages[index]);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
             Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: _navigateToLogin,
-                child: const Text(
-                  'Пропустить',
-                  style: TextStyle(
-                    color: Color(0xFF9E9E9E),
-                    fontSize: 16,
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: const Color(0xFF184B94).withValues(alpha: 0.12),
+                      blurRadius: 22,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List<Widget>.generate(
+                        _pages.length,
+                        (int index) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOut,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: _currentPage == index ? 30 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: _currentPage == index
+                                ? AppColors.primary
+                                : const Color(0xFFD4DFEE),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: <Color>[Color(0xFF0961F6), Color(0xFF2E8BFF)],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: const Color(0xFF0A60F5).withValues(alpha: 0.34),
+                            blurRadius: 16,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: _nextPage,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 0,
+                          minimumSize: const Size(double.infinity, 0),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            Text(
+                              isLastPage ? 'Начать' : 'Далее',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.arrow_forward_rounded, size: 18),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            
-            // Страницы
-            Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: _onPageChanged,
-                itemCount: _pages.length,
-                itemBuilder: (BuildContext context, int index) {
-                  return _pages[index];
-                },
-              ),
-            ),
-            
-            // Индикаторы
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List<Widget>.generate(
-                _pages.length,
-                (int index) => Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: _currentPage == index ? 32 : 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: _currentPage == index
-                        ? const Color(0xFF75878A)
-                        : const Color(0xFFE0E0E0),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-            
-            // Кнопка далее
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: ElevatedButton(
-                onPressed: _nextPage,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF75878A),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                  minimumSize: const Size(double.infinity, 0),
-                ),
-                child: Text(
-                  _currentPage == _pages.length - 1 ? 'Начать' : 'Далее',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -150,58 +238,82 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-class OnboardingPage extends StatelessWidget {
-  const OnboardingPage({
+class OnboardingPageData {
+  const OnboardingPageData({
     required this.icon,
     required this.title,
     required this.description,
     required this.color,
-    super.key,
   });
 
   final IconData icon;
   final String title;
   final String description;
   final Color color;
+}
+
+class OnboardingPage extends StatelessWidget {
+  const OnboardingPage({required this.data, super.key});
+
+  final OnboardingPageData data;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(40.0),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 10),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           Container(
-            width: 140,
-            height: 140,
+            width: 204,
+            height: 204,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(42),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  data.color.withValues(alpha: 0.2),
+                  data.color.withValues(alpha: 0.08),
+                ],
+              ),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.8)),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: data.color.withValues(alpha: 0.22),
+                  blurRadius: 26,
+                  offset: const Offset(0, 12),
+                ),
+              ],
             ),
-            child: Icon(
-              icon,
-              size: 80,
-              color: color,
+            child: Center(
+              child: Icon(
+                data.icon,
+                size: 92,
+                color: data.color,
+              ),
             ),
           ),
-          const SizedBox(height: 48),
+          const SizedBox(height: 44),
           Text(
-            title,
+            data.title,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF161823),
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF223B5A),
+              height: 1.08,
             ),
           ),
           const SizedBox(height: 16),
           Text(
-            description,
+            data.description,
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 16,
-              color: Color(0xFF9E9E9E),
-              height: 1.5,
+              color: Color(0xFF5F7088),
+              height: 1.48,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
