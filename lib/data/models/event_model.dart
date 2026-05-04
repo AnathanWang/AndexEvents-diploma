@@ -33,6 +33,11 @@ class EventModel {
   final String? creatorPhotoUrl;
   final List<ParticipantModel> previewParticipants;
 
+  // Рейтинг события
+  final double averageRating;
+  final int ratingCount;
+  final int? myRating;
+
   DateTime get actualEndDateTime => endDateTime ?? dateTime.add(const Duration(hours: 3));
 
   const EventModel({
@@ -63,6 +68,9 @@ class EventModel {
     this.creatorName,
     this.creatorPhotoUrl,
     this.previewParticipants = const [],
+    this.averageRating = 0.0,
+    this.ratingCount = 0,
+    this.myRating,
   });
 
   static String? _normalizeMediaUrl(String? rawUrl) {
@@ -155,6 +163,18 @@ class EventModel {
       creatorName: createdBy?['displayName'] as String?,
       creatorPhotoUrl: _normalizeMediaUrl(createdBy?['photoUrl'] as String?),
       previewParticipants: previewParticipants,
+      averageRating: (() {
+        final stats = json['ratingStats'] as Map<String, dynamic>?;
+        return (stats?['averageRating'] as num?)?.toDouble() ?? 0.0;
+      })(),
+      ratingCount: (() {
+        final stats = json['ratingStats'] as Map<String, dynamic>?;
+        return (stats?['ratingCount'] as num?)?.toInt() ?? 0;
+      })(),
+      myRating: (() {
+        final stats = json['ratingStats'] as Map<String, dynamic>?;
+        return (stats?['myRating'] as num?)?.toInt();
+      })(),
     );
   }
 
@@ -212,6 +232,9 @@ class EventModel {
     String? creatorName,
     String? creatorPhotoUrl,
     List<ParticipantModel>? previewParticipants,
+    double? averageRating,
+    int? ratingCount,
+    int? myRating,
   }) {
     return EventModel(
       id: id ?? this.id,
@@ -241,6 +264,9 @@ class EventModel {
       creatorName: creatorName ?? this.creatorName,
       creatorPhotoUrl: creatorPhotoUrl ?? this.creatorPhotoUrl,
       previewParticipants: previewParticipants ?? this.previewParticipants,
+      averageRating: averageRating ?? this.averageRating,
+      ratingCount: ratingCount ?? this.ratingCount,
+      myRating: myRating ?? this.myRating,
     );
   }
 }

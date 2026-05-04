@@ -11,6 +11,7 @@ import '../../../data/services/user_service.dart';
 import '../../events/bloc/event_bloc.dart';
 import '../../events/screens/real_event_detail_screen.dart';
 import '../widgets/photo_gallery_sheet.dart';
+import '../../widgets/common/star_rating_widget.dart';
 import '../../../core/services/logger_service.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:andexevents/presentation/widgets/event_countdown_timer.dart';
@@ -855,6 +856,35 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             height: 1.45,
                           ),
                         ),
+                        if (_user?.averageRating != null && _user?.eventsCreatedCount != null) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8F9FF),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFE2E6FA)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                StarRatingWidget(
+                                  rating: _user!.averageRating!,
+                                  starSize: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${_user!.averageRating!.toStringAsFixed(1)} (Событий: ${_user!.eventsCreatedCount})',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1F3552),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

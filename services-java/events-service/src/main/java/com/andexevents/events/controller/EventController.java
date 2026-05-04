@@ -231,6 +231,69 @@ public class EventController {
         }
     }
 
+    // ── Rating endpoints ───────────────────────────────────────────────────
+
+    @PostMapping("/{id}/rating")
+    public ResponseEntity<ApiResponse<EventDtos.RatingDto>> rateEvent(
+            HttpServletRequest request,
+            @PathVariable String id,
+            @RequestBody RatingRequest body) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
+        }
+        try {
+            EventDtos.RatingDto dto = eventService.rateEvent(id, auth.userId(), body.rating(), body.comment());
+            return ResponseEntity.ok(ApiResponse.ok(dto));
+        } catch (EventService.NotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
+        } catch (EventService.ForbiddenException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(ex.getMessage()));
+        } catch (EventService.BadRequestException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/rating/stats")
+    public ResponseEntity<ApiResponse<EventDtos.EventRatingStatsDto>> getEventRatingStats(
+            HttpServletRequest request,
+            @PathVariable String id) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        String viewerUserId = auth == null ? null : auth.userId();
+        try {
+            EventDtos.EventRatingStatsDto stats = eventService.getEventRatingStats(id, viewerUserId);
+            return ResponseEntity.ok(ApiResponse.ok(stats));
+        } catch (EventService.NotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/rating/reviews")
+    public ResponseEntity<ApiResponse<List<EventDtos.RatingReviewDto>>> getEventRatingReviews(
+            HttpServletRequest request,
+            @PathVariable String id) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        String viewerUserId = auth == null ? null : auth.userId();
+        try {
+            List<EventDtos.RatingReviewDto> reviews = eventService.getEventReviews(id, viewerUserId);
+            return ResponseEntity.ok(ApiResponse.ok(reviews));
+        } catch (EventService.NotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
+        } catch (EventService.ForbiddenException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/user/{userId}/rating")
+    public ResponseEntity<ApiResponse<EventDtos.UserRatingDto>> getUserRating(@PathVariable String userId) {
+        try {
+            EventDtos.UserRatingDto dto = eventService.getUserRating(userId);
+            return ResponseEntity.ok(ApiResponse.ok(dto));
+        } catch (EventService.NotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
+        }
+    }
+
     public record CreateEventRequest(
             @NotBlank String title,
             @NotBlank String description,
@@ -264,5 +327,8 @@ public class EventController {
     }
 
     public record ParticipateRequest(String status) {
+    }
+
+    public record RatingRequest(int rating, String comment) {
     }
 }

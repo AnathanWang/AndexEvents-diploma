@@ -21,7 +21,7 @@ class EventCard extends StatelessWidget {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (BuildContext context) => EventDetailScreen(event: event),
+            builder: (BuildContext context) => EventDetailScreen(eventPreview: event),
           ),
         );
       },
@@ -49,12 +49,39 @@ class EventCard extends StatelessWidget {
                 color: event.badgeColor.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Text(
-                event.category,
-                style: TextStyle(
-                  color: event.badgeColor,
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    event.category,
+                    style: TextStyle(
+                      color: event.badgeColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (event.ratingCount > 0) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 4,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: event.badgeColor.withValues(alpha: 0.5),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.star, size: 14, color: Color(0xFFFACC15)),
+                    const SizedBox(width: 4),
+                    Text(
+                      event.averageRating.toStringAsFixed(1),
+                      style: TextStyle(
+                        color: event.badgeColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             const SizedBox(height: 14),

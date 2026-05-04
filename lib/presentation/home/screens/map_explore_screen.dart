@@ -145,7 +145,10 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                       child: RealEventDetailScreen(eventId: event.id),
                     ),
                   ),
-                );
+                ).then((_) {
+                  if (!mounted || !context.mounted) return;
+                  context.read<EventBloc>().add(const EventsLoadRequested());
+                });
               },
             ),
 
@@ -629,19 +632,25 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
               child: RealEventDetailScreen(eventId: event.id),
             ),
           ),
-        );
+        ).then((_) {
+          if (!mounted || !context.mounted) return;
+          context.read<EventBloc>().add(const EventsLoadRequested());
+        });
       },
       child: Container(
         height: 112,
         decoration: BoxDecoration(
-          color: AppColors.accent.withValues(alpha: 0.98),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.24), width: 1),
+          color: AppColors.surface.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.12),
+            width: 1.5,
+          ),
           boxShadow: <BoxShadow>[
             BoxShadow(
-              color: AppColors.dark.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 5),
+              color: AppColors.dark.withValues(alpha: 0.15),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
           ],
         ),
@@ -651,8 +660,8 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
             if (event.imageUrl != null)
               ClipRRect(
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
+                  topLeft: Radius.circular(22),
+                  bottomLeft: Radius.circular(22),
                 ),
                 child: CachedNetworkImage(
                   imageUrl: event.imageUrl!,
@@ -731,6 +740,23 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
 
                     Row(
                       children: <Widget>[
+                        if (event.ratingCount > 0) ...[
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 14,
+                            color: Colors.amber,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            event.averageRating.toStringAsFixed(1),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,

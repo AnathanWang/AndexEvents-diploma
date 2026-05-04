@@ -2,6 +2,7 @@ package com.andexevents.events.service;
 
 import com.andexevents.events.model.EventDtos;
 import com.andexevents.events.repo.EventRepository;
+import com.andexevents.events.repo.RatingRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -12,9 +13,11 @@ import java.util.Optional;
 @Service
 public class EventService {
     private final EventRepository repo;
+    private final RatingRepository ratingRepo;
 
-    public EventService(EventRepository repo) {
+    public EventService(EventRepository repo, RatingRepository ratingRepo) {
         this.repo = repo;
+        this.ratingRepo = ratingRepo;
     }
 
     public EventDtos.EventDto create(EventRepository.EventCreateParams p) {
@@ -96,10 +99,51 @@ public class EventService {
     }
 
     public List<EventDtos.ParticipantDto> getParticipants(String eventId) {
-        // Ensure event exists
         repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
         return repo.findParticipants(eventId);
     }
+
+    // ── Rating ─────────────────────────────────────────────────────────────
+
+    public EventDtos.RatingDto rateEvent(String eventId, String userId, int rating, String comment) {
+        repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+
+        if (!ratingRepo.isEventEnded(eventId)) {
+            throw new BadRequestException("Cannot rate an event that has not ended yet");
+        }
+        if (!ratingRepo.isParticipant(eventId, userId)) {
+            throw new ForbiddenException("Only participants can rate an event");
+        }
+        if (rating < 1 || rating > 5) {
+            throw new BadRequestException("Rating must be between 1 and 5");
+        }
+
+        return ratingRepo.upsertRating(eventId, userId, rating, comment);
+    }
+
+    public EventDtos.EventRatingStatsDto getEventRatingStats(String eventId, String viewerUserId) {
+        repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+        return ratingRepo.findStats(eventId, viewerUserId);
+    }
+
+    public EventDtos.UserRatingDto getUserRating(String userId) {
+        EventDtos.UserRatingDto dto = ratingRepo.findUserRating(userId);
+        if (dto == null) throw new NotFoundException("User has fewer than 3 approved events");
+        return dto;
+    }
+
+    public List<EventDtos.RatingReviewDto> getEventReviews(String eventId, String requesterUserId) {
+        var row = repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+        if (requesterUserId == null || requesterUserId.isBlank()) {
+            throw new ForbiddenException("Unauthorized");
+        }
+        if (!requesterUserId.equals(row.createdById())) {
+            throw new ForbiddenException("Only creator can view reviews");
+        }
+        return ratingRepo.findReviews(eventId);
+    }
+
+    // ── Private helpers ────────────────────────────────────────────────────
 
     private EventDtos.EventDto toDto(EventRepository.EventRow row, String viewerUserId, NearbyMeta nearby) {
         EventDtos.CreatorDto createdBy = nearby != null ? nearby.createdBy() : repo.findCreatorByEventId(row.id()).orElse(null);
@@ -107,7 +151,6 @@ public class EventService {
         long participantCount = nearby != null ? nearby.participantCount() : repo.countParticipants(row.id());
         List<EventDtos.ParticipantDto> participants = repo.findTopParticipants(row.id(), 5);
 
-        // Node (Prisma) includes `_count: { participants: n }` on non-nearby list/get.
         EventDtos.CountDto count = nearby != null ? null : new EventDtos.CountDto(participantCount);
 
         boolean isParticipating = false;
@@ -132,6 +175,8 @@ public class EventService {
         }
         normalizedImages = new ArrayList<>(new LinkedHashSet<>(normalizedImages));
 
+        EventDtos.EventRatingStatsDto ratingStats = ratingRepo.findStats(row.id(), viewerUserId);
+
         return new EventDtos.EventDto(
                 row.id(),
                 row.title(),
@@ -154,11 +199,12 @@ public class EventService {
                 row.createdById(),
                 createdBy,
                 participants,
-            count,
+                count,
                 participantCount,
                 isParticipating,
                 userParticipationStatus,
-                distance
+                distance,
+                ratingStats
         );
     }
 

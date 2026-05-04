@@ -14,6 +14,8 @@ class EventPreview {
     this.price,
     this.attendeeNames = const <String>[],
     this.expirationTime,
+    this.averageRating = 0.0,
+    this.ratingCount = 0,
   });
 
   final String id; // Добавлено поле id
@@ -28,6 +30,8 @@ class EventPreview {
   final int? price;
   final List<String> attendeeNames;
   final DateTime? expirationTime;
+  final double averageRating;
+  final int ratingCount;
   
   DateTime get actualExpirationTime => expirationTime ?? date.add(const Duration(hours: 3));
 

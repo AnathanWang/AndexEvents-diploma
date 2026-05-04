@@ -39,11 +39,17 @@ app:
         pattern: /api/events/*/participate
       - method: DELETE
         pattern: /api/events/*/participate
+      - method: POST
+        pattern: /api/events/*/rating
+      - method: GET
+        pattern: /api/events/*/rating/reviews
     optionalPaths:
       - method: GET
         pattern: /api/events
       - method: GET
         pattern: /api/events/*
+      - method: GET
+        pattern: /api/events/*/rating/stats
 
 springdoc:
   api-docs:

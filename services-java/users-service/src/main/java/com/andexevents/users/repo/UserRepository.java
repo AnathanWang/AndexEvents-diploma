@@ -192,6 +192,10 @@ public class UserRepository {
     }
 
     private UserDto mapUser(ResultSet rs) throws SQLException {
+        return mapUser(rs, null, null);
+    }
+
+    private UserDto mapUser(ResultSet rs, Double averageRating, Long eventsCreatedCount) throws SQLException {
         Array interestsArr = rs.getArray("interests");
         List<String> interests = interestsArr == null ? List.of() : Arrays.asList((String[]) interestsArr.getArray());
 
@@ -210,7 +214,7 @@ public class UserRepository {
 
         return new UserDto(
                 rs.getString("id"),
-            rs.getString("firebaseUid"),
+                rs.getString("firebaseUid"),
                 rs.getString("email"),
                 rs.getString("displayName"),
                 rs.getString("photoUrl"),
@@ -237,8 +241,49 @@ public class UserRepository {
                 rs.getString("fcmToken"),
                 (Boolean) rs.getObject("isOnboardingCompleted"),
                 toInstant(rs.getObject("createdAt")),
-                toInstant(rs.getObject("updatedAt"))
+                toInstant(rs.getObject("updatedAt")),
+                averageRating,
+                eventsCreatedCount
         );
+    }
+
+    /**
+     * Find a user by ID and enrich with organizer rating from events schema.
+     * averageRating/eventsCreatedCount are null if user has fewer than 3 approved events.
+     */
+    public Optional<UserDto> findByIdWithRating(String id) {
+        List<UserDto> rows = jdbcTemplate.query(
+                "SELECT u.*, " +
+                "  COUNT(DISTINCT e.id) AS events_count, " +
+                "  CASE WHEN COUNT(DISTINCT e.id) >= 3 THEN AVG(r.rating) ELSE NULL END AS avg_rating " +
+                "FROM users.\"User\" u " +
+                "LEFT JOIN events.\"Event\" e ON e.\"createdById\" = u.id AND e.status = 'APPROVED' " +
+                "LEFT JOIN events.\"EventRating\" r ON r.\"eventId\" = e.id " +
+                "WHERE u.id = ? " +
+                "GROUP BY u.id",
+                (rs, rn) -> {
+                    long eventsCount = rs.getLong("events_count");
+                    Object val = rs.getObject("avg_rating");
+                    Double avgRating = null;
+                    if (eventsCount >= 3 && val != null) {
+                        if (val instanceof java.math.BigDecimal bd) {
+                            avgRating = bd.doubleValue();
+                        } else if (val instanceof Double d) {
+                            avgRating = d;
+                        } else {
+                            avgRating = rs.getDouble("avg_rating");
+                        }
+                    }
+                    Long eventsCreatedCount = eventsCount > 0 ? eventsCount : null;
+                    try {
+                        return mapUser(rs, avgRating, eventsCreatedCount);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                },
+                id
+        );
+        return rows.stream().findFirst();
     }
 
     public void addPhoto(String userId, String photoUrl) {

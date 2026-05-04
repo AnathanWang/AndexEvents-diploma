@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:andexevents/data/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/theme/app_colors.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../../widgets/common/custom_notification.dart';
@@ -14,10 +15,10 @@ class EmailVerificationScreen extends StatefulWidget {
   final AuthService? authService;
 
   const EmailVerificationScreen({
-    Key? key,
+    super.key,
     required this.userEmail,
     this.authService,
-  }) : super(key: key);
+  });
 
   @override
   State<EmailVerificationScreen> createState() =>
@@ -283,138 +284,286 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Подтверждение email'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         automaticallyImplyLeading: false,
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Email icon
-              Icon(
-                Icons.email_outlined,
-                size: 80,
-                color: Theme.of(context).primaryColor,
-              ),
-              const SizedBox(height: 32),
-
-              // Title
-              const Text(
-                'Проверьте почту',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-
-              // Instructions
-              const Text(
-                'Мы отправили письмо с подтверждением на указанный адрес',
-                style: TextStyle(fontSize: 16),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-
-              // User email
-              Text(
-                _currentEmail,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).primaryColor,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-
-              // Status message
-              if (_message != null)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: _isError
-                        ? Colors.red.withOpacity(0.1)
-                        : Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _message!,
-                    style: TextStyle(
-                      color: _isError ? Colors.red : Colors.green,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              if (_message != null) const SizedBox(height: 16),
-
-              // Resend button
-              ElevatedButton(
-                onPressed: _cooldownSeconds > 0 || _isLoading
-                    ? null
-                    : _resendVerificationEmail,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : _cooldownSeconds > 0
-                        ? Text('Отправить повторно через $_cooldownSeconds сек')
-                        : const Text('Отправить письмо повторно'),
-              ),
-              const SizedBox(height: 8),
-
-              // Manual check button
-              OutlinedButton(
-                onPressed: _isLoading ? null : _manualCheckVerification,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text('Я подтвердил email'),
-              ),
-              const SizedBox(height: 12),
-
-              // Change email button
-              OutlinedButton(
-                onPressed: _isLoading ? null : _showChangeEmailDialog,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  foregroundColor: Theme.of(context).primaryColor,
-                ),
-                child: const Text('Ввели не по адресу? Сменить email'),
-              ),
-              const SizedBox(height: 24),
-
-              // Back to login button
-              TextButton(
-                onPressed: () {
-                  context.read<AuthBloc>().add(const AuthLogoutRequested());
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (context) => const LoginScreen(),
-                    ),
-                    (route) => false,
-                  );
-                },
-                style: TextButton.styleFrom(foregroundColor: Colors.grey),
-                child: const Text('Выйти в меню входа'),
-              ),
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[
+              Color(0xFFEAF2FF),
+              Color(0xFFD9E8FF),
+              Color(0xFFEFF5FF),
             ],
           ),
+        ),
+        child: Stack(
+          children: <Widget>[
+            Positioned(
+              top: -110,
+              right: -75,
+              child: Container(
+                width: 260,
+                height: 260,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF0F6CF8).withValues(alpha: 0.16),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -120,
+              left: -85,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF8CB9FF).withValues(alpha: 0.16),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 10),
+                    Center(
+                      child: Container(
+                        width: 92,
+                        height: 92,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(28),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: <Color>[
+                              Color(0xFF0961F6),
+                              Color(0xFF4B94FF),
+                            ],
+                          ),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: const Color(0xFF0F6CF8).withValues(alpha: 0.3),
+                              blurRadius: 18,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.mark_email_read_rounded,
+                          size: 46,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Подтверждение email',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1F3552),
+                        height: 1.08,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Мы отправили письмо с подтверждением на указанный адрес. Проверьте почту.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Color(0xFF5E6D86),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _currentEmail,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0961F6),
+                      ),
+                    ),
+                    const SizedBox(height: 26),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.88),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.85),
+                        ),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: const Color(0xFF184B94).withValues(alpha: 0.12),
+                            blurRadius: 22,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (_message != null) ...[
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: _isError
+                                    ? const Color(0xFFDE5A77).withValues(alpha: 0.1)
+                                    : const Color(0xFF34C759).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: _isError 
+                                      ? const Color(0xFFDE5A77).withValues(alpha: 0.3)
+                                      : const Color(0xFF34C759).withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+                                    color: _isError ? const Color(0xFFDE5A77) : const Color(0xFF34C759),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      _message!,
+                                      style: TextStyle(
+                                        color: _isError ? const Color(0xFFDE5A77) : const Color(0xFF2FA64D),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                          
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                                colors: <Color>[
+                                  Color(0xFF0961F6),
+                                  Color(0xFF2E8BFF),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: <BoxShadow>[
+                                BoxShadow(
+                                  color: const Color(0xFF0A60F5).withValues(alpha: 0.34),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _manualCheckVerification,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: _isLoading && _isCheckingVerification
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Я подтвердил email',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          
+                          OutlinedButton.icon(
+                            onPressed: _cooldownSeconds > 0 || _isLoading
+                                ? null
+                                : _resendVerificationEmail,
+                            icon: const Icon(Icons.outgoing_mail),
+                            label: _cooldownSeconds > 0
+                                ? Text('Отправить повторно через $_cooldownSeconds сек')
+                                : const Text('Отправить письмо повторно'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF1B2C4D),
+                              backgroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              side: const BorderSide(color: Color(0xFFD7E2F7)),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          
+                          OutlinedButton.icon(
+                            onPressed: _isLoading ? null : _showChangeEmailDialog,
+                            icon: const Icon(Icons.edit_rounded, size: 20),
+                            label: const Text('Сменить email'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF5E6D86),
+                              backgroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              side: const BorderSide(color: Color(0xFFD7E2F7)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    TextButton(
+                      onPressed: () {
+                        context.read<AuthBloc>().add(const AuthLogoutRequested());
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (context) => const LoginScreen(),
+                          ),
+                          (route) => false,
+                        );
+                      },
+                      child: const Text(
+                        'Выйти в меню входа',
+                        style: TextStyle(
+                          color: Color(0xFF6D7997),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -150,7 +150,7 @@ public class EventRepository {
     public NearbyQueryResult listNearbyApprovedEvents(double lat, double lon, int maxDistanceMeters, String category, int page, int limit) {
         int offset = (page - 1) * limit;
 
-        String categoryClause = (category == null || category.isBlank()) ? "" : " AND e.category = ? ";
+        String categoryClause = (category == null || category.isBlank()) ? "" : " AND e.category ILIKE ? ";
 
         String sql =
                 "SELECT e.*, " +
@@ -177,7 +177,7 @@ public class EventRepository {
         finalParams.add(lat);
         finalParams.add(maxDistanceMeters);
         if (!categoryClause.isEmpty()) {
-            finalParams.add(category);
+            finalParams.add("%" + category + "%");
         }
         finalParams.add(limit);
         finalParams.add(offset);
@@ -210,7 +210,7 @@ public class EventRepository {
         countParams.add(lon);
         countParams.add(lat);
         countParams.add(maxDistanceMeters);
-        if (!categoryClause.isEmpty()) countParams.add(category);
+        if (!categoryClause.isEmpty()) countParams.add("%" + category + "%");
 
         Integer total = jdbcTemplate.queryForObject(countSql, Integer.class, countParams.toArray());
         return new NearbyQueryResult(events, total == null ? 0 : total);

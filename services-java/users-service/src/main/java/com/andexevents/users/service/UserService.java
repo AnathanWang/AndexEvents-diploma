@@ -37,7 +37,7 @@ public class UserService {
     }
 
     public Optional<UserDto> getById(String userId) {
-        return userRepository.findById(userId);
+        return userRepository.findByIdWithRating(userId);
     }
 
     public List<UserDto> getAllUsersForModeration() {

@@ -569,7 +569,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                           )
                         : KeyedSubtree(
                             key: ValueKey<String>(
-                              'feed-list-${_filteredEvents.length}-${_selectedCity}',
+                              'feed-list-${_filteredEvents.length}-$_selectedCity',
                             ),
                             child: Column(
                               children: _filteredEvents
@@ -639,7 +639,11 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                 },
             transitionDuration: const Duration(milliseconds: 280),
           ),
-        );
+        ).then((_) {
+          if (context.mounted) {
+            context.read<EventBloc>().add(const EventsLoadRequested());
+          }
+        });
       },
       borderRadius: BorderRadius.circular(22),
       child: Container(
@@ -818,6 +822,27 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
+
+                  if (event.ratingCount > 0) ...[
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 16,
+                          color: Colors.amber,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${event.averageRating.toStringAsFixed(1)} (${event.ratingCount})',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.dark.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
 
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

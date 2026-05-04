@@ -26,6 +26,10 @@ class UserModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  // Рейтинг организатора (нулл если менее 3 созданных событий)
+  final double? averageRating;
+  final int? eventsCreatedCount;
+
   const UserModel({
     required this.id,
     required this.firebaseUid,
@@ -50,6 +54,8 @@ class UserModel {
     required this.isOnboardingCompleted,
     this.createdAt,
     this.updatedAt,
+    this.averageRating,
+    this.eventsCreatedCount,
   });
 
   static String? _normalizeMediaUrl(String? rawUrl) {
@@ -116,6 +122,8 @@ class UserModel {
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'] as String)
           : null,
+      averageRating: (json['averageRating'] as num?)?.toDouble(),
+      eventsCreatedCount: (json['eventsCreatedCount'] as num?)?.toInt(),
     );
   }
 
@@ -171,6 +179,8 @@ class UserModel {
     bool? isOnboardingCompleted,
     DateTime? createdAt,
     DateTime? updatedAt,
+    double? averageRating,
+    int? eventsCreatedCount,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -197,6 +207,8 @@ class UserModel {
           isOnboardingCompleted ?? this.isOnboardingCompleted,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      averageRating: averageRating ?? this.averageRating,
+      eventsCreatedCount: eventsCreatedCount ?? this.eventsCreatedCount,
     );
   }
 }

@@ -10,7 +10,21 @@ public class EventDtos {
     public record CountDto(long participants) {
     }
 
+    public record RatingDto(String id, String userId, String eventId,
+                            int rating, String comment, Instant createdAt) {
+    }
+
+    public record EventRatingStatsDto(double averageRating, long ratingCount, Integer myRating) {
+    }
+
+    public record UserRatingDto(double averageRating, long eventsCount) {
+    }
+
     public record UserPreviewDto(String id, String displayName, String photoUrl, String email) {
+    }
+
+    public record RatingReviewDto(String id, String userId, String eventId,
+                                  int rating, String comment, Instant createdAt, UserPreviewDto user) {
     }
 
     public record ParticipantDto(String id, String userId, String eventId, String status, Instant joinedAt, Instant updatedAt, UserPreviewDto user) {
@@ -42,7 +56,8 @@ public class EventDtos {
             long participantCount,
             boolean isParticipating,
             String userParticipationStatus,
-            Double distance
+            Double distance,
+            EventRatingStatsDto ratingStats
     ) {
     }
 

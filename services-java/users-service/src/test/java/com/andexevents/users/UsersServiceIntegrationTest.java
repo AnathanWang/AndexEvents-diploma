@@ -33,7 +33,8 @@ class UsersServiceIntegrationTest {
     )
             .withDatabaseName("test")
             .withUsername("postgres")
-            .withPassword("postgres");
+            .withPassword("postgres")
+            .withInitScript("init-db.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry r) {

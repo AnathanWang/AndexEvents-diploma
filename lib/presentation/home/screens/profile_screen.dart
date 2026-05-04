@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import '../../../core/services/logger_service.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -1407,29 +1408,45 @@ class _ProfileScreenState extends State<ProfileScreen>
     final title = event is EventModel ? event.title : (event as dynamic).title;
     final dateTime = event is EventModel ? event.dateTime : (event as dynamic).date;
     final id = event is EventModel ? event.id : (event as dynamic).id;
-    final actualExpiration = event is EventModel ? event.actualEndDateTime : (event as dynamic).actualExpirationTime;
+    final actualExpiration = event is EventModel 
+        ? event.actualEndDateTime 
+        : (event is EventPreview ? event.actualExpirationTime : null);
+    final averageRating = event is EventModel ? event.averageRating : (event as dynamic).averageRating ?? 0.0;
+    final ratingCount = event is EventModel ? event.ratingCount : (event as dynamic).ratingCount ?? 0;
+    final bool isFinished = actualExpiration != null &&
+      !actualExpiration.toUtc().isAfter(DateTime.now().toUtc());
     
     final hasImage = imageUrl != null && imageUrl.isNotEmpty;
     
     return GestureDetector(
       onTap: () async {
         if (isEditable) {
-           final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => BlocProvider(
-                create: (context) => EventBloc(),
-                child: EditEventScreen(event: event),
+          if (isFinished) {
+            if (context.mounted) {
+              CustomNotification.show(
+                context,
+                'Событие завершено, редактирование недоступно',
+              );
+            }
+          } else {
+            final result = await Navigator.push(
+              context,
+              CupertinoPageRoute(
+                builder: (_) => BlocProvider(
+                  create: (context) => EventBloc(),
+                  child: EditEventScreen(event: event),
+                ),
               ),
-            ),
-          );
-          if (result == true && context.mounted) {
-            context.read<ProfileBloc>().add(const ProfileLoadRequested());
+            );
+            if (result == true && context.mounted) {
+              context.read<ProfileBloc>().add(const ProfileLoadRequested());
+              return;
+            }
           }
         } else {
           await Navigator.push(
             context,
-            MaterialPageRoute(
+            CupertinoPageRoute(
               builder: (_) => BlocProvider(
                 create: (context) => EventBloc(),
                 child: RealEventDetailScreen(
@@ -1438,6 +1455,25 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
           );
+          // Всегда обновляем при возврате, так как могли поставить оценку
+          if (context.mounted) {
+            context.read<ProfileBloc>().add(const ProfileLoadRequested());
+          }
+          return;
+        }
+        await Navigator.push(
+          context,
+          CupertinoPageRoute(
+            builder: (_) => BlocProvider(
+              create: (context) => EventBloc(),
+              child: RealEventDetailScreen(
+                eventId: id,
+              ),
+            ),
+          ),
+        );
+        if (context.mounted) {
+          context.read<ProfileBloc>().add(const ProfileLoadRequested());
         }
       },
       child: Container(
@@ -1512,12 +1548,44 @@ class _ProfileScreenState extends State<ProfileScreen>
                             fontSize: 11,
                             color: AppColors.dark.withValues(alpha: 0.56),
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      if (ratingCount > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 11,
+                                color: Colors.amber,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                averageRating.toStringAsFixed(1),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.dark.withValues(alpha: 0.72),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 3),
-                  EventCountdownTimer(expirationTime: actualExpiration, isMinimal: true),
+                  if (actualExpiration != null)
+                    EventCountdownTimer(expirationTime: actualExpiration, isMinimal: true),
                 ],
               ),
             ),

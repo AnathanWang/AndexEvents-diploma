@@ -12,6 +12,7 @@
 /Users/nathankarma/Code/andexevents/services-java/events-service/src/main/java/com/andexevents/events/controller/HealthController.java
 /Users/nathankarma/Code/andexevents/services-java/events-service/src/main/java/com/andexevents/events/model/EventDtos.java
 /Users/nathankarma/Code/andexevents/services-java/events-service/src/main/java/com/andexevents/events/repo/EventRepository.java
+/Users/nathankarma/Code/andexevents/services-java/events-service/src/main/java/com/andexevents/events/repo/RatingRepository.java
 /Users/nathankarma/Code/andexevents/services-java/events-service/src/main/java/com/andexevents/events/repo/UserLookupRepository.java
 /Users/nathankarma/Code/andexevents/services-java/events-service/src/main/java/com/andexevents/events/repo/UserSanctionReadRepository.java
 /Users/nathankarma/Code/andexevents/services-java/events-service/src/main/java/com/andexevents/events/service/EventService.java

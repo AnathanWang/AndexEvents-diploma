@@ -1,9 +1,12 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/services/logger_service.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../widgets/common/custom_dropdown.dart';
 import '../../widgets/common/custom_notification.dart';
 import '../../../data/services/user_service.dart';
@@ -35,6 +38,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   TimeOfDay _selectedEndTime = TimeOfDay.now();
   String _selectedCategory = 'Спорт';
   bool _isOnline = false;
+  bool _isFree = true;
   bool _isPhotoUploading = false;
   bool _isLoading = false;
   
@@ -44,6 +48,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   double? _longitude;
 
   static const int _maxEventPhotos = 5;
+  static const double _pageHorizontalPadding = 16;
 
   final List<String> _categories = <String>[
     'Спорт',
@@ -107,10 +112,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       builder: (BuildContext context, Widget? child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF75878A),
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
               onPrimary: Colors.white,
-              surface: Colors.white,
+              surface: AppColors.surface,
+              onSurface: AppColors.dark,
             ),
           ),
           child: child!,
@@ -132,10 +138,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       builder: (BuildContext context, Widget? child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF75878A),
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
               onPrimary: Colors.white,
-              surface: Colors.white,
+              surface: AppColors.surface,
+              onSurface: AppColors.dark,
             ),
           ),
           child: child!,
@@ -159,10 +166,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       builder: (BuildContext context, Widget? child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF75878A),
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
               onPrimary: Colors.white,
-              surface: Colors.white,
+              surface: AppColors.surface,
+              onSurface: AppColors.dark,
             ),
           ),
           child: child!,
@@ -184,10 +192,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       builder: (BuildContext context, Widget? child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF75878A),
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
               onPrimary: Colors.white,
-              surface: Colors.white,
+              surface: AppColors.surface,
+              onSurface: AppColors.dark,
             ),
           ),
           child: child!,
@@ -320,6 +329,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       }
       
       final price = double.tryParse(_priceController.text) ?? 0.0;
+      final effectivePrice = _isFree ? 0.0 : price;
       
       // Для онлайн событий используем координаты по умолчанию (Москва)
       final lat = _isOnline ? 55.7558 : _latitude!;
@@ -336,13 +346,167 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           longitude: lng,
           dateTime: dateTime,
           endDateTime: endDateTime,
-          price: price,
+          price: effectivePrice,
           imageUrl: _uploadedPhotoUrls.isEmpty ? null : _uploadedPhotoUrls.first,
           imageUrls: _uploadedPhotoUrls.isEmpty ? null : _uploadedPhotoUrls,
           isOnline: _isOnline,
         ),
       );
     }
+  }
+
+  BoxDecoration _glassCardDecoration({
+    double radius = 24,
+    double alpha = 0.66,
+    double borderAlpha = 0.16,
+  }) {
+    return BoxDecoration(
+      color: AppColors.surface.withValues(alpha: alpha),
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(color: AppColors.primary.withValues(alpha: borderAlpha)),
+      boxShadow: <BoxShadow>[
+        BoxShadow(
+          color: AppColors.dark.withValues(alpha: 0.10),
+          blurRadius: 14,
+          offset: const Offset(0, 6),
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _softInputDecoration({
+    required String label,
+    String? hint,
+    IconData? icon,
+    Widget? suffix,
+    bool alignLabelWithHint = false,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      alignLabelWithHint: alignLabelWithHint,
+      labelStyle: TextStyle(
+        color: AppColors.dark.withValues(alpha: 0.62),
+        fontWeight: FontWeight.w600,
+      ),
+      hintStyle: TextStyle(
+        color: AppColors.dark.withValues(alpha: 0.46),
+        fontSize: 13,
+      ),
+      prefixIcon: icon == null
+          ? null
+          : Icon(icon, color: AppColors.primary.withValues(alpha: 0.88)),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: const Color(0xFFF4F8FF).withValues(alpha: 0.98),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: AppColors.primary.withValues(alpha: 0.28),
+          width: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGradientCta({
+    required VoidCallback? onPressed,
+    required Widget child,
+  }) {
+    final bool isDisabled = onPressed == null;
+    return Opacity(
+      opacity: isDisabled ? 0.64 : 1,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: <Color>[
+              AppColors.primary,
+              const Color(0xFF2E8BFF),
+            ],
+          ),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.26),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: child),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionHeader({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    Widget? trailing,
+  }) {
+    return Row(
+      children: <Widget>[
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.14),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 18, color: AppColors.primary.withValues(alpha: 0.92)),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.dark.withValues(alpha: 0.86),
+                  height: 1.1,
+                ),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.dark.withValues(alpha: 0.58),
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (trailing != null) trailing,
+      ],
+    );
   }
 
   @override
@@ -386,465 +550,821 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        extendBodyBehindAppBar: true,
         appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Color(0xFF161823)),
-          onPressed: () => Navigator.of(context).pop(),
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.close,
+              color: AppColors.dark.withValues(alpha: 0.78),
+            ),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: Text(
+            'Создать событие',
+            style: TextStyle(
+              color: AppColors.dark.withValues(alpha: 0.88),
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          centerTitle: true,
         ),
-        title: const Text(
-          'Создать событие',
-          style: TextStyle(
-            color: Color(0xFF161823),
-            fontWeight: FontWeight.w600,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[
+              AppColors.surface.withValues(alpha: 0.94),
+              AppColors.accent.withValues(alpha: 0.74),
+              AppColors.surface.withValues(alpha: 0.98),
+            ],
           ),
         ),
-        centerTitle: true,
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(24.0),
+        child: Stack(
           children: <Widget>[
-            // Фото события
-            GestureDetector(
-              onTap: _pickImages,
-              child: Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: _isPhotoUploading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _uploadedPhotoUrls.isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: CachedNetworkImage(
-                              imageUrl: _uploadedPhotoUrls.first,
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                              errorWidget: (context, url, error) => const Icon(Icons.error),
-                            ),
-                          )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: <Widget>[
-                                  const Icon(
-                                    Icons.add_photo_alternate_outlined,
-                                    size: 48,
-                                    color: Color(0xFF9E9E9E),
+            const Positioned(
+              left: -120,
+              top: -140,
+              child: _BlurCircle(
+                size: 260,
+                color: Color(0x330961F6),
+              ),
+            ),
+            Positioned(
+              right: -140,
+              bottom: -180,
+              child: _BlurCircle(
+                size: 320,
+                color: AppColors.accent,
+              ),
+            ),
+            SafeArea(
+              top: false,
+              child: Stack(
+                children: <Widget>[
+                  Positioned.fill(
+                    child: Form(
+                      key: _formKey,
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(
+                          _pageHorizontalPadding,
+                          16,
+                          _pageHorizontalPadding,
+                          128,
+                        ),
+                        children: <Widget>[
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: _glassCardDecoration(alpha: 0.58),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  'Быстро заполним основные детали — остальное можно уточнить позже.',
+                                  style: TextStyle(
+                                    color: AppColors.dark.withValues(alpha: 0.72),
+                                    fontSize: 13,
+                                    height: 1.25,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  const SizedBox(height: 8),
-                                  const Text(
-                                    'Добавить фото',
-                                    style: TextStyle(
-                                      color: Color(0xFF9E9E9E),
-                                      fontSize: 16,
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface.withValues(alpha: 0.62),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: AppColors.primary.withValues(alpha: 0.14),
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'Нажмите для загрузки',
+                                  padding: const EdgeInsets.all(4),
+                                  child: Row(
+                                    children: <Widget>[
+                                      Expanded(
+                                        child: _SegmentButton(
+                                          label: 'Оффлайн',
+                                          icon: Icons.place_rounded,
+                                          isSelected: !_isOnline,
+                                          onTap: () => setState(() => _isOnline = false),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: _SegmentButton(
+                                          label: 'Онлайн',
+                                          icon: Icons.videocam_rounded,
+                                          isSelected: _isOnline,
+                                          onTap: () => setState(() => _isOnline = true),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: _glassCardDecoration(),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                _sectionHeader(
+                                  icon: Icons.photo_camera_back_rounded,
+                                  title: 'Обложка',
+                                  subtitle: 'До $_maxEventPhotos фото • первое будет главным',
+                                  trailing: Text(
+                                    '${_uploadedPhotoUrls.length}/$_maxEventPhotos',
                                     style: TextStyle(
-                                      color: Color(0xFF75878A),
-                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.dark.withValues(alpha: 0.56),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                GestureDetector(
+                                  onTap: _pickImages,
+                                  child: Container(
+                                    height: 176,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface.withValues(alpha: 0.84),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: AppColors.primary.withValues(alpha: 0.14),
+                                      ),
+                                    ),
+                                    child: _isPhotoUploading
+                                        ? const Center(
+                                            child: SizedBox(
+                                              width: 24,
+                                              height: 24,
+                                              child: CircularProgressIndicator(strokeWidth: 2),
+                                            ),
+                                          )
+                                        : _uploadedPhotoUrls.isNotEmpty
+                                            ? ClipRRect(
+                                                borderRadius: BorderRadius.circular(16),
+                                                child: CachedNetworkImage(
+                                                  imageUrl: _uploadedPhotoUrls.first,
+                                                  fit: BoxFit.cover,
+                                                  placeholder: (context, url) => const Center(
+                                                    child: SizedBox(
+                                                      width: 24,
+                                                      height: 24,
+                                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                                    ),
+                                                  ),
+                                                  errorWidget: (context, url, error) => Icon(
+                                                    Icons.broken_image_rounded,
+                                                    size: 30,
+                                                    color: AppColors.dark.withValues(alpha: 0.44),
+                                                  ),
+                                                ),
+                                              )
+                                            : Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: <Widget>[
+                                                  Container(
+                                                    width: 56,
+                                                    height: 56,
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.primary.withValues(alpha: 0.12),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Icon(
+                                                      Icons.add_photo_alternate_outlined,
+                                                      size: 28,
+                                                      color: AppColors.primary.withValues(alpha: 0.92),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 10),
+                                                  Text(
+                                                    'Добавить фото',
+                                                    style: TextStyle(
+                                                      color: AppColors.dark.withValues(alpha: 0.78),
+                                                      fontSize: 15,
+                                                      fontWeight: FontWeight.w800,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    'Нажмите для загрузки',
+                                                    style: TextStyle(
+                                                      color: AppColors.dark.withValues(alpha: 0.56),
+                                                      fontSize: 13,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                  ),
+                                ),
+                                if (_uploadedPhotoUrls.isNotEmpty) ...<Widget>[
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    height: 86,
+                                    child: ListView.separated(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: _uploadedPhotoUrls.length,
+                                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                      itemBuilder: (context, index) {
+                                        final url = _uploadedPhotoUrls[index];
+                                        return Stack(
+                                          children: [
+                                            ClipRRect(
+                                              borderRadius: BorderRadius.circular(14),
+                                              child: CachedNetworkImage(
+                                                imageUrl: url,
+                                                width: 86,
+                                                height: 86,
+                                                fit: BoxFit.cover,
+                                                placeholder: (context, _) => Container(
+                                                  width: 86,
+                                                  height: 86,
+                                                  color: AppColors.surface.withValues(alpha: 0.84),
+                                                  child: const Center(
+                                                    child: SizedBox(
+                                                      width: 18,
+                                                      height: 18,
+                                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                                    ),
+                                                  ),
+                                                ),
+                                                errorWidget: (context, _, __) => Container(
+                                                  width: 86,
+                                                  height: 86,
+                                                  color: AppColors.surface.withValues(alpha: 0.84),
+                                                  child: Icon(
+                                                    Icons.broken_image_rounded,
+                                                    color: AppColors.dark.withValues(alpha: 0.42),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned(
+                                              top: 5,
+                                              right: 5,
+                                              child: GestureDetector(
+                                                onTap: () => _removeUploadedPhoto(index),
+                                                child: Container(
+                                                  width: 22,
+                                                  height: 22,
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.dark.withValues(alpha: 0.62),
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(
+                                                      color: Colors.white.withValues(alpha: 0.22),
+                                                    ),
+                                                  ),
+                                                  child: const Icon(Icons.close, size: 14, color: Colors.white),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
                                     ),
                                   ),
                                 ],
-                              ),
-              ),
-            ),
-            if (_uploadedPhotoUrls.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 88,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _uploadedPhotoUrls.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    final url = _uploadedPhotoUrls[index];
-                    return Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: CachedNetworkImage(
-                            imageUrl: url,
-                            width: 88,
-                            height: 88,
-                            fit: BoxFit.cover,
-                            placeholder: (context, _) => Container(
-                              width: 88,
-                              height: 88,
-                              color: Colors.grey.shade200,
-                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                            ),
-                            errorWidget: (context, _, __) => Container(
-                              width: 88,
-                              height: 88,
-                              color: Colors.grey.shade200,
-                              child: const Icon(Icons.broken_image),
+                              ],
                             ),
                           ),
-                        ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: GestureDetector(
-                            onTap: () => _removeUploadedPhoto(index),
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.close, size: 14, color: Colors.white),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
-            const SizedBox(height: 24),
-            
-            // Название события
-            TextFormField(
-              controller: _titleController,
-              decoration: InputDecoration(
-                labelText: 'Название события',
-                hintText: 'Например: Йога в парке',
-                prefixIcon: const Icon(Icons.event),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFF75878A), width: 2),
-                ),
-              ),
-              validator: (String? value) {
-                if (value == null || value.isEmpty) {
-                  return 'Введите название события';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            // Описание
-            TextFormField(
-              controller: _descriptionController,
-              maxLines: 4,
-              decoration: InputDecoration(
-                labelText: 'Описание',
-                hintText: 'Расскажите о вашем событии...',
-                alignLabelWithHint: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFF75878A), width: 2),
-                ),
-              ),
-              validator: (String? value) {
-                if (value == null || value.isEmpty) {
-                  return 'Введите описание события';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            // Категория
-            CustomDropdown<String>(
-              label: 'Категория',
-              value: _selectedCategory,
-              prefixIcon: Icons.category,
-              hint: 'Выберите категорию',
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-              useBottomSheet: true,
-              showBottomSheetCount: false,
-              items: _categories.map((String category) {
-                return DropdownMenuItem<String>(
-                  value: category,
-                  child: Text(
-                    category,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                );
-              }).toList(),
-              onChanged: (String? value) {
-                if (value != null) {
-                  setState(() {
-                    _selectedCategory = value;
-                  });
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            // Дата и время
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: InkWell(
-                    onTap: _selectDate,
-                    borderRadius: BorderRadius.circular(16),
-                    child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: 'Дата',
-                        prefixIcon: const Icon(Icons.calendar_today),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                        ),
-                      ),
-                      child: Text(
-                        DateFormat('dd.MM.yyyy').format(_selectedDate),
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: InkWell(
-                    onTap: _selectTime,
-                    borderRadius: BorderRadius.circular(16),
-                    child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: 'Время',
-                        prefixIcon: const Icon(Icons.access_time),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                        ),
-                      ),
-                      child: Text(
-                        _selectedTime.format(context),
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+                          const SizedBox(height: 12),
 
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFFE0E0E0)),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: CheckboxListTile(
-                title: const Text('Указать дату окончания'),
-                subtitle: const Text('Добавьте дату и время завершения события'),
-                value: _hasEndDateTime,
-                activeColor: const Color(0xFF75878A),
-                controlAffinity: ListTileControlAffinity.leading,
-                onChanged: (bool? value) {
-                  if (value == null) return;
-                  setState(() {
-                    _hasEndDateTime = value;
-                    if (_hasEndDateTime) {
-                      _selectedEndDate = _selectedDate;
-                      _selectedEndTime = _selectedTime;
-                    }
-                  });
-                },
-              ),
-            ),
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: _glassCardDecoration(),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                _sectionHeader(
+                                  icon: Icons.edit_rounded,
+                                  title: 'Описание события',
+                                  subtitle: 'Название, детали и категория',
+                                ),
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: _titleController,
+                                  decoration: _softInputDecoration(
+                                    label: 'Название',
+                                    hint: 'Например: Йога в парке',
+                                    icon: Icons.event_rounded,
+                                  ),
+                                  validator: (String? value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Введите название события';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: _descriptionController,
+                                  maxLines: 4,
+                                  decoration: _softInputDecoration(
+                                    label: 'Описание',
+                                    hint: 'Расскажите о формате, кому подойдёт, что взять с собой…',
+                                    icon: Icons.notes_rounded,
+                                    alignLabelWithHint: true,
+                                  ),
+                                  validator: (String? value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Введите описание события';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Категория',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.dark.withValues(alpha: 0.76),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: _categories.map((c) {
+                                    final selected = _selectedCategory == c;
+                                    return ChoiceChip(
+                                      label: Text(c),
+                                      selected: selected,
+                                      onSelected: (_) => setState(() => _selectedCategory = c),
+                                      selectedColor: AppColors.primary.withValues(alpha: 0.16),
+                                      backgroundColor: AppColors.surface.withValues(alpha: 0.62),
+                                      side: BorderSide(
+                                        color: selected
+                                            ? AppColors.primary.withValues(alpha: 0.34)
+                                            : AppColors.primary.withValues(alpha: 0.14),
+                                      ),
+                                      labelStyle: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: selected ? AppColors.primary : AppColors.dark.withValues(alpha: 0.78),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(999),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
 
-            if (_hasEndDateTime) ...<Widget>[
-              const SizedBox(height: 12),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: InkWell(
-                      onTap: _selectEndDate,
-                      borderRadius: BorderRadius.circular(16),
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          labelText: 'Дата окончания',
-                          prefixIcon: const Icon(Icons.event_available),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: _glassCardDecoration(),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                _sectionHeader(
+                                  icon: Icons.schedule_rounded,
+                                  title: 'Когда',
+                                  subtitle: 'Дата и время начала (и окончания при необходимости)',
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: _selectDate,
+                                        borderRadius: BorderRadius.circular(16),
+                                        child: InputDecorator(
+                                          decoration: _softInputDecoration(
+                                            label: 'Дата',
+                                            icon: Icons.calendar_today_rounded,
+                                          ),
+                                          child: Text(
+                                            DateFormat('dd.MM.yyyy').format(_selectedDate),
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.dark.withValues(alpha: 0.82),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: _selectTime,
+                                        borderRadius: BorderRadius.circular(16),
+                                        child: InputDecorator(
+                                          decoration: _softInputDecoration(
+                                            label: 'Время',
+                                            icon: Icons.access_time_rounded,
+                                          ),
+                                          child: Text(
+                                            _selectedTime.format(context),
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.dark.withValues(alpha: 0.82),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface.withValues(alpha: 0.50),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: AppColors.primary.withValues(alpha: 0.14),
+                                    ),
+                                  ),
+                                  child: SwitchListTile(
+                                    title: Text(
+                                      'Указать окончание',
+                                      style: TextStyle(
+                                        color: AppColors.dark.withValues(alpha: 0.84),
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      _hasEndDateTime
+                                          ? 'Будет показано время окончания'
+                                          : 'Полезно для расписания и поиска',
+                                      style: TextStyle(
+                                        color: AppColors.dark.withValues(alpha: 0.58),
+                                      ),
+                                    ),
+                                    value: _hasEndDateTime,
+                                    activeColor: AppColors.primary,
+                                    onChanged: (bool value) {
+                                      setState(() {
+                                        _hasEndDateTime = value;
+                                        if (_hasEndDateTime) {
+                                          _selectedEndDate = _selectedDate;
+                                          _selectedEndTime = _selectedTime;
+                                        }
+                                      });
+                                    },
+                                  ),
+                                ),
+                                AnimatedSize(
+                                  duration: const Duration(milliseconds: 220),
+                                  curve: Curves.easeOutCubic,
+                                  child: _hasEndDateTime
+                                      ? Padding(
+                                          padding: const EdgeInsets.only(top: 10),
+                                          child: Row(
+                                            children: <Widget>[
+                                              Expanded(
+                                                child: InkWell(
+                                                  onTap: _selectEndDate,
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  child: InputDecorator(
+                                                    decoration: _softInputDecoration(
+                                                      label: 'Дата окончания',
+                                                      icon: Icons.event_available_rounded,
+                                                    ),
+                                                    child: Text(
+                                                      DateFormat('dd.MM.yyyy').format(_selectedEndDate),
+                                                      style: TextStyle(
+                                                        fontSize: 15,
+                                                        fontWeight: FontWeight.w800,
+                                                        color: AppColors.dark.withValues(alpha: 0.82),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: InkWell(
+                                                  onTap: _selectEndTime,
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  child: InputDecorator(
+                                                    decoration: _softInputDecoration(
+                                                      label: 'Время окончания',
+                                                      icon: Icons.more_time_rounded,
+                                                    ),
+                                                    child: Text(
+                                                      _selectedEndTime.format(context),
+                                                      style: TextStyle(
+                                                        fontSize: 15,
+                                                        fontWeight: FontWeight.w800,
+                                                        color: AppColors.dark.withValues(alpha: 0.82),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
+                              ],
+                            ),
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          const SizedBox(height: 12),
+
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: _glassCardDecoration(),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                _sectionHeader(
+                                  icon: _isOnline ? Icons.videocam_rounded : Icons.place_rounded,
+                                  title: 'Где и стоимость',
+                                  subtitle: _isOnline ? 'Онлайн' : 'Локация и цена',
+                                ),
+                                const SizedBox(height: 12),
+                                if (!_isOnline) ...<Widget>[
+                                  TextFormField(
+                                    controller: _locationController,
+                                    readOnly: true,
+                                    decoration: _softInputDecoration(
+                                      label: 'Место проведения',
+                                      hint: 'Выберите место на карте',
+                                      icon: Icons.location_on_rounded,
+                                      suffix: IconButton(
+                                        icon: Icon(
+                                          Icons.map_rounded,
+                                          color: AppColors.primary.withValues(alpha: 0.86),
+                                        ),
+                                        onPressed: _openMapPicker,
+                                      ),
+                                    ),
+                                    onTap: _openMapPicker,
+                                    validator: (String? value) {
+                                      if (!_isOnline && (value == null || value.isEmpty)) {
+                                        return 'Укажите место проведения';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface.withValues(alpha: 0.62),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: AppColors.primary.withValues(alpha: 0.14),
+                                    ),
+                                  ),
+                                  padding: const EdgeInsets.all(4),
+                                  child: Row(
+                                    children: <Widget>[
+                                      Expanded(
+                                        child: _SegmentButton(
+                                          label: 'Бесплатно',
+                                          icon: Icons.volunteer_activism_rounded,
+                                          isSelected: _isFree,
+                                          onTap: () {
+                                            setState(() {
+                                              _isFree = true;
+                                              _priceController.text = '';
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: _SegmentButton(
+                                          label: 'Платно',
+                                          icon: Icons.payments_rounded,
+                                          isSelected: !_isFree,
+                                          onTap: () => setState(() => _isFree = false),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: _priceController,
+                                  enabled: !_isFree,
+                                  keyboardType: TextInputType.number,
+                                  decoration: _softInputDecoration(
+                                    label: 'Цена (₽)',
+                                    hint: _isFree ? 'Бесплатно' : 'Например: 500',
+                                    icon: Icons.payments_rounded,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          DateFormat('dd.MM.yyyy').format(_selectedEndDate),
-                          style: const TextStyle(fontSize: 16),
-                        ),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: InkWell(
-                      onTap: _selectEndTime,
-                      borderRadius: BorderRadius.circular(16),
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          labelText: 'Время окончания',
-                          prefixIcon: const Icon(Icons.more_time),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                          ),
-                        ),
-                        child: Text(
-                          _selectedEndTime.format(context),
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ),
+                  Positioned(
+                    left: _pageHorizontalPadding,
+                    right: _pageHorizontalPadding,
+                    bottom: 12,
+                    child: _BottomActionBar(
+                      onPressed: _isLoading ? null : _handleCreateEvent,
+                      isLoading: _isLoading,
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : const Text(
+                              'Создать событие',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
                   ),
                 ],
               ),
-            ],
-            const SizedBox(height: 16),
-            
-            // Переключатель онлайн/офлайн
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFFE0E0E0)),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: SwitchListTile(
-                title: const Text('Онлайн событие'),
-                subtitle: Text(_isOnline ? 'Будет проходить онлайн' : 'Будет проходить оффлайн'),
-                value: _isOnline,
-                activeThumbColor: const Color(0xFF75878A),
-                onChanged: (bool value) {
-                  setState(() {
-                    _isOnline = value;
-                  });
-                },
-              ),
             ),
-            const SizedBox(height: 16),
-            
-            // Место проведения
-            if (!_isOnline)
-              TextFormField(
-                controller: _locationController,
-                readOnly: true,
-                decoration: InputDecoration(
-                  labelText: 'Место проведения',
-                  hintText: 'Выберите место на карте',
-                  prefixIcon: const Icon(Icons.location_on),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.map),
-                    onPressed: _openMapPicker,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF75878A), width: 2),
-                  ),
-                ),
-                onTap: _openMapPicker,
-                validator: (String? value) {
-                  if (!_isOnline && (value == null || value.isEmpty)) {
-                    return 'Укажите место проведения';
-                  }
-                  return null;
-                },
-              ),
-            if (!_isOnline) const SizedBox(height: 16),
-            
-            // Цена
-            TextFormField(
-              controller: _priceController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Цена (₽)',
-                hintText: 'Оставьте пустым для бесплатного',
-                prefixIcon: const Icon(Icons.payments),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFF75878A), width: 2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-            
-            // Кнопка создания
-            ElevatedButton(
-              onPressed: _isLoading ? null : _handleCreateEvent,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF75878A),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 0,
-              ),
-              child: _isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Text(
-                      'Создать событие',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-            ),
-            const SizedBox(height: 16),
           ],
         ),
       ),
+      ),
+    );
+  }
+}
+
+class _BlurCircle extends StatelessWidget {
+  const _BlurCircle({
+    required this.size,
+    required this.color,
+  });
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipOval(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+        child: Container(
+          width: size,
+          height: size,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class _SegmentButton extends StatelessWidget {
+  const _SegmentButton({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    this.icon,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            gradient: isSelected
+                ? LinearGradient(
+                    colors: <Color>[
+                      AppColors.primary.withValues(alpha: 0.16),
+                      AppColors.primary.withValues(alpha: 0.10),
+                    ],
+                  )
+                : null,
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.34)
+                  : AppColors.primary.withValues(alpha: 0.12),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 16,
+                  color: isSelected
+                      ? AppColors.primary.withValues(alpha: 0.92)
+                      : AppColors.dark.withValues(alpha: 0.64),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.dark.withValues(alpha: 0.72),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomActionBar extends StatelessWidget {
+  const _BottomActionBar({
+    required this.onPressed,
+    required this.isLoading,
+    required this.child,
+  });
+
+  final VoidCallback? onPressed;
+  final bool isLoading;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: 0.62),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.12),
+            ),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: AppColors.dark.withValues(alpha: 0.10),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Opacity(
+            opacity: onPressed == null ? 0.64 : 1,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: <Color>[
+                    AppColors.primary,
+                    const Color(0xFF2E8BFF),
+                  ],
+                ),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.22),
+                    blurRadius: 14,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onPressed,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Center(child: child),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

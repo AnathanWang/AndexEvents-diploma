@@ -181,7 +181,12 @@ class AndexApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: BlocBuilder<AuthBloc, AuthState>(
+      home: BlocConsumer<AuthBloc, AuthState>(
+        listener: (context, state) {
+          if (state is AuthUnauthenticated) {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          }
+        },
         builder: (context, authState) {
           LoggerService.debug('🟢 [AndexApp] Auth state: ${authState.runtimeType}');
           return _buildHome(authState);
