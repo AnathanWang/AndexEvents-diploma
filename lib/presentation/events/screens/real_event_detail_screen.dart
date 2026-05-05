@@ -23,6 +23,7 @@ import '../../../data/services/rating_service.dart';
 import '../../../data/services/user_service.dart';
 import '../../../core/http/api_client.dart';
 import '../../../data/models/event_review_model.dart';
+import '../../widgets/report_dialog.dart';
 
 const Color _secondaryTextColor = Color(0xFF5E6D86);
 
@@ -74,6 +75,26 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
         _currentUserId = null;
       });
     }
+  }
+
+  void _openReportDialog(EventModel event) {
+    final reporterId = _currentUserId?.trim();
+    if (reporterId == null || reporterId.isEmpty) {
+      CustomNotification.show(
+        context,
+        'Чтобы отправить жалобу, нужно войти в аккаунт.',
+        isError: true,
+      );
+      return;
+    }
+
+    showDialog<void>(
+      context: context,
+      builder: (_) => ReportDialog(
+        reporterId: reporterId,
+        targetEventId: event.id,
+      ),
+    );
   }
 
   void _toggleFavorite(EventModel event) {
@@ -210,6 +231,13 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
       },
       listener: (context, state) {
         if (state is EventDetailLoaded) {
+          if (mounted) {
+            setState(() {
+              _cachedEvent = state.event;
+            });
+          } else {
+            _cachedEvent = state.event;
+          }
           _isGoingNotifier.value = state.event.isParticipating;
           _isFavoriteNotifier.value =
               state.event.userParticipationStatus == 'INTERESTED';
@@ -368,6 +396,24 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
             ),
             actions: [
               _buildFavoriteAction(event),
+              Container(
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.86),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF365892).withValues(alpha: 0.14),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.flag_rounded, color: Color(0xFF243252)),
+                  onPressed: () => _openReportDialog(event),
+                ),
+              ),
               Container(
                 margin: const EdgeInsets.all(8),
                 decoration: BoxDecoration(

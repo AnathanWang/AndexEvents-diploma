@@ -33,7 +33,7 @@ public class ReportRepository {
                 """
                 INSERT INTO users."Report" ("id", "reporterId", "targetUserId", "targetEventId",
                     "reason", "details", "status", "createdAt", "updatedAt")
-                VALUES (?, ?, ?, ?, ?::"ReportReason", ?, 'PENDING', ?, ?)
+                VALUES (?, ?, ?, ?, ?::users."ReportReason", ?, 'PENDING'::users."ReportStatus", ?, ?)
                 """,
                 id, reporterId, targetUserId, targetEventId,
                 reason.name(), details,

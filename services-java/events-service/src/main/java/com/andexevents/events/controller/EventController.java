@@ -6,6 +6,8 @@ import com.andexevents.events.auth.AuthFilter;
 import com.andexevents.events.model.EventDtos;
 import com.andexevents.events.repo.EventRepository;
 import com.andexevents.events.service.EventService;
+import com.andexevents.events.service.EventModerationGuardService;
+import com.andexevents.events.service.ModerationAccessService;
 import com.andexevents.events.service.UserSanctionGuardService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotBlank;
@@ -23,10 +25,16 @@ import java.util.Map;
 public class EventController {
     private final EventService eventService;
     private final UserSanctionGuardService userSanctionGuardService;
+    private final ModerationAccessService moderationAccessService;
 
-    public EventController(EventService eventService, UserSanctionGuardService userSanctionGuardService) {
+    public EventController(
+            EventService eventService,
+            UserSanctionGuardService userSanctionGuardService,
+            ModerationAccessService moderationAccessService
+    ) {
         this.eventService = eventService;
         this.userSanctionGuardService = userSanctionGuardService;
+        this.moderationAccessService = moderationAccessService;
     }
 
     @PostMapping
@@ -113,6 +121,19 @@ public class EventController {
         return ResponseEntity.ok(ApiResponse.ok(Map.of("events", events)));
     }
 
+    @GetMapping("/moderation/all")
+    public ResponseEntity<ApiResponse<Object>> listAllEventsForModeration(HttpServletRequest request) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
+        }
+        if (!moderationAccessService.canModerate(auth.userId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Недостаточно прав"));
+        }
+        List<EventDtos.EventDto> events = eventService.listAllApprovedForModeration(auth.userId());
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("events", events)));
+    }
+
     @GetMapping("/user/{userId}")
     public ApiResponse<List<EventDtos.EventDto>> getUserEvents(@PathVariable String userId) {
         return ApiResponse.ok(eventService.listUserEvents(userId));
@@ -177,7 +198,17 @@ public class EventController {
         }
 
         try {
-            boolean deleted = eventService.delete(id, auth.userId());
+            boolean deleted;
+            try {
+                deleted = eventService.delete(id, auth.userId());
+            } catch (EventService.ForbiddenException ex) {
+                // allow moderators/admins to delete events (moderation action)
+                if (!moderationAccessService.canModerate(auth.userId())) {
+                    throw ex;
+                }
+
+                deleted = eventService.deleteAsModerator(id);
+            }
             if (!deleted) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Event not found"));
             }
@@ -206,6 +237,8 @@ public class EventController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
         } catch (EventService.BadRequestException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage()));
+        } catch (EventModerationGuardService.ForbiddenException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(ex.getMessage()));
         }
     }
 

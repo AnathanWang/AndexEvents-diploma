@@ -2,9 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/event_model.dart';
 import '../../../data/models/report_model.dart';
+import '../../../data/models/event_sanction_model.dart';
 import '../../../data/services/event_service.dart';
+import '../../../data/services/event_sanction_service.dart';
 import '../../../data/services/report_service.dart';
 import 'package:intl/intl.dart';
+import '../../../core/theme/app_colors.dart';
+import '../widgets/admin_card.dart';
+import '../widgets/admin_pill.dart';
+import '../widgets/admin_screen_scaffold.dart';
+import '../widgets/admin_state_view.dart';
+import 'package:flutter/services.dart';
 
 class EventModerationScreen extends StatefulWidget {
   const EventModerationScreen({super.key});
@@ -16,11 +24,14 @@ class EventModerationScreen extends StatefulWidget {
 class _EventModerationScreenState extends State<EventModerationScreen> {
   final ReportService _reportService = ReportService();
   final EventService _eventService = EventService();
+  final EventSanctionService _eventSanctionService = EventSanctionService();
 
   bool _isLoading = true;
   String? _loadError;
   final Set<String> _actionInProgress = <String>{};
   List<_EventModerationItem> _items = <_EventModerationItem>[];
+  String _query = '';
+  bool _pendingOnly = false;
 
   @override
   void initState() {
@@ -36,7 +47,7 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
 
     try {
       final results = await Future.wait<dynamic>([
-        _eventService.getEvents(limit: 500),
+        _eventService.getEventsForModeration(limit: 500),
         _reportService.getEventReports(),
       ]);
 
@@ -209,14 +220,17 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                   width: 44,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFD9DCEF),
+                    color: AppColors.dark.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    const Icon(Icons.flag_rounded, color: Color(0xFFFF8E53)),
+                    Icon(
+                      Icons.flag_rounded,
+                      color: AppColors.primary.withValues(alpha: 0.9),
+                    ),
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
@@ -224,17 +238,14 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF161823),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ),
-                    Text(
-                      '${item.pendingReports} pending',
-                      style: const TextStyle(
-                        color: Color(0xFF75878A),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    AdminPill(
+                      label: '${item.pendingReports} pending',
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.10),
+                      foregroundColor: AppColors.primary,
                     ),
                   ],
                 ),
@@ -244,7 +255,7 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                     padding: EdgeInsets.symmetric(vertical: 24),
                     child: Text(
                       'По событию пока нет жалоб',
-                      style: TextStyle(color: Color(0xFF7B82AD)),
+                      style: TextStyle(color: AppColors.textPrimary),
                     ),
                   )
                 else
@@ -256,13 +267,12 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                       itemBuilder: (context, index) {
                         final report = reports[index];
                         final isPending = report.status.toUpperCase() == 'PENDING';
-                        return Container(
+                        final statusColor = isPending
+                            ? const Color(0xFFD16A3A)
+                            : const Color(0xFF2E9E71);
+
+                        return AdminCard(
                           padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8F9FF),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFCDEBE7)),
-                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -273,7 +283,7 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                                       report.reason.displayName,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w700,
-                                        color: Color(0xFF161823),
+                                        color: AppColors.textPrimary,
                                       ),
                                     ),
                                   ),
@@ -290,9 +300,7 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
-                                        color: isPending
-                                            ? const Color(0xFFD16A3A)
-                                            : const Color(0xFF2E9E71),
+                                        color: statusColor,
                                       ),
                                     ),
                                   ),
@@ -301,36 +309,47 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                               const SizedBox(height: 6),
                               Text(
                                 DateFormat('dd.MM.yyyy HH:mm', 'ru').format(report.createdAt),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
-                                  color: Color(0xFF75878A),
+                                  color: AppColors.dark.withValues(alpha: 0.60),
                                 ),
                               ),
                               const SizedBox(height: 6),
                               Text(
                                 'От: ${report.reporterId}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
-                                  color: Color(0xFF8C95BC),
+                                  color: AppColors.dark.withValues(alpha: 0.60),
                                 ),
                               ),
                               if ((report.details ?? '').trim().isNotEmpty) ...[
                                 const SizedBox(height: 6),
                                 Text(
                                   report.details!.trim(),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
-                                    color: Color(0xFF4D5687),
+                                    color: AppColors.dark.withValues(alpha: 0.78),
                                     height: 1.35,
                                   ),
                                 ),
                               ],
                               const SizedBox(height: 6),
-                              Text(
-                                'ID: ${report.id}',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Color(0xFF9AA2C8),
+                              GestureDetector(
+                                onLongPress: () async {
+                                  await Clipboard.setData(
+                                    ClipboardData(text: report.id),
+                                  );
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('ID жалобы скопирован')),
+                                  );
+                                },
+                                child: Text(
+                                  'ID: ${report.id}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.dark.withValues(alpha: 0.45),
+                                  ),
                                 ),
                               ),
                               if (isPending) ...[
@@ -345,8 +364,14 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
                                     icon: const Icon(Icons.close_rounded, size: 16),
                                     label: const Text('Отклонить эту жалобу'),
                                     style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFF9E9E9E),
-                                      side: const BorderSide(color: Color(0xFFD6D9EB)),
+                                      foregroundColor:
+                                          AppColors.dark.withValues(alpha: 0.70),
+                                      side: BorderSide(
+                                        color: AppColors.primary.withValues(alpha: 0.14),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -360,6 +385,24 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showEventSanctionsSheet(_EventModerationItem item) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (context) {
+        return _EventSanctionsSheet(
+          item: item,
+          service: _eventSanctionService,
+          onChanged: _loadModerationQueue,
         );
       },
     );
@@ -397,204 +440,337 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
     }
   }
 
+  bool _matchesQuery(_EventModerationItem item, String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return true;
+
+    final event = item.event;
+    if (event.title.toLowerCase().contains(q)) return true;
+    if (event.id.toLowerCase().contains(q)) return true;
+    if (event.location.toLowerCase().contains(q)) return true;
+
+    for (final r in item.reports) {
+      if (r.id.toLowerCase().contains(q)) return true;
+      if (r.reporterId.toLowerCase().contains(q)) return true;
+      if ((r.details ?? '').toLowerCase().contains(q)) return true;
+    }
+
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        title: const Text('Модерация событий'),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF161823),
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: _isLoading ? null : _loadModerationQueue,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
+    final filtered = _items
+        .where((i) => !_pendingOnly || i.pendingReports > 0)
+        .where((i) => _matchesQuery(i, _query))
+        .toList();
+
+    return AdminScreenScaffold(
+      title: 'Модерация событий',
+      actions: [
+        IconButton(
+          onPressed: _isLoading ? null : _loadModerationQueue,
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+      ],
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const AdminStateView.loading()
           : _loadError != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.lock_outline,
-                      size: 52,
-                      color: Color(0xFF9E9E9E),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _loadError!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFF6B6B6B),
-                        fontSize: 15,
+              ? AdminStateView.error(
+                  title: 'Не удалось загрузить очередь',
+                  message: _loadError,
+                  actionLabel: 'Повторить',
+                  onAction: _loadModerationQueue,
+                )
+              : _items.isEmpty
+                  ? const AdminStateView.empty(
+                      title: 'События не найдены',
+                      message: 'Если появятся жалобы, они будут отображаться здесь.',
+                      icon: Icons.event_busy_rounded,
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _loadModerationQueue,
+                      color: AppColors.primary,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        itemCount: filtered.length + 1,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          if (index == 0) {
+                            return AdminCard(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  TextField(
+                                    onChanged: (v) => setState(() => _query = v),
+                                    decoration: InputDecoration(
+                                      hintText:
+                                          'Поиск: title / eventId / reporterId / reportId',
+                                      prefixIcon:
+                                          const Icon(Icons.search_rounded),
+                                      filled: true,
+                                      fillColor: Colors.white.withValues(alpha: 0.72),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide(
+                                          color: AppColors.primary.withValues(alpha: 0.12),
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide(
+                                          color: AppColors.primary.withValues(alpha: 0.12),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide(
+                                          color: AppColors.primary.withValues(alpha: 0.35),
+                                        ),
+                                      ),
+                                      isDense: true,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _StatusChip(
+                                          label: 'Все',
+                                          selected: !_pendingOnly,
+                                          onTap: () => setState(
+                                            () => _pendingOnly = false,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: _StatusChip(
+                                          label: 'Только pending',
+                                          selected: _pendingOnly,
+                                          onTap: () => setState(
+                                            () => _pendingOnly = true,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Показано: ${filtered.length} из ${_items.length}',
+                                    style: TextStyle(
+                                      color: AppColors.dark.withValues(alpha: 0.58),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          final item = filtered[index - 1];
+                          final event = item.event;
+                          final inProgress =
+                              _actionInProgress.contains(event.id);
+                          final lastReport =
+                              item.reports.isEmpty ? null : item.reports.first;
+                          final totalReports = item.reports.length;
+                          final lastReportDate = lastReport == null
+                              ? null
+                              : DateFormat('dd.MM.yyyy HH:mm', 'ru')
+                                  .format(lastReport.createdAt);
+
+                          return AdminCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.report_problem_rounded,
+                                      color: AppColors.primary.withValues(alpha: 0.9),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        event.title,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.textPrimary,
+                                          height: 1.2,
+                                        ),
+                                      ),
+                                    ),
+                                    AdminPill(
+                                      label: 'Жалоб: ${item.pendingReports}',
+                                      backgroundColor: item.pendingReports > 0
+                                          ? const Color(0xFFFFEFE8)
+                                          : const Color(0xFFEAF8F2),
+                                      foregroundColor: item.pendingReports > 0
+                                          ? const Color(0xFFD16A3A)
+                                          : const Color(0xFF2E9E71),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  lastReport != null
+                                      ? 'Последняя жалоба: ${lastReport.reason.displayName}'
+                                      : 'Жалоб на событие нет',
+                                  style: TextStyle(
+                                    color: AppColors.dark.withValues(alpha: 0.72),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Всего: $totalReports • Последняя: ${lastReportDate ?? '-'}',
+                                  style: TextStyle(
+                                    color: AppColors.dark.withValues(alpha: 0.55),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                if (lastReport?.details?.trim().isNotEmpty ==
+                                    true) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    lastReport!.details!.trim(),
+                                    style: TextStyle(
+                                      color: AppColors.dark.withValues(alpha: 0.70),
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Локация: ${event.location}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: AppColors.dark.withValues(alpha: 0.55),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: () =>
+                                            _showEventReportsDialog(item),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor:
+                                              AppColors.dark.withValues(alpha: 0.72),
+                                          side: BorderSide(
+                                            color: AppColors.primary.withValues(alpha: 0.14),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Смотреть жалобы',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: () =>
+                                            _showEventSanctionsSheet(item),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor:
+                                              AppColors.dark.withValues(alpha: 0.72),
+                                          side: BorderSide(
+                                            color: AppColors.primary.withValues(alpha: 0.14),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Санкции',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: inProgress
+                                            ? null
+                                            : () => _rejectEvent(item),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              const Color(0xFFFF6B6B),
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                          ),
+                                          elevation: 0,
+                                        ),
+                                        child: const Text(
+                                          'Удалить событие',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                OutlinedButton(
+                                  onPressed: inProgress
+                                      ? null
+                                      : () => _dismissPendingReports(item),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor:
+                                        AppColors.dark.withValues(alpha: 0.72),
+                                    side: BorderSide(
+                                      color: AppColors.primary.withValues(alpha: 0.14),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Отклонить жалобы',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    OutlinedButton(
-                      onPressed: _loadModerationQueue,
-                      child: const Text('Повторить'),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : _items.isEmpty
-          ? const Center(
-              child: Text(
-                'События не найдены',
-                style: TextStyle(color: Color(0xFF7B82AD), fontSize: 16),
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadModerationQueue,
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                itemCount: _items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final item = _items[index];
-                  final event = item.event;
-                  final inProgress = _actionInProgress.contains(event.id);
-                  final lastReport = item.reports.isEmpty ? null : item.reports.first;
-
-                  return Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFCDEBE7)),
-                      boxShadow: const <BoxShadow>[
-                        BoxShadow(
-                          color: Color(0x10000000),
-                          blurRadius: 10,
-                          offset: Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.report_problem_rounded,
-                              color: Color(0xFFFF8E53),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                event.title,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF161823),
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: item.pendingReports > 0
-                                    ? const Color(0xFFFFEFE8)
-                                    : const Color(0xFFEAF8F2),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                'Жалоб: ${item.pendingReports}',
-                                style: TextStyle(
-                                  color: item.pendingReports > 0
-                                      ? const Color(0xFFD16A3A)
-                                      : const Color(0xFF2E9E71),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        if (lastReport != null)
-                          Text(
-                            'Последняя жалоба: ${lastReport.reason.displayName}',
-                            style: const TextStyle(
-                              color: Color(0xFF6B74A6),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          )
-                        else
-                          const Text(
-                            'Жалоб на событие нет',
-                            style: TextStyle(
-                              color: Color(0xFF6B74A6),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        if (lastReport?.details?.isNotEmpty == true) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            lastReport!.details!,
-                            style: const TextStyle(
-                              color: Color(0xFF7E86AE),
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 8),
-                        Text(
-                          'Локация: ${event.location}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Color(0xFF8A92BA)),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => _showEventReportsDialog(item),
-                                child: const Text('Смотреть жалобы'),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: inProgress
-                                    ? null
-                                    : () => _dismissPendingReports(item),
-                                child: const Text('Отклонить жалобы'),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: inProgress
-                                    ? null
-                                    : () => _rejectEvent(item),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFFF6B6B),
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: const Text('Удалить событие'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
     );
   }
 }
@@ -607,4 +783,596 @@ class _EventModerationItem {
 
   int get pendingReports =>
       reports.where((r) => r.status.toUpperCase() == 'PENDING').length;
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primary
+              : Colors.white.withValues(alpha: 0.82),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected
+                ? AppColors.primary
+                : AppColors.primary.withValues(alpha: 0.14),
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: selected
+                  ? Colors.white
+                  : AppColors.dark.withValues(alpha: 0.72),
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EventSanctionsSheet extends StatefulWidget {
+  const _EventSanctionsSheet({
+    required this.item,
+    required this.service,
+    required this.onChanged,
+  });
+
+  final _EventModerationItem item;
+  final EventSanctionService service;
+  final Future<void> Function() onChanged;
+
+  @override
+  State<_EventSanctionsSheet> createState() => _EventSanctionsSheetState();
+}
+
+class _EventSanctionsSheetState extends State<_EventSanctionsSheet> {
+  bool _isLoading = true;
+  String? _loadError;
+  bool _actionInProgress = false;
+
+  List<EventSanctionModel> _sanctions = <EventSanctionModel>[];
+  EventSanctionType _selectedType = EventSanctionType.freezeParticipation;
+  final TextEditingController _reasonController = TextEditingController();
+  final TextEditingController _daysController = TextEditingController();
+  final EventService _eventService = EventService();
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    _daysController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
+
+    try {
+      final results = await widget.service.getActiveSanctions(widget.item.event.id);
+      if (!mounted) return;
+      setState(() {
+        _sanctions = results;
+        _isLoading = false;
+        _loadError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError = e.toString();
+      });
+    }
+  }
+
+  String _typeLabel(EventSanctionType type) {
+    switch (type) {
+      case EventSanctionType.hideVisibility:
+        return 'Hide';
+      case EventSanctionType.freezeParticipation:
+        return 'Freeze';
+      case EventSanctionType.limitEdits:
+        return 'Limit edits';
+    }
+  }
+
+  Color _typeColor(EventSanctionType type) {
+    switch (type) {
+      case EventSanctionType.hideVisibility:
+        return const Color(0xFF6D4CFF);
+      case EventSanctionType.freezeParticipation:
+        return const Color(0xFFD16A3A);
+      case EventSanctionType.limitEdits:
+        return const Color(0xFF2E9E71);
+    }
+  }
+
+  Future<void> _create() async {
+    final reason = _reasonController.text.trim();
+    if (reason.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Укажите причину')),
+      );
+      return;
+    }
+
+    int? days;
+    final rawDays = _daysController.text.trim();
+    if (rawDays.isNotEmpty) {
+      days = int.tryParse(rawDays);
+      if (days == null || days <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Срок должен быть числом дней > 0')),
+        );
+        return;
+      }
+    }
+
+    setState(() => _actionInProgress = true);
+    try {
+      await widget.service.createSanction(
+        eventId: widget.item.event.id,
+        type: _selectedType,
+        reason: reason,
+        expiresAt: days == null ? null : DateTime.now().add(Duration(days: days)),
+      );
+      await _eventService.clearEventsCache();
+      _reasonController.clear();
+      _daysController.clear();
+      await _load();
+      await widget.onChanged();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Санкция применена')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось применить санкцию: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _actionInProgress = false);
+    }
+  }
+
+  Future<void> _revoke(EventSanctionModel sanction) async {
+    setState(() => _actionInProgress = true);
+    try {
+      await widget.service.revokeSanction(sanction.id);
+      await _eventService.clearEventsCache();
+      await _load();
+      await widget.onChanged();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Санкция отозвана')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось отозвать санкцию: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _actionInProgress = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final event = widget.item.event;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + bottomInset),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 5,
+              decoration: BoxDecoration(
+                color: AppColors.dark.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  Icons.gavel_rounded,
+                  color: AppColors.primary.withValues(alpha: 0.9),
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Санкции события',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            AdminCard(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    event.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onLongPress: () async {
+                      await Clipboard.setData(
+                        ClipboardData(text: event.id),
+                      );
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Event ID скопирован')),
+                      );
+                    },
+                    child: Text(
+                      'ID: ${event.id}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.dark.withValues(alpha: 0.50),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 18),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_loadError != null)
+              AdminCard(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Не удалось загрузить санкции',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _loadError!,
+                      style: TextStyle(
+                        color: AppColors.dark.withValues(alpha: 0.65),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      onPressed: _actionInProgress ? null : _load,
+                      icon: const Icon(Icons.refresh_rounded, size: 16),
+                      label: const Text('Повторить'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.dark.withValues(alpha: 0.72),
+                        side: BorderSide(
+                          color: AppColors.primary.withValues(alpha: 0.14),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else ...[
+              AdminCard(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Активные санкции',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        AdminPill(
+                          label: '${_sanctions.length}',
+                          backgroundColor:
+                              AppColors.primary.withValues(alpha: 0.10),
+                          foregroundColor: AppColors.primary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    if (_sanctions.isEmpty)
+                      Text(
+                        'Нет активных санкций',
+                        style: TextStyle(
+                          color: AppColors.dark.withValues(alpha: 0.65),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )
+                    else
+                      ..._sanctions.map((s) {
+                        final typeColor = _typeColor(s.type);
+                        final expires = s.expiresAt == null
+                            ? null
+                            : DateFormat('dd.MM.yyyy', 'ru').format(s.expiresAt!);
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: AdminCard(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    AdminPill(
+                                      label: _typeLabel(s.type),
+                                      backgroundColor:
+                                          typeColor.withValues(alpha: 0.12),
+                                      foregroundColor: typeColor,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    if (expires != null)
+                                      Text(
+                                        'до $expires',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.dark.withValues(alpha: 0.60),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    const Spacer(),
+                                    OutlinedButton(
+                                      onPressed: _actionInProgress ? null : () => _revoke(s),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor:
+                                            AppColors.dark.withValues(alpha: 0.72),
+                                        side: BorderSide(
+                                          color: AppColors.primary.withValues(alpha: 0.14),
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 10,
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Отозвать',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  s.reason,
+                                  style: TextStyle(
+                                    color: AppColors.dark.withValues(alpha: 0.80),
+                                    height: 1.35,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                GestureDetector(
+                                  onLongPress: () async {
+                                    await Clipboard.setData(
+                                      ClipboardData(text: s.id),
+                                    );
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('ID санкции скопирован')),
+                                    );
+                                  },
+                                  child: Text(
+                                    'ID: ${s.id}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.dark.withValues(alpha: 0.45),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              AdminCard(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Назначить санкцию',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatusChip(
+                            label: _typeLabel(EventSanctionType.hideVisibility),
+                            selected: _selectedType == EventSanctionType.hideVisibility,
+                            onTap: _actionInProgress
+                                ? () {}
+                                : () => setState(
+                                      () => _selectedType = EventSanctionType.hideVisibility,
+                                    ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _StatusChip(
+                            label: _typeLabel(EventSanctionType.freezeParticipation),
+                            selected: _selectedType ==
+                                EventSanctionType.freezeParticipation,
+                            onTap: _actionInProgress
+                                ? () {}
+                                : () => setState(
+                                      () => _selectedType =
+                                          EventSanctionType.freezeParticipation,
+                                    ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _StatusChip(
+                            label: _typeLabel(EventSanctionType.limitEdits),
+                            selected: _selectedType == EventSanctionType.limitEdits,
+                            onTap: _actionInProgress
+                                ? () {}
+                                : () => setState(
+                                      () => _selectedType = EventSanctionType.limitEdits,
+                                    ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _reasonController,
+                      minLines: 2,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        hintText: 'Причина (обязательно)',
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.72),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.35),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _daysController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        hintText: 'Срок (дней) — опционально',
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.72),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.35),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _actionInProgress ? null : _create,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Применить',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }

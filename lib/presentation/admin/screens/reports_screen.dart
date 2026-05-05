@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:andexevents/data/models/report_model.dart';
 import 'package:andexevents/data/services/report_service.dart';
-import 'package:andexevents/presentation/admin/widgets/admin_gradient_background.dart';
 import '../../../core/theme/app_colors.dart';
+import '../widgets/admin_card.dart';
+import '../widgets/admin_screen_scaffold.dart';
+import '../widgets/admin_state_view.dart';
 
 const Color _secondaryTextColor = Color(0xFF5E6D86);
 
@@ -81,62 +83,34 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: AdminGradientBackground(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [_buildAppBar(), _buildFilterTabs(), _buildBody()],
+    return AdminScreenScaffold(
+      title: 'Жалобы',
+      actions: [
+        IconButton(
+          onPressed: _isLoading ? null : _loadReports,
+          icon: const Icon(Icons.refresh_rounded),
         ),
+      ],
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [_buildHeader(), _buildFilterTabs(), _buildBody()],
       ),
     );
   }
 
-  Widget _buildAppBar() {
-    return SliverAppBar(
-      expandedHeight: 140,
-      pinned: true,
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      leading: IconButton(
-        icon: const Icon(
-          Icons.arrow_back_ios_new_rounded,
-          color: AppColors.textPrimary,
-        ),
-        onPressed: () => Navigator.pop(context),
-      ),
-      flexibleSpace: FlexibleSpaceBar(
-        centerTitle: true,
-        title: const Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Жалобы',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-              ),
-            ),
-            Text(
-              'Обработка обращений пользователей',
-              style: TextStyle(
-                color: _secondaryTextColor,
-                fontSize: 10,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
-          ],
+  Widget _buildHeader() {
+    return const SliverToBoxAdapter(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Text(
+          'Обработка обращений пользователей',
+          style: TextStyle(
+            color: _secondaryTextColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
-      actions: [
-        IconButton(
-          onPressed: _isLoading ? null : _loadReports,
-          icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
-        ),
-      ],
     );
   }
 
@@ -144,7 +118,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return SliverToBoxAdapter(
       child: Container(
         height: 50,
-        margin: const EdgeInsets.only(top: 16),
+        margin: const EdgeInsets.only(top: 10),
         child: ListView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -164,10 +138,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
       onTap: () => setState(() => _filterStatus = status),
       child: Container(
         margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected
+              ? AppColors.primary
+              : Colors.white.withValues(alpha: 0.82),
+          borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: isSelected
                 ? AppColors.primary
@@ -179,7 +155,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             label,
             style: TextStyle(
               color: isSelected ? Colors.white : _secondaryTextColor,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
               fontSize: 13,
             ),
           ),
@@ -191,30 +167,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Widget _buildBody() {
     if (_isLoading) {
       return const SliverFillRemaining(
-        child: Center(child: CircularProgressIndicator()),
+        child: AdminStateView.loading(),
       );
     }
 
     if (_loadError != null) {
       return SliverFillRemaining(
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.error_outline_rounded,
-                size: 64,
-                color: Colors.redAccent,
-              ),
-              const SizedBox(height: 16),
-              Text(_loadError!),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _loadReports,
-                child: const Text('Повторить'),
-              ),
-            ],
-          ),
+        child: AdminStateView.error(
+          title: 'Не удалось загрузить жалобы',
+          message: _loadError,
+          actionLabel: 'Повторить',
+          onAction: _loadReports,
         ),
       );
     }
@@ -222,22 +185,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final reports = _filteredReports;
     if (reports.isEmpty) {
       return const SliverFillRemaining(
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.assignment_turned_in_rounded,
-                size: 64,
-                color: _secondaryTextColor,
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Жалоб нет',
-                style: TextStyle(color: _secondaryTextColor, fontSize: 16),
-              ),
-            ],
-          ),
+        child: AdminStateView.empty(
+          title: 'Жалоб нет',
+          message: 'Новые жалобы появятся здесь.',
+          icon: Icons.assignment_turned_in_rounded,
         ),
       );
     }
@@ -259,23 +210,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
         : Colors.green;
     final isWorking = _actionInProgress.contains(report.id);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.88),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.85)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0xFF184B94).withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: ExpansionTile(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AdminCard(
+        padding: EdgeInsets.zero,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: ExpansionTile(
           collapsedShape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -299,7 +240,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           title: Text(
             report.reason.displayName,
             style: const TextStyle(
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w800,
               fontSize: 14,
               color: AppColors.dark,
             ),
@@ -340,7 +281,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       'Описание:',
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w800,
                         color: _secondaryTextColor,
                       ),
                     ),
@@ -360,7 +301,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
             if (report.status.toUpperCase() == 'PENDING') ...[
               const SizedBox(height: 20),
               isWorking
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(
+                      child: CircularProgressIndicator(color: AppColors.primary),
+                    )
                   : Row(
                       children: [
                         Expanded(
@@ -379,37 +322,20 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                                colors: <Color>[
-                                  Color(0xFF0961F6),
-                                  Color(0xFF2E8BFF),
-                                ],
+                          child: ElevatedButton(
+                            onPressed: () => _resolveReport(report, 'RESOLVED'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              borderRadius: BorderRadius.circular(16),
+                              elevation: 0,
                             ),
-                            child: ElevatedButton(
-                              onPressed: () =>
-                                  _resolveReport(report, 'RESOLVED'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                shadowColor: Colors.transparent,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: const Text(
-                                'Решить',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
+                            child: const Text(
+                              'Решить',
+                              style: TextStyle(fontWeight: FontWeight.w800),
                             ),
                           ),
                         ),
@@ -417,6 +343,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     ),
             ],
           ],
+          ),
         ),
       ),
     );

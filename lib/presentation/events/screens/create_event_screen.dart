@@ -7,7 +7,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/services/logger_service.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../widgets/common/custom_dropdown.dart';
 import '../../widgets/common/custom_notification.dart';
 import '../../../data/services/user_service.dart';
 import '../../../data/models/user_sanction_model.dart';
@@ -30,13 +29,14 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
   final _priceController = TextEditingController();
+  final _customCategoryController = TextEditingController();
   
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
   bool _hasEndDateTime = false;
   DateTime _selectedEndDate = DateTime.now();
   TimeOfDay _selectedEndTime = TimeOfDay.now();
-  String _selectedCategory = 'Спорт';
+  final List<String> _selectedCategories = <String>['Спорт'];
   bool _isOnline = false;
   bool _isFree = true;
   bool _isPhotoUploading = false;
@@ -100,6 +100,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     _descriptionController.dispose();
     _locationController.dispose();
     _priceController.dispose();
+    _customCategoryController.dispose();
     super.dispose();
   }
 
@@ -280,11 +281,14 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       ),
     );
 
-    if (result != null) {
+    if (result != null &&
+        result['latitude'] != null &&
+        result['longitude'] != null &&
+        (result['address'] ?? '').toString().trim().isNotEmpty) {
       setState(() {
         _latitude = result['latitude'];
         _longitude = result['longitude'];
-        _locationController.text = result['address'];
+        _locationController.text = result['address'].toString().trim();
       });
     }
   }
@@ -336,11 +340,18 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       final lng = _isOnline ? 37.6173 : _longitude!;
       final location = _isOnline ? 'Онлайн' : _locationController.text;
       
+      final categoryParts = <String>[
+        ..._selectedCategories.map((e) => e.trim()).where((e) => e.isNotEmpty),
+        if (_customCategoryController.text.trim().isNotEmpty)
+          _customCategoryController.text.trim(),
+      ];
+      final category = categoryParts.isEmpty ? 'Спорт' : categoryParts.join(', ');
+
       context.read<EventBloc>().add(
         EventCreateRequested(
           title: _titleController.text.trim(),
           description: _descriptionController.text.trim(),
-          category: _selectedCategory,
+          category: category,
           location: location,
           latitude: lat,
           longitude: lng,
@@ -418,47 +429,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     );
   }
 
-  Widget _buildGradientCta({
-    required VoidCallback? onPressed,
-    required Widget child,
-  }) {
-    final bool isDisabled = onPressed == null;
-    return Opacity(
-      opacity: isDisabled ? 0.64 : 1,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: <Color>[
-              AppColors.primary,
-              const Color(0xFF2E8BFF),
-            ],
-          ),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.26),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onPressed,
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Center(child: child),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _sectionHeader({
     required IconData icon,
     required String title,
@@ -466,6 +436,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     Widget? trailing,
   }) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Container(
           width: 34,
@@ -536,7 +507,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           setState(() => _isLoading = true);
         } else if (state is EventCreated) {
           setState(() => _isLoading = false);
-          Navigator.of(context).pop();
+          Navigator.of(context).pop(true);
           CustomNotification.show(context, 'Событие успешно создано!');
         } else if (state is EventError) {
           setState(() {
@@ -552,9 +523,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       child: Scaffold(
         extendBodyBehindAppBar: true,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.surface.withValues(alpha: 0.88),
           surfaceTintColor: Colors.transparent,
           elevation: 0,
+          scrolledUnderElevation: 0,
           leading: IconButton(
             icon: Icon(
               Icons.close,
@@ -609,13 +581,62 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     child: Form(
                       key: _formKey,
                       child: ListView(
-                        padding: const EdgeInsets.fromLTRB(
+                        padding: EdgeInsets.fromLTRB(
                           _pageHorizontalPadding,
-                          16,
+                          MediaQuery.of(context).padding.top + kToolbarHeight + 16,
                           _pageHorizontalPadding,
                           128,
                         ),
                         children: <Widget>[
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: _glassCardDecoration(alpha: 0.62),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.14),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.auto_awesome_rounded,
+                                    color: AppColors.primary.withValues(alpha: 0.92),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Создайте событие за минуту',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.dark.withValues(alpha: 0.86),
+                                          height: 1.1,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Заполните основные детали. Фото, место и стоимость можно обновить позже.',
+                                        style: TextStyle(
+                                          color: AppColors.dark.withValues(alpha: 0.66),
+                                          fontSize: 13,
+                                          height: 1.3,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: _glassCardDecoration(alpha: 0.58),
@@ -623,11 +644,21 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
                                 Text(
-                                  'Быстро заполним основные детали — остальное можно уточнить позже.',
+                                  'Формат события',
                                   style: TextStyle(
-                                    color: AppColors.dark.withValues(alpha: 0.72),
-                                    fontSize: 13,
-                                    height: 1.25,
+                                    color: AppColors.dark.withValues(alpha: 0.84),
+                                    fontSize: 14,
+                                    height: 1.2,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _isOnline ? 'Онлайн • ссылка/платформа в описании' : 'Оффлайн • выберите место на карте',
+                                  style: TextStyle(
+                                    color: AppColors.dark.withValues(alpha: 0.60),
+                                    fontSize: 12,
+                                    height: 1.2,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -657,7 +688,12 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                                           label: 'Онлайн',
                                           icon: Icons.videocam_rounded,
                                           isSelected: _isOnline,
-                                          onTap: () => setState(() => _isOnline = true),
+                                          onTap: () => setState(() {
+                                            _isOnline = true;
+                                            _locationController.text = '';
+                                            _latitude = null;
+                                            _longitude = null;
+                                          }),
                                         ),
                                       ),
                                     ],
@@ -770,9 +806,32 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                                     height: 86,
                                     child: ListView.separated(
                                       scrollDirection: Axis.horizontal,
-                                      itemCount: _uploadedPhotoUrls.length,
+                                      itemCount: _uploadedPhotoUrls.length +
+                                          (_uploadedPhotoUrls.length + _pendingPhotoUploads < _maxEventPhotos ? 1 : 0),
                                       separatorBuilder: (_, __) => const SizedBox(width: 8),
                                       itemBuilder: (context, index) {
+                                        if (index == _uploadedPhotoUrls.length &&
+                                            _uploadedPhotoUrls.length + _pendingPhotoUploads < _maxEventPhotos) {
+                                          return GestureDetector(
+                                            onTap: _pickImages,
+                                            child: Container(
+                                              width: 86,
+                                              height: 86,
+                                              decoration: BoxDecoration(
+                                                color: AppColors.surface.withValues(alpha: 0.84),
+                                                borderRadius: BorderRadius.circular(14),
+                                                border: Border.all(
+                                                  color: AppColors.primary.withValues(alpha: 0.14),
+                                                ),
+                                              ),
+                                              child: Icon(
+                                                Icons.add_photo_alternate_outlined,
+                                                color: AppColors.primary.withValues(alpha: 0.7),
+                                              ),
+                                            ),
+                                          );
+                                        }
+
                                         final url = _uploadedPhotoUrls[index];
                                         return Stack(
                                           children: [
@@ -889,30 +948,65 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
+                                  spacing: 6,
+                                  runSpacing: 6,
                                   children: _categories.map((c) {
-                                    final selected = _selectedCategory == c;
-                                    return ChoiceChip(
-                                      label: Text(c),
+                                    final selected = _selectedCategories.contains(c);
+                                    return FilterChip(
+                                      label: Text(
+                                        c,
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
                                       selected: selected,
-                                      onSelected: (_) => setState(() => _selectedCategory = c),
-                                      selectedColor: AppColors.primary.withValues(alpha: 0.16),
-                                      backgroundColor: AppColors.surface.withValues(alpha: 0.62),
+                                      onSelected: (_) {
+                                        setState(() {
+                                          if (selected) {
+                                            if (_selectedCategories.length > 1 ||
+                                                _customCategoryController.text.trim().isNotEmpty) {
+                                              _selectedCategories.remove(c);
+                                            }
+                                          } else {
+                                            _selectedCategories.add(c);
+                                          }
+                                        });
+                                      },
+                                      selectedColor:
+                                          AppColors.primary.withValues(alpha: 0.16),
+                                      backgroundColor:
+                                          AppColors.surface.withValues(alpha: 0.62),
+                                      checkmarkColor: AppColors.primary,
                                       side: BorderSide(
                                         color: selected
                                             ? AppColors.primary.withValues(alpha: 0.34)
                                             : AppColors.primary.withValues(alpha: 0.14),
                                       ),
                                       labelStyle: TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        color: selected ? AppColors.primary : AppColors.dark.withValues(alpha: 0.78),
+                                        fontWeight: FontWeight.w700,
+                                        color: selected
+                                            ? AppColors.primary
+                                            : AppColors.dark.withValues(alpha: 0.78),
                                       ),
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(999),
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 0,
+                                      ),
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
                                     );
                                   }).toList(),
+                                ),
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: _customCategoryController,
+                                  style: const TextStyle(fontSize: 13),
+                                  decoration: _softInputDecoration(
+                                    label: 'Своя категория',
+                                    hint: 'Например: Псай-транс вечеринка',
+                                    icon: Icons.category_rounded,
+                                  ),
                                 ),
                               ],
                             ),
@@ -1148,15 +1242,20 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                TextFormField(
-                                  controller: _priceController,
-                                  enabled: !_isFree,
-                                  keyboardType: TextInputType.number,
-                                  decoration: _softInputDecoration(
-                                    label: 'Цена (₽)',
-                                    hint: _isFree ? 'Бесплатно' : 'Например: 500',
-                                    icon: Icons.payments_rounded,
-                                  ),
+                                AnimatedSize(
+                                  duration: const Duration(milliseconds: 220),
+                                  curve: Curves.easeOutCubic,
+                                  child: _isFree
+                                      ? const SizedBox.shrink()
+                                      : TextFormField(
+                                          controller: _priceController,
+                                          keyboardType: TextInputType.number,
+                                          decoration: _softInputDecoration(
+                                            label: 'Цена (₽)',
+                                            hint: 'Например: 500',
+                                            icon: Icons.payments_rounded,
+                                          ),
+                                        ),
                                 ),
                               ],
                             ),

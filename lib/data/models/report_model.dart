@@ -8,15 +8,15 @@ enum ReportReason {
   String get displayName {
     switch (this) {
       case ReportReason.spam:
-        return 'Spam';
+        return 'Спам';
       case ReportReason.inappropriateContent:
-        return 'Inappropriate Content';
+        return 'Неприемлемый контент';
       case ReportReason.harassment:
-        return 'Harassment';
+        return 'Оскорбления / домогательства';
       case ReportReason.fakeEvent:
-        return 'Fake Event';
+        return 'Фейковое событие';
       case ReportReason.other:
-        return 'Other';
+        return 'Другое';
     }
   }
 

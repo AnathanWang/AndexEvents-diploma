@@ -39,6 +39,14 @@ app:
         pattern: /api/events/*/participate
       - method: DELETE
         pattern: /api/events/*/participate
+      - method: GET
+        pattern: /api/events/moderation/all
+      - method: GET
+        pattern: /api/events/*/sanctions
+      - method: POST
+        pattern: /api/events/*/sanctions
+      - method: PUT
+        pattern: /api/events/sanctions/*/revoke
       - method: POST
         pattern: /api/events/*/rating
       - method: GET

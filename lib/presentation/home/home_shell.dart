@@ -10,6 +10,7 @@ import '../models/event_preview.dart';
 import '../models/match_preview.dart';
 import '../events/screens/create_event_screen.dart';
 import '../events/bloc/event_bloc.dart';
+import '../events/bloc/event_event.dart';
 import '../profile/bloc/profile_bloc.dart';
 import '../../data/services/user_service.dart';
 import '../../data/models/user_sanction_model.dart';
@@ -119,6 +120,14 @@ class _HomeShellState extends State<HomeShell> {
 
     HapticFeedback.selectionClick();
     setState(() => _index = index);
+
+    // Ensure public feeds are fresh when user returns to them.
+    if (index == 0) {
+      _mapEventBloc.add(const EventsLoadRequested());
+    }
+    if (index == 1) {
+      _feedEventBloc.add(const EventsLoadRequested());
+    }
   }
 
   Future<void> _openCreateEventScreen() async {
@@ -137,14 +146,21 @@ class _HomeShellState extends State<HomeShell> {
     }
 
     HapticFeedback.mediumImpact();
-    Navigator.of(context).push(
-      CupertinoPageRoute<void>(
+    final created = await Navigator.of(context).push<bool>(
+      CupertinoPageRoute<bool>(
         builder: (BuildContext context) => BlocProvider(
           create: (context) => EventBloc(),
           child: const CreateEventScreen(),
         ),
       ),
     );
+
+    if (!mounted) return;
+    if (created == true) {
+      // Refresh both map "nearby" and feed lists after a new event is created.
+      _mapEventBloc.add(const EventsLoadRequested());
+      _feedEventBloc.add(const EventsLoadRequested());
+    }
   }
 
   Future<void> _loadMutualMatches() async {

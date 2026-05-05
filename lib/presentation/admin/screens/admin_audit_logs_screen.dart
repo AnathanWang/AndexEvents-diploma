@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/admin_audit_log_model.dart';
 import '../../../data/services/user_service.dart';
+import '../../../core/theme/app_colors.dart';
+import '../widgets/admin_card.dart';
+import '../widgets/admin_screen_scaffold.dart';
+import '../widgets/admin_state_view.dart';
 
 class AdminAuditLogsScreen extends StatefulWidget {
   const AdminAuditLogsScreen({super.key});
@@ -65,103 +69,92 @@ class _AdminAuditLogsScreenState extends State<AdminAuditLogsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        title: const Text('Журнал действий админа'),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF161823),
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: _isLoading ? null : _loadLogs,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
+    return AdminScreenScaffold(
+      title: 'Журнал действий админа',
+      actions: [
+        IconButton(
+          onPressed: _isLoading ? null : _loadLogs,
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+      ],
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const AdminStateView.loading()
           : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline, size: 52, color: Color(0xFF9E9E9E)),
-                    const SizedBox(height: 12),
-                    Text(
-                      _error!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFF6B6B6B), fontSize: 15),
+              ? AdminStateView.error(
+                  title: 'Не удалось загрузить журнал',
+                  message: _error,
+                  actionLabel: 'Повторить',
+                  onAction: _loadLogs,
+                )
+              : _logs.isEmpty
+                  ? const AdminStateView.empty(
+                      title: 'Журнал пока пуст',
+                      message: 'Здесь будут отображаться действия администраторов.',
+                      icon: Icons.history_rounded,
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _loadLogs,
+                      color: AppColors.primary,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        itemCount: _logs.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final log = _logs[index];
+                          return AdminCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  log.action,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                    height: 1.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Когда: ${_formatDate(log.createdAt)}',
+                                  style: TextStyle(
+                                    color: AppColors.dark.withValues(alpha: 0.62),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Кто: ${log.actorUserId}',
+                                  style: TextStyle(
+                                    color: AppColors.dark.withValues(alpha: 0.62),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Цель: ${log.targetUserId ?? '-'}',
+                                  style: TextStyle(
+                                    color: AppColors.dark.withValues(alpha: 0.62),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  _detailsText(log),
+                                  style: TextStyle(
+                                    color: AppColors.dark.withValues(alpha: 0.78),
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.25,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    OutlinedButton(onPressed: _loadLogs, child: const Text('Повторить')),
-                  ],
-                ),
-              ),
-            )
-          : _logs.isEmpty
-          ? const Center(
-              child: Text(
-                'Журнал пока пуст',
-                style: TextStyle(color: Color(0xFF75878A)),
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadLogs,
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                itemCount: _logs.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (context, index) {
-                  final log = _logs[index];
-                  return Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFCDEBE7)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          log.action,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF161823),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Когда: ${_formatDate(log.createdAt)}',
-                          style: const TextStyle(color: Color(0xFF6F789E), fontSize: 12),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Кто: ${log.actorUserId}',
-                          style: const TextStyle(color: Color(0xFF6F789E), fontSize: 12),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Цель: ${log.targetUserId ?? '-'}',
-                          style: const TextStyle(color: Color(0xFF6F789E), fontSize: 12),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _detailsText(log),
-                          style: const TextStyle(
-                            color: Color(0xFF4F5887),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
     );
   }
 }

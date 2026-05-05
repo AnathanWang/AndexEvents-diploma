@@ -122,8 +122,28 @@ public class EventRepository {
     public List<EventRow> listApprovedEvents() {
         return jdbcTemplate.query(
                 "SELECT * FROM events.\"Event\" WHERE status = 'APPROVED'::events.\"EventStatus\" " +
+                "AND NOT EXISTS (" +
+                "  SELECT 1 FROM events.\"EventSanction\" s " +
+                "  WHERE s.\"eventId\" = events.\"Event\".id " +
+                "    AND s.\"type\" = 'HIDE_VISIBILITY'::events.\"EventSanctionType\" " +
+                "    AND s.\"revokedAt\" IS NULL " +
+                "    AND (s.\"expiresAt\" IS NULL OR s.\"expiresAt\" > NOW())" +
+                ") " +
                 "AND COALESCE(\"endDateTime\", \"dateTime\" + interval '3 hours') > NOW() " +
                 "ORDER BY \"createdAt\" DESC",
+                (rs, rn) -> mapEventRow(rs)
+        );
+    }
+
+    /**
+     * Same as {@link #listApprovedEvents()}, but does NOT hide events with HIDE_VISIBILITY sanctions.
+     * Used for admin/moderation views where moderators must still see the event.
+     */
+    public List<EventRow> listApprovedEventsIncludingHidden() {
+        return jdbcTemplate.query(
+                "SELECT * FROM events.\"Event\" WHERE status = 'APPROVED'::events.\"EventStatus\" " +
+                        "AND COALESCE(\"endDateTime\", \"dateTime\" + interval '3 hours') > NOW() " +
+                        "ORDER BY \"createdAt\" DESC",
                 (rs, rn) -> mapEventRow(rs)
         );
     }
@@ -161,6 +181,13 @@ public class EventRepository {
                         "LEFT JOIN users.\"User\" u ON e.\"createdById\" = u.id " +
                         "LEFT JOIN events.\"Participant\" p ON e.id = p.\"eventId\" " +
                         "WHERE e.status = 'APPROVED'::events.\"EventStatus\" AND e.\"isOnline\" = false " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM events.\"EventSanction\" s " +
+                        "  WHERE s.\"eventId\" = e.id " +
+                        "    AND s.\"type\" = 'HIDE_VISIBILITY'::events.\"EventSanctionType\" " +
+                        "    AND s.\"revokedAt\" IS NULL " +
+                        "    AND (s.\"expiresAt\" IS NULL OR s.\"expiresAt\" > NOW())" +
+                        ") " +
                         "AND ST_DWithin(e.\"locationGeo\", ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?) " +
                         "AND COALESCE(e.\"endDateTime\", e.\"dateTime\" + interval '3 hours') > NOW() " +
                         categoryClause +
@@ -202,6 +229,13 @@ public class EventRepository {
                 "SELECT COUNT(DISTINCT e.id) " +
                         "FROM events.\"Event\" e " +
                         "WHERE e.status = 'APPROVED'::events.\"EventStatus\" AND e.\"isOnline\" = false " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM events.\"EventSanction\" s " +
+                        "  WHERE s.\"eventId\" = e.id " +
+                        "    AND s.\"type\" = 'HIDE_VISIBILITY'::events.\"EventSanctionType\" " +
+                        "    AND s.\"revokedAt\" IS NULL " +
+                        "    AND (s.\"expiresAt\" IS NULL OR s.\"expiresAt\" > NOW())" +
+                        ") " +
                         "AND ST_DWithin(e.\"locationGeo\", ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?) " +
                         "AND COALESCE(e.\"endDateTime\", e.\"dateTime\" + interval '3 hours') > NOW() " +
                         categoryClause;

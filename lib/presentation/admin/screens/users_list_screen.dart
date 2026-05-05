@@ -5,9 +5,14 @@ import '../../../data/models/user_sanction_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/report_service.dart';
 import '../../../data/services/user_service.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../profile/screens/user_profile_screen.dart';
 import 'reports_screen.dart';
 import 'package:intl/intl.dart';
+import '../widgets/admin_card.dart';
+import '../widgets/admin_pill.dart';
+import '../widgets/admin_screen_scaffold.dart';
+import '../widgets/admin_state_view.dart';
 
 class UsersListScreen extends StatefulWidget {
   const UsersListScreen({super.key});
@@ -188,6 +193,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
       final shouldRevoke = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const Text('Отозвать санкцию?'),
           content: Text(
             'Активная санкция: ${_sanctionLabel(sanction)}\n\nПричина: ${sanction.reason}',
@@ -221,6 +227,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               title: const Text('Назначить санкцию'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -473,14 +480,17 @@ class _UsersListScreenState extends State<UsersListScreen> {
                   width: 44,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFD9DCEF),
+                    color: AppColors.dark.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    const Icon(Icons.report_problem_rounded, color: Color(0xFFFF8E53)),
+                    Icon(
+                      Icons.report_problem_rounded,
+                      color: AppColors.primary.withValues(alpha: 0.9),
+                    ),
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
@@ -488,17 +498,14 @@ class _UsersListScreenState extends State<UsersListScreen> {
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF161823),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ),
-                    Text(
-                      '${item.pendingReports} pending',
-                      style: const TextStyle(
-                        color: Color(0xFF75878A),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    AdminPill(
+                      label: '${item.pendingReports} pending',
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.10),
+                      foregroundColor: AppColors.primary,
                     ),
                   ],
                 ),
@@ -508,7 +515,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                     padding: EdgeInsets.symmetric(vertical: 24),
                     child: Text(
                       'По пользователю пока нет жалоб',
-                      style: TextStyle(color: Color(0xFF7B82AD)),
+                      style: TextStyle(color: AppColors.textPrimary),
                     ),
                   )
                 else
@@ -520,13 +527,11 @@ class _UsersListScreenState extends State<UsersListScreen> {
                       itemBuilder: (context, index) {
                         final report = reports[index];
                         final isPending = report.status.toUpperCase() == 'PENDING';
-                        return Container(
+                        final statusColor = isPending
+                            ? const Color(0xFFD16A3A)
+                            : const Color(0xFF2E9E71);
+                        return AdminCard(
                           padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8F9FF),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFCDEBE7)),
-                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -537,7 +542,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                       report.reason.displayName,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w700,
-                                        color: Color(0xFF161823),
+                                        color: AppColors.textPrimary,
                                       ),
                                     ),
                                   ),
@@ -554,9 +559,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
-                                        color: isPending
-                                            ? const Color(0xFFD16A3A)
-                                            : const Color(0xFF2E9E71),
+                                        color: statusColor,
                                       ),
                                     ),
                                   ),
@@ -565,18 +568,18 @@ class _UsersListScreenState extends State<UsersListScreen> {
                               const SizedBox(height: 6),
                               Text(
                                 DateFormat('dd.MM.yyyy HH:mm', 'ru').format(report.createdAt),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
-                                  color: Color(0xFF75878A),
+                                  color: AppColors.dark.withValues(alpha: 0.60),
                                 ),
                               ),
                               if ((report.details ?? '').trim().isNotEmpty) ...[
                                 const SizedBox(height: 6),
                                 Text(
                                   report.details!.trim(),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
-                                    color: Color(0xFF4D5687),
+                                    color: AppColors.dark.withValues(alpha: 0.78),
                                     height: 1.35,
                                   ),
                                 ),
@@ -584,9 +587,9 @@ class _UsersListScreenState extends State<UsersListScreen> {
                               const SizedBox(height: 6),
                               Text(
                                 'ID: ${report.id}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
-                                  color: Color(0xFF9AA2C8),
+                                  color: AppColors.dark.withValues(alpha: 0.45),
                                 ),
                               ),
                               if (isPending) ...[
@@ -601,8 +604,14 @@ class _UsersListScreenState extends State<UsersListScreen> {
                                     icon: const Icon(Icons.close_rounded, size: 16),
                                     label: const Text('Отклонить эту жалобу'),
                                     style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFF9E9E9E),
-                                      side: const BorderSide(color: Color(0xFFD6D9EB)),
+                                      foregroundColor:
+                                          AppColors.dark.withValues(alpha: 0.70),
+                                      side: BorderSide(
+                                        color: AppColors.primary.withValues(alpha: 0.14),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -659,20 +668,14 @@ class _UsersListScreenState extends State<UsersListScreen> {
           (item.user.displayName ?? '').toLowerCase().contains(q);
     }).toList();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        title: const Text('Управление пользователями'),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF161823),
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: _isLoading ? null : _loadUsers,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
+    return AdminScreenScaffold(
+      title: 'Управление пользователями',
+      actions: [
+        IconButton(
+          onPressed: _isLoading ? null : _loadUsers,
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+      ],
       body: Column(
         children: [
           Padding(
@@ -683,14 +686,24 @@ class _UsersListScreenState extends State<UsersListScreen> {
                 hintText: 'Поиск по email или имени',
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: Colors.white.withValues(alpha: 0.72),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFCDEBE7)),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFCDEBE7)),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                  ),
                 ),
               ),
             ),
@@ -710,293 +723,340 @@ class _UsersListScreenState extends State<UsersListScreen> {
                   },
                   icon: const Icon(Icons.report_problem_rounded),
                   label: const Text('Смотреть все жалобы'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.dark.withValues(alpha: 0.72),
+                    side: BorderSide(
+                      color: AppColors.primary.withValues(alpha: 0.14),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
                 ),
               ),
             ),
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const AdminStateView.loading()
                 : _loadError != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.lock_outline,
-                            size: 52,
-                            color: Color(0xFF9E9E9E),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _loadError!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Color(0xFF6B6B6B),
-                              fontSize: 15,
+                    ? AdminStateView.error(
+                        title: 'Не удалось загрузить пользователей',
+                        message: _loadError,
+                        actionLabel: 'Повторить',
+                        onAction: _loadUsers,
+                      )
+                    : filtered.isEmpty
+                        ? const AdminStateView.empty(
+                            title: 'Пользователи не найдены',
+                            message: 'Попробуйте изменить запрос поиска.',
+                            icon: Icons.person_search_rounded,
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _loadUsers,
+                            color: AppColors.primary,
+                            child: ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                              itemCount: filtered.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 12),
+                              itemBuilder: (context, index) {
+                                final item = filtered[index];
+                                final user = item.user;
+                                final inProgress =
+                                    _actionInProgress.contains(user.id);
+
+                                return AdminCard(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 18,
+                                            backgroundColor:
+                                                AppColors.accent.withValues(alpha: 0.55),
+                                            backgroundImage: user.photoUrl != null
+                                                ? NetworkImage(user.photoUrl!)
+                                                : null,
+                                            child: user.photoUrl == null
+                                                ? Text(
+                                                    (user.displayName?.isNotEmpty == true
+                                                            ? user.displayName!
+                                                            : user.email)[0]
+                                                        .toUpperCase(),
+                                                    style: TextStyle(
+                                                      color: AppColors.dark.withValues(alpha: 0.65),
+                                                      fontWeight: FontWeight.w800,
+                                                      fontSize: 13,
+                                                    ),
+                                                  )
+                                                : null,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  user.displayName?.isNotEmpty == true
+                                                      ? user.displayName!
+                                                      : user.email,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w800,
+                                                    color: AppColors.textPrimary,
+                                                    height: 1.15,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 1),
+                                                Text(
+                                                  user.email,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    color: AppColors.dark.withValues(alpha: 0.55),
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    height: 1.15,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                            children: [
+                                              AdminPill(
+                                                label: '${item.pendingReports}',
+                                                backgroundColor: item.pendingReports > 0
+                                                    ? const Color(0xFFFFEFE8)
+                                                    : const Color(0xFFEAF8F2),
+                                                foregroundColor: item.pendingReports > 0
+                                                    ? const Color(0xFFD16A3A)
+                                                    : const Color(0xFF2E9E71),
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 10,
+                                                  vertical: 6,
+                                                ),
+                                              ),
+                                              if (_isAdmin) ...[
+                                                const SizedBox(height: 6),
+                                                PopupMenuButton<String>(
+                                                  enabled: !inProgress,
+                                                  onSelected: (role) =>
+                                                      _changeUserRole(item, role),
+                                                  itemBuilder: (context) => const [
+                                                    PopupMenuItem<String>(
+                                                      value: 'USER',
+                                                      child: Text('Сделать USER'),
+                                                    ),
+                                                    PopupMenuItem<String>(
+                                                      value: 'MODERATOR',
+                                                      child: Text('Сделать MODERATOR'),
+                                                    ),
+                                                    PopupMenuItem<String>(
+                                                      value: 'ADMIN',
+                                                      child: Text('Сделать ADMIN'),
+                                                    ),
+                                                  ],
+                                                  child: AdminPill(
+                                                    label: _roleLabel(user.role),
+                                                    backgroundColor: AppColors.primary
+                                                        .withValues(alpha: 0.10),
+                                                    foregroundColor: AppColors.primary,
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 6,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: [
+                                          if (_isAdmin &&
+                                              item.activeSanction != null &&
+                                              item.activeSanction!.isActive)
+                                            AdminPill(
+                                              label: _sanctionLabel(item.activeSanction!),
+                                              backgroundColor: const Color(0xFFFFF3E6),
+                                              foregroundColor: const Color(0xFFD16A3A),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      SizedBox(
+                                        height: 36,
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: OutlinedButton(
+                                                onPressed: inProgress
+                                                    ? null
+                                                    : () {
+                                                        Navigator.of(context).push(
+                                                          MaterialPageRoute<void>(
+                                                            builder: (_) =>
+                                                                UserProfileScreen.fromUser(
+                                                              user: user,
+                                                            ),
+                                                          ),
+                                                        );
+                                                      },
+                                                style: OutlinedButton.styleFrom(
+                                                  foregroundColor:
+                                                      AppColors.dark.withValues(alpha: 0.72),
+                                                  side: BorderSide(
+                                                    color: AppColors.primary.withValues(alpha: 0.14),
+                                                  ),
+                                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(16),
+                                                  ),
+                                                ),
+                                                child: const Text(
+                                                  'Профиль',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: OutlinedButton(
+                                                onPressed: () => _showUserReportsDialog(item),
+                                                style: OutlinedButton.styleFrom(
+                                                  foregroundColor:
+                                                      AppColors.dark.withValues(alpha: 0.72),
+                                                  side: BorderSide(
+                                                    color: AppColors.primary.withValues(alpha: 0.14),
+                                                  ),
+                                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(16),
+                                                  ),
+                                                ),
+                                                child: const Text(
+                                                  'Жалобы',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      SizedBox(
+                                        height: 36,
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: ElevatedButton(
+                                                onPressed: inProgress
+                                                    ? null
+                                                    : () => _resolvePendingReports(item),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: AppColors.primary,
+                                                  foregroundColor: Colors.white,
+                                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(16),
+                                                  ),
+                                                  elevation: 0,
+                                                ),
+                                                child: const Text(
+                                                  'Закрыть',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w800,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: ElevatedButton(
+                                                onPressed:
+                                                    inProgress ? null : () => _blockUser(item),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      const Color(0xFFFF6B6B),
+                                                  foregroundColor: Colors.white,
+                                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(16),
+                                                  ),
+                                                  elevation: 0,
+                                                ),
+                                                child: const Text(
+                                                  'Блок',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w800,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (_isAdmin) ...[
+                                        const SizedBox(height: 8),
+                                        SizedBox(
+                                          height: 36,
+                                          width: double.infinity,
+                                          child: OutlinedButton.icon(
+                                            onPressed: inProgress
+                                                ? null
+                                                : () => _openSanctionDialog(item),
+                                            icon: const Icon(Icons.gavel_rounded, size: 18),
+                                            label: Text(
+                                              item.activeSanction != null &&
+                                                      item.activeSanction!.isActive
+                                                  ? 'Санкция'
+                                                  : 'Назначить санкцию',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor:
+                                                  AppColors.dark.withValues(alpha: 0.72),
+                                              side: BorderSide(
+                                                color: AppColors.primary.withValues(alpha: 0.14),
+                                              ),
+                                              padding: const EdgeInsets.symmetric(vertical: 8),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(16),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          OutlinedButton(
-                            onPressed: _loadUsers,
-                            child: const Text('Повторить'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : filtered.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Пользователи для модерации не найдены',
-                      style: TextStyle(color: Color(0xFF75878A)),
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _loadUsers,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final item = filtered[index];
-                        final user = item.user;
-                        final inProgress = _actionInProgress.contains(user.id);
-
-                        return Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFCDEBE7)),
-                          ),
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 22,
-                                    backgroundColor: const Color(0xFFEAF0FF),
-                                    backgroundImage: user.photoUrl != null
-                                        ? NetworkImage(user.photoUrl!)
-                                        : null,
-                                    child: user.photoUrl == null
-                                        ? Text(
-                                            (user.displayName?.isNotEmpty ==
-                                                        true
-                                                    ? user.displayName!
-                                                    : user.email)[0]
-                                                .toUpperCase(),
-                                            style: const TextStyle(
-                                              color: Color(0xFF75878A),
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          )
-                                        : null,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          user.displayName?.isNotEmpty == true
-                                              ? user.displayName!
-                                              : user.email,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF161823),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          user.email,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            color: Color(0xFF75878A),
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: item.pendingReports > 0
-                                          ? const Color(0xFFFFEFE8)
-                                          : const Color(0xFFEAF8F2),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      'Жалоб: ${item.pendingReports}',
-                                      style: TextStyle(
-                                        color: item.pendingReports > 0
-                                            ? const Color(0xFFD16A3A)
-                                            : const Color(0xFF2E9E71),
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                  if (_isAdmin) ...[
-                                    const SizedBox(width: 8),
-                                    PopupMenuButton<String>(
-                                      enabled: !inProgress,
-                                      onSelected: (role) =>
-                                          _changeUserRole(item, role),
-                                      itemBuilder: (context) => const [
-                                        PopupMenuItem<String>(
-                                          value: 'USER',
-                                          child: Text('Сделать USER'),
-                                        ),
-                                        PopupMenuItem<String>(
-                                          value: 'MODERATOR',
-                                          child: Text('Сделать MODERATOR'),
-                                        ),
-                                        PopupMenuItem<String>(
-                                          value: 'ADMIN',
-                                          child: Text('Сделать ADMIN'),
-                                        ),
-                                      ],
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFEFF2FF),
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Text(
-                                          _roleLabel(user.role),
-                                          style: const TextStyle(
-                                            color: Color(0xFF75878A),
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    if (item.activeSanction != null &&
-                                        item.activeSanction!.isActive) ...[
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFFFF3E6),
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Text(
-                                          _sanctionLabel(item.activeSanction!),
-                                          style: const TextStyle(
-                                            color: Color(0xFFD16A3A),
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  SizedBox(
-                                    width: 150,
-                                    child: OutlinedButton(
-                                      onPressed: inProgress
-                                          ? null
-                                          : () {
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute<void>(
-                                                  builder: (_) =>
-                                                      UserProfileScreen.fromUser(
-                                                        user: user,
-                                                      ),
-                                                ),
-                                              );
-                                            },
-                                      child: const Text('Профиль'),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: 170,
-                                    child: OutlinedButton(
-                                      onPressed: () => _showUserReportsDialog(item),
-                                      child: const Text('Смотреть жалобы'),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: 170,
-                                    child: ElevatedButton(
-                                      onPressed: inProgress
-                                          ? null
-                                          : () => _resolvePendingReports(item),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFF4ECDC4,
-                                        ),
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      child: const Text('Закрыть жалобы'),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: 120,
-                                    child: ElevatedButton(
-                                      onPressed: inProgress
-                                          ? null
-                                          : () => _blockUser(item),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFFFF6B6B,
-                                        ),
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      child: const Text('Блок'),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (_isAdmin) ...[
-                                const SizedBox(height: 8),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    onPressed: inProgress
-                                        ? null
-                                        : () => _openSanctionDialog(item),
-                                    icon: const Icon(Icons.gavel_rounded),
-                                    label: Text(
-                                      item.activeSanction != null &&
-                                              item.activeSanction!.isActive
-                                          ? 'Управление санкцией'
-                                          : 'Назначить санкцию',
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
           ),
         ],
       ),

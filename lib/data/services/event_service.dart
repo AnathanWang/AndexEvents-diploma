@@ -19,6 +19,18 @@ class EventService {
     _storageService = LocalStorageService();
   }
 
+  Future<void> clearEventsCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys().where((k) => k.startsWith('events_cache_')).toList();
+      for (final key in keys) {
+        await prefs.remove(key);
+      }
+    } catch (e) {
+      LoggerService.error('[EventService] Cache clear error', e);
+    }
+  }
+
   /// Загрузить фото события в локальное хранилище
   Future<String> uploadEventPhoto(File photoFile) async {
     try {
@@ -172,6 +184,41 @@ class EventService {
           return cached;
         }
       }
+      throw Exception('Ошибка загрузки событий: $e');
+    }
+  }
+
+  /// Получить список событий для модерации (включая скрытые санкцией HIDE_VISIBILITY).
+  /// Требует роль ADMIN/MODERATOR.
+  Future<List<EventModel>> getEventsForModeration({int limit = 500}) async {
+    try {
+      final String? token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final uri = Uri.parse('${AppConfig.baseUrl}/events/moderation/all')
+          .replace(queryParameters: {'limit': limit.toString()});
+
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(AppConfig.receiveTimeout);
+
+      if (response.statusCode != 200) {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Ошибка загрузки событий');
+      }
+
+      final responseData = json.decode(response.body);
+      final List<dynamic> eventsJson = responseData['data']['events'];
+      return eventsJson.map((json) => EventModel.fromJson(json)).toList();
+    } catch (e) {
       throw Exception('Ошибка загрузки событий: $e');
     }
   }

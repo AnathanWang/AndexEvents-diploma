@@ -14,10 +14,16 @@ import java.util.Optional;
 public class EventService {
     private final EventRepository repo;
     private final RatingRepository ratingRepo;
+    private final EventModerationGuardService eventModerationGuardService;
 
-    public EventService(EventRepository repo, RatingRepository ratingRepo) {
+    public EventService(
+            EventRepository repo,
+            RatingRepository ratingRepo,
+            EventModerationGuardService eventModerationGuardService
+    ) {
         this.repo = repo;
         this.ratingRepo = ratingRepo;
+        this.eventModerationGuardService = eventModerationGuardService;
     }
 
     public EventDtos.EventDto create(EventRepository.EventCreateParams p) {
@@ -28,6 +34,17 @@ public class EventService {
     public List<EventDtos.EventDto> listAllApproved() {
         List<EventDtos.EventDto> out = new ArrayList<>();
         for (EventRepository.EventRow row : repo.listApprovedEvents()) {
+            out.add(toDto(row, null, null));
+        }
+        return out;
+    }
+
+    public List<EventDtos.EventDto> listAllApprovedForModeration(String moderatorUserId) {
+        if (moderatorUserId == null || moderatorUserId.isBlank()) {
+            throw new ForbiddenException("Unauthorized");
+        }
+        List<EventDtos.EventDto> out = new ArrayList<>();
+        for (EventRepository.EventRow row : repo.listApprovedEventsIncludingHidden()) {
             out.add(toDto(row, null, null));
         }
         return out;
@@ -74,6 +91,7 @@ public class EventService {
             throw new ForbiddenException("Forbidden: You can only edit your own events");
         }
 
+        eventModerationGuardService.assertCanEdit(eventId);
         return repo.updateEvent(eventId, p).map(r -> toDto(r, userId, null));
     }
 
@@ -86,11 +104,19 @@ public class EventService {
         return repo.deleteEvent(eventId);
     }
 
+    public boolean deleteAsModerator(String eventId) {
+        EventRepository.EventRow existing = repo.findEventRowById(eventId).orElse(null);
+        if (existing == null) return false;
+        return repo.deleteEvent(eventId);
+    }
+
     public EventRepository.ParticipantRow participate(String eventId, String userId, String status) {
         EventRepository.EventRow existing = repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
         if (!"APPROVED".equalsIgnoreCase(existing.status())) {
             throw new BadRequestException("Cannot participate in unapproved event");
         }
+
+        eventModerationGuardService.assertCanParticipate(eventId);
         return repo.upsertParticipation(eventId, userId, status).orElseThrow();
     }
 
