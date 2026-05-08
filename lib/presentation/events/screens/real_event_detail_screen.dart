@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/constants/event_messages.dart';
@@ -34,6 +33,7 @@ import 'real_event_detail/event_detail_description_section.dart';
 import 'real_event_detail/event_detail_organizer_section.dart';
 import 'real_event_detail/event_reviews_bottom_sheet.dart';
 import 'real_event_detail/event_detail_bottom_bar.dart';
+import 'real_event_detail/event_detail_sliver_app_bar.dart';
 
 class RealEventDetailScreen extends StatefulWidget {
   final String eventId;
@@ -370,187 +370,22 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
           CustomScrollView(
             slivers: [
           // App Bar с изображением
-          SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            leading: Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.86),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF365892).withValues(alpha: 0.14),
-                    blurRadius: 14,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF243252)),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-            actions: [
-              _buildFavoriteAction(event),
-              Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.86),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF365892).withValues(alpha: 0.14),
-                      blurRadius: 14,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.flag_rounded, color: Color(0xFF243252)),
-                  onPressed: () => _openReportDialog(event),
-                ),
-              ),
-              Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.86),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF365892).withValues(alpha: 0.14),
-                      blurRadius: 14,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.event_available_rounded,
-                    color: Color(0xFF243252),
-                  ),
-                  onPressed: () => _addToCalendar(event),
-                ),
-              ),
-              Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.86),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF365892).withValues(alpha: 0.14),
-                      blurRadius: 14,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.share, color: Color(0xFF243252)),
-                  onPressed: () {},
-                ),
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (imageGallery.isNotEmpty)
-                    PageView.builder(
-                      itemCount: imageGallery.length,
-                      onPageChanged: (index) {
-                        if (!mounted) return;
-                        setState(() {
-                          _currentImageIndex = index;
-                        });
-                      },
-                      itemBuilder: (context, index) {
-                        return CachedNetworkImage(
-                          imageUrl: imageGallery[index],
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: Colors.grey.shade300,
-                            child: const Center(child: CircularProgressIndicator()),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  categoryColor.withValues(alpha: 0.88),
-                                  AppColors.primary.withValues(alpha: 0.64),
-                                  AppColors.accent.withValues(alpha: 0.44),
-                                ],
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.event,
-                              size: 120,
-                              color: Colors.white38,
-                            ),
-                          ),
-                        );
-                      },
-                    )
-                  else
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            categoryColor.withValues(alpha: 0.88),
-                            AppColors.primary.withValues(alpha: 0.64),
-                            AppColors.accent.withValues(alpha: 0.44),
-                          ],
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.event,
-                        size: 120,
-                        color: Colors.white38,
-                      ),
-                    ),
-                  IgnorePointer(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white.withValues(alpha: 0.04),
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.46),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (imageGallery.length > 1)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 16,
-                      child: IgnorePointer(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(
-                            imageGallery.length,
-                            (index) => Container(
-                              width: 8,
-                              height: 8,
-                              margin: const EdgeInsets.symmetric(horizontal: 3),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: _currentImageIndex == index
-                                    ? Colors.white
-                                    : Colors.white54,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+          EventDetailSliverAppBar(
+            event: event,
+            categoryColor: categoryColor,
+            imageGallery: imageGallery,
+            currentImageIndex: _currentImageIndex,
+            onImageIndexChanged: (index) {
+              if (!mounted) return;
+              setState(() {
+                _currentImageIndex = index;
+              });
+            },
+            favoriteAction: _buildFavoriteAction(event),
+            onBack: () => Navigator.of(context).pop(),
+            onReport: () => _openReportDialog(event),
+            onAddToCalendar: () => _addToCalendar(event),
+            onShare: () {},
           ),
 
           // Контент
