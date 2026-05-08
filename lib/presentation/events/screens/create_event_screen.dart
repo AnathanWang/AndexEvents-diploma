@@ -99,9 +99,13 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     }
   }
 
-  Future<void> _maybeOfferRestoreDraft() async {
+  Future<void> _openDraftsSheet() async {
     final drafts = await _draftService.listDrafts();
-    if (!mounted || drafts.isEmpty) return;
+    if (!mounted) return;
+    if (drafts.isEmpty) {
+      CustomNotification.show(context, 'Черновиков пока нет');
+      return;
+    }
 
     await showModalBottomSheet<void>(
       context: context,
@@ -145,16 +149,22 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             if (newName == null || newName.trim().isEmpty) return;
             await _draftService.renameDraft(draft.id, newName.trim());
             if (context.mounted) Navigator.pop(context);
-            if (mounted) _maybeOfferRestoreDraft();
+            if (mounted) _openDraftsSheet();
           },
           onDelete: (draft) async {
             await _draftService.deleteDraft(draft.id);
             if (context.mounted) Navigator.pop(context);
-            if (mounted) _maybeOfferRestoreDraft();
+            if (mounted) _openDraftsSheet();
           },
         );
       },
     );
+  }
+
+  Future<void> _maybeOfferRestoreDraft() async {
+    final drafts = await _draftService.listDrafts();
+    if (!mounted || drafts.isEmpty) return;
+    await _openDraftsSheet();
   }
 
   EventDraftModel _collectDraft({required String id, required String name}) {
@@ -715,6 +725,14 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           ),
           centerTitle: true,
           actions: [
+            IconButton(
+              tooltip: 'Открыть черновики',
+              onPressed: _isLoading ? null : _openDraftsSheet,
+              icon: Icon(
+                Icons.folder_open_rounded,
+                color: AppColors.dark.withValues(alpha: 0.78),
+              ),
+            ),
             IconButton(
               tooltip: 'Сохранить черновик',
               onPressed: _isLoading ? null : _saveDraft,
