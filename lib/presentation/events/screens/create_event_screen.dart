@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/services/logger_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../widgets/common/custom_notification.dart';
@@ -17,6 +16,7 @@ import 'map_location_picker.dart';
 import 'create_event/create_event_widgets.dart';
 import 'create_event/create_event_drafts_sheet.dart';
 import 'create_event/create_event_sections.dart';
+import 'create_event/create_event_photos_section.dart';
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({super.key});
@@ -806,194 +806,14 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                           ),
                           const SizedBox(height: 12),
 
-                          Container(
-                            padding: const EdgeInsets.all(14),
+                          CreateEventPhotosSection(
                             decoration: _glassCardDecoration(),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                _sectionHeader(
-                                  icon: Icons.photo_camera_back_rounded,
-                                  title: 'Обложка',
-                                  subtitle: 'До $_maxEventPhotos фото • первое будет главным',
-                                  trailing: Text(
-                                    '${_uploadedPhotoUrls.length}/$_maxEventPhotos',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.dark.withValues(alpha: 0.56),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                GestureDetector(
-                                  onTap: _pickImages,
-                                  child: Container(
-                                    height: 176,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surface.withValues(alpha: 0.84),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: AppColors.primary.withValues(alpha: 0.14),
-                                      ),
-                                    ),
-                                    child: _isPhotoUploading
-                                        ? const Center(
-                                            child: SizedBox(
-                                              width: 24,
-                                              height: 24,
-                                              child: CircularProgressIndicator(strokeWidth: 2),
-                                            ),
-                                          )
-                                        : _uploadedPhotoUrls.isNotEmpty
-                                            ? ClipRRect(
-                                                borderRadius: BorderRadius.circular(16),
-                                                child: CachedNetworkImage(
-                                                  imageUrl: _uploadedPhotoUrls.first,
-                                                  fit: BoxFit.cover,
-                                                  placeholder: (context, url) => const Center(
-                                                    child: SizedBox(
-                                                      width: 24,
-                                                      height: 24,
-                                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                                    ),
-                                                  ),
-                                                  errorWidget: (context, url, error) => Icon(
-                                                    Icons.broken_image_rounded,
-                                                    size: 30,
-                                                    color: AppColors.dark.withValues(alpha: 0.44),
-                                                  ),
-                                                ),
-                                              )
-                                            : Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: <Widget>[
-                                                  Container(
-                                                    width: 56,
-                                                    height: 56,
-                                                    decoration: BoxDecoration(
-                                                      color: AppColors.primary.withValues(alpha: 0.12),
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                    child: Icon(
-                                                      Icons.add_photo_alternate_outlined,
-                                                      size: 28,
-                                                      color: AppColors.primary.withValues(alpha: 0.92),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 10),
-                                                  Text(
-                                                    'Добавить фото',
-                                                    style: TextStyle(
-                                                      color: AppColors.dark.withValues(alpha: 0.78),
-                                                      fontSize: 15,
-                                                      fontWeight: FontWeight.w800,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    'Нажмите для загрузки',
-                                                    style: TextStyle(
-                                                      color: AppColors.dark.withValues(alpha: 0.56),
-                                                      fontSize: 13,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                  ),
-                                ),
-                                if (_uploadedPhotoUrls.isNotEmpty) ...<Widget>[
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    height: 86,
-                                    child: ListView.separated(
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: _uploadedPhotoUrls.length +
-                                          (_uploadedPhotoUrls.length + _pendingPhotoUploads < _maxEventPhotos ? 1 : 0),
-                                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                                      itemBuilder: (context, index) {
-                                        if (index == _uploadedPhotoUrls.length &&
-                                            _uploadedPhotoUrls.length + _pendingPhotoUploads < _maxEventPhotos) {
-                                          return GestureDetector(
-                                            onTap: _pickImages,
-                                            child: Container(
-                                              width: 86,
-                                              height: 86,
-                                              decoration: BoxDecoration(
-                                                color: AppColors.surface.withValues(alpha: 0.84),
-                                                borderRadius: BorderRadius.circular(14),
-                                                border: Border.all(
-                                                  color: AppColors.primary.withValues(alpha: 0.14),
-                                                ),
-                                              ),
-                                              child: Icon(
-                                                Icons.add_photo_alternate_outlined,
-                                                color: AppColors.primary.withValues(alpha: 0.7),
-                                              ),
-                                            ),
-                                          );
-                                        }
-
-                                        final url = _uploadedPhotoUrls[index];
-                                        return Stack(
-                                          children: [
-                                            ClipRRect(
-                                              borderRadius: BorderRadius.circular(14),
-                                              child: CachedNetworkImage(
-                                                imageUrl: url,
-                                                width: 86,
-                                                height: 86,
-                                                fit: BoxFit.cover,
-                                                placeholder: (context, _) => Container(
-                                                  width: 86,
-                                                  height: 86,
-                                                  color: AppColors.surface.withValues(alpha: 0.84),
-                                                  child: const Center(
-                                                    child: SizedBox(
-                                                      width: 18,
-                                                      height: 18,
-                                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                                    ),
-                                                  ),
-                                                ),
-                                                errorWidget: (context, _, __) => Container(
-                                                  width: 86,
-                                                  height: 86,
-                                                  color: AppColors.surface.withValues(alpha: 0.84),
-                                                  child: Icon(
-                                                    Icons.broken_image_rounded,
-                                                    color: AppColors.dark.withValues(alpha: 0.42),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            Positioned(
-                                              top: 5,
-                                              right: 5,
-                                              child: GestureDetector(
-                                                onTap: () => _removeUploadedPhoto(index),
-                                                child: Container(
-                                                  width: 22,
-                                                  height: 22,
-                                                  decoration: BoxDecoration(
-                                                    color: AppColors.dark.withValues(alpha: 0.62),
-                                                    shape: BoxShape.circle,
-                                                    border: Border.all(
-                                                      color: Colors.white.withValues(alpha: 0.22),
-                                                    ),
-                                                  ),
-                                                  child: const Icon(Icons.close, size: 14, color: Colors.white),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
+                            uploadedPhotoUrls: _uploadedPhotoUrls,
+                            pendingPhotoUploads: _pendingPhotoUploads,
+                            isPhotoUploading: _isPhotoUploading,
+                            maxEventPhotos: _maxEventPhotos,
+                            onPickImages: _pickImages,
+                            onRemoveUploadedPhoto: _removeUploadedPhoto,
                           ),
                           const SizedBox(height: 12),
 
