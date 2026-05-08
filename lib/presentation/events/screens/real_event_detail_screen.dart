@@ -29,6 +29,7 @@ import '../../../data/services/event_participants_manage_service.dart';
 import '../../../data/models/managed_participant_model.dart';
 import '../../../data/models/waitlist_entry_model.dart';
 import '../../../data/models/user_preview_model.dart';
+import 'real_event_detail/event_manage_participants_sheet.dart';
 
 const Color _secondaryTextColor = Color(0xFF5E6D86);
 
@@ -130,7 +131,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _EventManageParticipantsSheet(
+      builder: (context) => EventManageParticipantsSheet(
         eventId: event.id,
         service: _manageService,
       ),
@@ -2041,6 +2042,8 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
     );
   }
 }
+
+// Participant management sheet moved to `real_event_detail/event_manage_participants_sheet.dart`.
 
 class _EventManageParticipantsSheet extends StatefulWidget {
   const _EventManageParticipantsSheet({
