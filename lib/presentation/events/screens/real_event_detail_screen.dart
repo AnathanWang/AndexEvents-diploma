@@ -30,6 +30,7 @@ import '../../../data/models/managed_participant_model.dart';
 import '../../../data/models/waitlist_entry_model.dart';
 import '../../../data/models/user_preview_model.dart';
 import 'real_event_detail/event_manage_participants_sheet.dart';
+import 'real_event_detail/real_event_detail_widgets.dart';
 
 const Color _secondaryTextColor = Color(0xFF5E6D86);
 
@@ -218,50 +219,18 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   }
 
   Widget _buildSectionContainer({required Widget child}) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.88),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFDFE7FF)),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: const Color(0xFF2F4E8A).withValues(alpha: 0.1),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: child,
-    );
+    return EventDetailSectionContainer(child: child);
   }
 
   Widget _buildSectionTitle(String title, {String? subtitle}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF243252),
-          ),
-        ),
-        if (subtitle != null) ...<Widget>[
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF66739B),
-              height: 1.35,
-            ),
-          ),
-        ],
-      ],
-    );
+    return EventDetailSectionTitle(title, subtitle: subtitle);
   }
+
+  Widget _buildInfoRow(IconData icon, String text, {VoidCallback? onTap}) {
+    return EventDetailInfoRow(icon: icon, text: text, onTap: onTap);
+  }
+
+  // moved to `real_event_detail/real_event_detail_widgets.dart`
 
   @override
   Widget build(BuildContext context) {
@@ -604,7 +573,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                  child: _buildSectionContainer(
+                  child: EventDetailSectionContainer(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -731,26 +700,29 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                 // Дата и время (с учетом даты окончания)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _buildSectionContainer(
+                  child: EventDetailSectionContainer(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionTitle(
+                        const EventDetailSectionTitle(
                           'Когда и где',
                           subtitle: 'Дата, время, таймер и локация события',
                         ),
                         const SizedBox(height: 14),
-                        _buildInfoRow(
-                          Icons.calendar_today,
-                          event.endDateTime != null &&
-                                  !_isSameCalendarDate(event.dateTime, event.endDateTime!)
+                        EventDetailInfoRow(
+                          icon: Icons.calendar_today,
+                          text: event.endDateTime != null &&
+                                  !_isSameCalendarDate(
+                                    event.dateTime,
+                                    event.endDateTime!,
+                                  )
                               ? '${_formatDate(event.dateTime)} - ${_formatDate(event.endDateTime!)}'
                               : _formatDate(event.dateTime),
                         ),
                         const SizedBox(height: 12),
-                        _buildInfoRow(
-                          Icons.access_time,
-                          event.endDateTime != null
+                        EventDetailInfoRow(
+                          icon: Icons.access_time,
+                          text: event.endDateTime != null
                               ? '${_formatTime(event.dateTime)} - ${_formatTime(event.endDateTime!)}'
                               : _formatTime(event.dateTime),
                         ),
@@ -1208,7 +1180,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
 
       // Нижняя панель с кнопкой участия
       bottomSheet: SafeArea(
-        child: _buildFloatingActionPanel(
+        child: EventDetailFloatingActionPanel(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1220,72 +1192,12 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
     );
   }
 
-  Widget _buildFloatingActionPanel({required Widget child}) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(26),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.surface.withValues(alpha: 0.72),
-              borderRadius: BorderRadius.circular(26),
-              border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.1),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.dark.withValues(alpha: 0.12),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-              child: child,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildFavoriteAction(EventModel event) {
-    return Container(
-      margin: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.86),
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF365892).withValues(alpha: 0.14),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: ValueListenableBuilder<bool>(
-        valueListenable: _isFavoriteNotifier,
-        builder: (context, isFavorite, _) {
-          return ValueListenableBuilder<bool>(
-            valueListenable: _isFavoriteLoadingNotifier,
-            builder: (context, isLoading, __) {
-              final isEventFinished = _isEventFinished(event);
-              return IconButton(
-                icon: Icon(
-                  isFavorite ? Icons.favorite : Icons.favorite_outline,
-                  color: isFavorite ? const Color(0xFFDE5A77) : const Color(0xFF243252),
-                ),
-                onPressed: (isLoading || isEventFinished)
-                    ? null
-                    : () => _toggleFavorite(event),
-              );
-            },
-          );
-        },
-      ),
+    return EventDetailFavoriteAction(
+      isFavorite: _isFavoriteNotifier,
+      isLoading: _isFavoriteLoadingNotifier,
+      isDisabled: _isEventFinished(event),
+      onToggle: () => _toggleFavorite(event),
     );
   }
 
@@ -1786,44 +1698,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
     return DateFormat('dd.MM.yyyy HH:mm', 'ru').format(local);
   }
 
-  Widget _buildInfoRow(IconData icon, String text, {VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: <Color>[Color(0xFFE8EEFF), Color(0xFFE7F6F2)],
-              ),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: const Color(0xFF5F76FF), size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: 15,
-                color: Color(0xFF243252),
-                height: 1.35,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          if (onTap != null)
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 15,
-              color: Color(0xFF8EA0C5),
-            ),
-        ],
-      ),
-    );
-  }
+  // moved to `real_event_detail/real_event_detail_widgets.dart`
 
   String _getCategoryName(String category) {
     switch (category) {
