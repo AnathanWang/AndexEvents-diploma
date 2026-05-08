@@ -3,7 +3,6 @@ import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
-import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/constants/event_messages.dart';
 import 'dart:ui';
@@ -31,6 +30,7 @@ import '../../../data/models/waitlist_entry_model.dart';
 import '../../../data/models/user_preview_model.dart';
 import 'real_event_detail/event_manage_participants_sheet.dart';
 import 'real_event_detail/real_event_detail_widgets.dart';
+import 'real_event_detail/event_detail_route_section.dart';
 
 const Color _secondaryTextColor = Color(0xFF5E6D86);
 
@@ -216,10 +216,6 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
         isError: true,
       );
     }
-  }
-
-  Widget _buildSectionContainer({required Widget child}) {
-    return EventDetailSectionContainer(child: child);
   }
 
   Widget _buildSectionTitle(String title, {String? subtitle}) {
@@ -1093,78 +1089,9 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                 const SizedBox(height: 20),
 
                 if (!event.isOnline) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildSectionContainer(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildSectionTitle(
-                            'Маршрут',
-                            subtitle: 'Карта и быстрый переход в навигацию',
-                          ),
-                          const SizedBox(height: 12),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(18),
-                            child: SizedBox(
-                              height: 180,
-                              child: IgnorePointer(
-                                child: YandexMap(
-                                  onMapCreated: (controller) {
-                                    controller.moveCamera(
-                                      CameraUpdate.newCameraPosition(
-                                        CameraPosition(
-                                          target: Point(
-                                            latitude: event.latitude,
-                                            longitude: event.longitude,
-                                          ),
-                                          zoom: 13,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  mapObjects: [
-                                    PlacemarkMapObject(
-                                      mapId: const MapObjectId('event_detail_point'),
-                                      point: Point(
-                                        latitude: event.latitude,
-                                        longitude: event.longitude,
-                                      ),
-                                      icon: PlacemarkIcon.single(
-                                        PlacemarkIconStyle(
-                                          image: BitmapDescriptor.fromAssetImage(
-                                            'assets/icons/map_arrow.png',
-                                          ),
-                                          scale: 0.3,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: () => _openRoute(event),
-                              icon: const Icon(Icons.route),
-                              label: const Text('Построить маршрут'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF5F76FF),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                elevation: 0,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  EventDetailRouteSection(
+                    event: event,
+                    onOpenRoute: () => _openRoute(event),
                   ),
                   const SizedBox(height: 24),
                 ],
