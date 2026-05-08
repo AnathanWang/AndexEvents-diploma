@@ -33,6 +33,7 @@ import 'real_event_detail/event_detail_when_where_section.dart';
 import 'real_event_detail/event_detail_description_section.dart';
 import 'real_event_detail/event_detail_organizer_section.dart';
 import 'real_event_detail/event_reviews_bottom_sheet.dart';
+import 'real_event_detail/event_detail_bottom_bar.dart';
 
 class RealEventDetailScreen extends StatefulWidget {
   final String eventId;
@@ -632,15 +633,15 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   ),
 
       // Нижняя панель с кнопкой участия
-      bottomSheet: SafeArea(
-        child: EventDetailFloatingActionPanel(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildParticipationButton(event, categoryColor),
-            ],
-          ),
-        ),
+      bottomSheet: EventDetailBottomBar(
+        event: event,
+        isEventFinished: _isEventFinished(event),
+        categoryColor: categoryColor,
+        isGoing: _isGoingNotifier,
+        isGoingLoading: _isGoingLoadingNotifier,
+        myRating: _myRatingNotifier,
+        onToggleGoing: () => _toggleGoing(event),
+        onRate: () => _showRatingDialog(event),
       ),
     );
   }
@@ -695,110 +696,6 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
           userInitials: initials.isEmpty ? '??' : initials,
         ),
       ),
-    );
-  }
-
-  Widget _buildParticipationButton(EventModel event, Color categoryColor) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: _isGoingLoadingNotifier,
-      builder: (context, isLoading, _) {
-        return ValueListenableBuilder<bool>(
-          valueListenable: _isGoingNotifier,
-          builder: (context, isGoing, __) {
-            final isEventFinished = _isEventFinished(event);
-            final myRating = _myRatingNotifier.value;
-            final canRate = isEventFinished && event.isParticipating && myRating == null;
-            
-            String label;
-            if (isEventFinished) {
-              if (event.isParticipating) {
-                if (myRating == null) {
-                  label = 'Оценить событие';
-                } else {
-                  label = 'Ваша оценка: $myRating ★';
-                }
-              } else {
-                label = EventMessages.eventFinishedButtonTitle;
-              }
-            } else {
-              label = isGoing ? 'Отменить участие' : 'Участвовать';
-            }
-            
-            final bool isActionDisabled = isEventFinished && (!event.isParticipating || myRating != null);
-            final bool disabled = isLoading || isActionDisabled;
-
-            Color foreground;
-            Color background;
-            Color border;
-
-            if (disabled) {
-              foreground = Colors.white.withValues(alpha: 0.86);
-              background = AppColors.dark.withValues(alpha: 0.35);
-              border = Colors.white.withValues(alpha: 0.12);
-            } else if (canRate) {
-              foreground = Colors.white;
-              background = const Color(0xFF00C853).withValues(alpha: 0.92); // Nice green for rating
-              border = const Color(0xFF00E676).withValues(alpha: 0.6);
-            } else if (isGoing) {
-              foreground = AppColors.dark;
-              background = AppColors.surface.withValues(alpha: 0.9);
-              border = AppColors.primary.withValues(alpha: 0.18);
-            } else {
-              foreground = Colors.white;
-              background = AppColors.primary.withValues(alpha: 0.92);
-              border = AppColors.accent.withValues(alpha: 0.6);
-            }
-
-            return Container(
-              height: 50,
-              decoration: BoxDecoration(
-                color: background,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: border),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.dark.withValues(alpha: 0.12),
-                    blurRadius: 14,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: isLoading 
-                    ? null 
-                    : (isEventFinished 
-                        ? (canRate ? () => _showRatingDialog(event) : null)
-                        : () => _toggleGoing(event)),
-                  borderRadius: BorderRadius.circular(18),
-                  child: Center(
-                    child: isLoading
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                foreground.withValues(alpha: 0.7),
-                              ),
-                            ),
-                          )
-                        : Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: foreground,
-                            ),
-                          ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
     );
   }
 
