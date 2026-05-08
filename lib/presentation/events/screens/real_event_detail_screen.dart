@@ -3,6 +3,7 @@ import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/event_messages.dart';
 
 import '../bloc/event_bloc.dart';
@@ -119,6 +120,25 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
       CustomNotification.show(
         context,
         msg.isEmpty ? 'Не удалось добавить событие в календарь' : msg,
+        isError: true,
+      );
+    }
+  }
+
+  Future<void> _shareEvent(EventModel event) async {
+    final text = [
+      event.title.trim(),
+      if (event.location.trim().isNotEmpty) event.location.trim(),
+      '${_formatDate(event.dateTime)} ${_formatTime(event.dateTime)}',
+    ].join('\n');
+
+    try {
+      await SharePlus.instance.share(ShareParams(text: text));
+    } catch (e) {
+      if (!mounted) return;
+      CustomNotification.show(
+        context,
+        'Не удалось поделиться событием',
         isError: true,
       );
     }
@@ -382,7 +402,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
             onBack: () => Navigator.of(context).pop(),
             onReport: () => _openReportDialog(event),
             onAddToCalendar: () => _addToCalendar(event),
-            onShare: () {},
+            onShare: () => _shareEvent(event),
           ),
 
           // Контент
