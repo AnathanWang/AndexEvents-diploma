@@ -14,7 +14,6 @@ import '../../../data/models/event_model.dart';
 import '../../../data/services/external_route_service.dart';
 import '../widgets/event_participants_dialog.dart';
 import '../../matches/screens/event_match_screen.dart';
-import '../../widgets/event_countdown_timer.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../profile/screens/user_profile_screen.dart';
 import '../../widgets/common/star_rating_widget.dart';
@@ -32,6 +31,9 @@ import 'real_event_detail/event_manage_participants_sheet.dart';
 import 'real_event_detail/real_event_detail_widgets.dart';
 import 'real_event_detail/event_detail_route_section.dart';
 import 'real_event_detail/event_detail_header_card.dart';
+import 'real_event_detail/event_detail_when_where_section.dart';
+import 'real_event_detail/event_detail_description_section.dart';
+import 'real_event_detail/event_detail_organizer_section.dart';
 
 const Color _secondaryTextColor = Color(0xFF5E6D86);
 
@@ -219,14 +221,6 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
     }
   }
 
-  Widget _buildSectionTitle(String title, {String? subtitle}) {
-    return EventDetailSectionTitle(title, subtitle: subtitle);
-  }
-
-  Widget _buildInfoRow(IconData icon, String text, {VoidCallback? onTap}) {
-    return EventDetailInfoRow(icon: icon, text: text, onTap: onTap);
-  }
-
   // moved to `real_event_detail/real_event_detail_widgets.dart`
 
   @override
@@ -327,7 +321,6 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   Widget _buildEventDetail(BuildContext context, EventModel event) {
     final categoryColor = _getCategoryColor(event.category);
     final categoryName = _getCategoryName(event.category);
-    final isEventFinished = _isEventFinished(event);
     final imageGallery = event.imageUrls.isNotEmpty
         ? event.imageUrls
         : <String>[
@@ -590,400 +583,40 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Дата и время (с учетом даты окончания)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: EventDetailSectionContainer(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const EventDetailSectionTitle(
-                          'Когда и где',
-                          subtitle: 'Дата, время, таймер и локация события',
-                        ),
-                        const SizedBox(height: 14),
-                        EventDetailInfoRow(
-                          icon: Icons.calendar_today,
-                          text: event.endDateTime != null &&
-                                  !_isSameCalendarDate(
-                                    event.dateTime,
-                                    event.endDateTime!,
-                                  )
-                              ? '${_formatDate(event.dateTime)} - ${_formatDate(event.endDateTime!)}'
-                              : _formatDate(event.dateTime),
-                        ),
-                        const SizedBox(height: 12),
-                        EventDetailInfoRow(
-                          icon: Icons.access_time,
-                          text: event.endDateTime != null
-                              ? '${_formatTime(event.dateTime)} - ${_formatTime(event.endDateTime!)}'
-                              : _formatTime(event.dateTime),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: <Color>[
-                                    Color(0xFFE8EEFF),
-                                    Color(0xFFE7F6F2),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: const Icon(
-                                Icons.timer_outlined,
-                                color: Color(0xFF5F76FF),
-                                size: 22,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'До окончания',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Color(0xFF66739B),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  EventCountdownTimer(
-                                    expirationTime: event.actualEndDateTime,
-                                    isMinimal: true,
-                                    textStyle: const TextStyle(
-                                      color: Color(0xFF243252),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInfoRow(
-                          Icons.location_on,
-                          event.location,
-                          onTap: event.isOnline ? null : () => _openRoute(event),
-                        ),
-                        const SizedBox(height: 18),
-                        _buildSectionTitle('Участники'),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            if (event.previewParticipants.isNotEmpty)
-                              SizedBox(
-                                width:
-                                    25.0 *
-                                        (event.previewParticipants.length - 1) +
-                                    40,
-                                height: 40,
-                                child: Stack(
-                                  children: List.generate(
-                                    event.previewParticipants.length,
-                                    (index) => Positioned(
-                                      left: index * 25.0,
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: CircleAvatar(
-                                          radius: 18,
-                                          backgroundColor: Colors.grey[200],
-                                          backgroundImage:
-                                              event
-                                                      .previewParticipants[index]
-                                                      .user
-                                                      .photoUrl !=
-                                                  null
-                                              ? CachedNetworkImageProvider(
-                                                  event
-                                                      .previewParticipants[index]
-                                                      .user
-                                                      .photoUrl!,
-                                                )
-                                              : null,
-                                          child:
-                                              event
-                                                      .previewParticipants[index]
-                                                      .user
-                                                      .photoUrl ==
-                                                  null
-                                              ? Text(
-                                                  event
-                                                          .previewParticipants[index]
-                                                          .user
-                                                          .displayName
-                                                          .isNotEmpty
-                                                      ? event
-                                                          .previewParticipants[index]
-                                                          .user
-                                                          .displayName[0]
-                                                          .toUpperCase()
-                                                      : '?',
-                                                  style: const TextStyle(
-                                                    color: Color(0xFF161823),
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                )
-                                              : null,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: () {
-                                context.read<EventBloc>().add(
-                                  EventParticipantsLoadRequested(event.id),
-                                );
-                                _showParticipantsDialog(context, event);
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF5F8FF),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: const Color(0xFFE2E9FB),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      event.participantsCount == 0
-                                          ? 'Нет участников'
-                                          : '${event.participantsCount} участник${event.participantsCount % 10 == 1 && event.participantsCount != 11 ? '' : 'ов'}',
-                                      style: const TextStyle(
-                                        color: Color(0xFF243252),
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    if (event.participantsCount > 0) ...[
-                                      const SizedBox(width: 4),
-                                      const Icon(
-                                        Icons.chevron_right_rounded,
-                                        size: 16,
-                                        color: Color(0xFF9E9E9E),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-                            ValueListenableBuilder<bool>(
-                              valueListenable: _isGoingNotifier,
-                              builder: (context, isGoing, _) {
-                                if (!isGoing || isEventFinished) {
-                                  return const SizedBox.shrink();
-                                }
-
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: <Color>[
-                                        categoryColor.withValues(alpha: 0.16),
-                                        categoryColor.withValues(alpha: 0.08),
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: categoryColor.withValues(alpha: 0.22),
-                                    ),
-                                  ),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => EventMatchScreen(
-                                              eventId: event.id,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      borderRadius: BorderRadius.circular(20),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 8,
-                                        ),
-                                        child: Text(
-                                          'Метчи',
-                                          style: TextStyle(
-                                            color: categoryColor,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            if (_isCreator(event)) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.92),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () => _showManageParticipantsSheet(event),
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 8,
-                                      ),
-                                      child: Text(
-                                        'Управление',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        if (event.description.isNotEmpty) ...[
-                          const SizedBox(height: 18),
-                          _buildSectionTitle('Описание'),
-                          const SizedBox(height: 10),
-                          Text(
-                            event.description,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Color(0xFF4B5877),
-                              height: 1.5,
-                            ),
-                          ),
-                        ],
-                        if (event.creatorName != null) ...[
-                          const SizedBox(height: 18),
-                          _buildSectionTitle('Организатор'),
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF7FAFF),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: const Color(0xFFE2E9FB)),
-                            ),
-                            child: Row(
-                              children: [
-                                if (event.creatorPhotoUrl != null)
-                                  CachedNetworkImage(
-                                    imageUrl: event.creatorPhotoUrl!,
-                                    imageBuilder: (context, imageProvider) =>
-                                        CircleAvatar(
-                                          radius: 26,
-                                          backgroundImage: imageProvider,
-                                        ),
-                                    placeholder: (context, url) =>
-                                        const CircleAvatar(
-                                          radius: 26,
-                                          child: CircularProgressIndicator(),
-                                        ),
-                                    errorWidget: (context, url, error) =>
-                                        CircleAvatar(
-                                          radius: 26,
-                                          backgroundColor: categoryColor,
-                                          child: Text(
-                                            event.creatorName![0].toUpperCase(),
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                  )
-                                else
-                                  CircleAvatar(
-                                    radius: 26,
-                                    backgroundColor: categoryColor,
-                                    child: Text(
-                                      event.creatorName![0].toUpperCase(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        event.creatorName!,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                          color: Color(0xFF243252),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      const Text(
-                                        'Организатор событий',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Color(0xFF66739B),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                OutlinedButton(
-                                  onPressed: () => _openOrganizerProfile(event),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: const Color(0xFF5F76FF),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    side: const BorderSide(
-                                      color: Color(0xFFBFD3FF),
-                                    ),
-                                  ),
-                                  child: const Text('Профиль'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
+                EventDetailWhenWhereSection(
+                  event: event,
+                  dateText: event.endDateTime != null &&
+                          !_isSameCalendarDate(
+                            event.dateTime,
+                            event.endDateTime!,
+                          )
+                      ? '${_formatDate(event.dateTime)} - ${_formatDate(event.endDateTime!)}'
+                      : _formatDate(event.dateTime),
+                  timeText: event.endDateTime != null
+                      ? '${_formatTime(event.dateTime)} - ${_formatTime(event.endDateTime!)}'
+                      : _formatTime(event.dateTime),
+                  onOpenRoute:
+                      event.isOnline ? null : () => _openRoute(event),
+                  onOpenParticipants: () {
+                    context.read<EventBloc>().add(
+                          EventParticipantsLoadRequested(event.id),
+                        );
+                    _showParticipantsDialog(context, event);
+                  },
                 ),
                 const SizedBox(height: 20),
+
+                EventDetailDescriptionSection(event: event),
+                if (event.description.trim().isNotEmpty)
+                  const SizedBox(height: 20),
+
+                EventDetailOrganizerSection(
+                  event: event,
+                  categoryColor: categoryColor,
+                  onOpenProfile: () => _openOrganizerProfile(event),
+                ),
+                if ((event.creatorName ?? '').trim().isNotEmpty)
+                  const SizedBox(height: 20),
 
                 if (!event.isOnline) ...[
                   EventDetailRouteSection(
