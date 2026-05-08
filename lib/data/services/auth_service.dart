@@ -252,9 +252,8 @@ class AuthService {
         throw Exception('Пользователь не авторизован');
       }
       
-      LoggerService.info('[AuthService] Token получен, длина: ${token.length}');
       final url = '${AppConfig.baseUrl}/users/me';
-      LoggerService.info('[AuthService] GET $url');
+      LoggerService.debug('[AuthService] GET $url');
 
       final response = await http.get(
         Uri.parse(url),
@@ -264,8 +263,7 @@ class AuthService {
         },
       ).timeout(AppConfig.receiveTimeout);
 
-      LoggerService.info('[AuthService] Response status: ${response.statusCode}');
-      LoggerService.debug('[AuthService] Response body: ${response.body}');
+      LoggerService.debug('[AuthService] Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -338,21 +336,15 @@ class AuthService {
     String? photoUrl,
   }) async {
     try {
-      LoggerService.info('[Backend] === НАЧАЛО создания пользователя в backend ===');
-      LoggerService.info('[Backend] displayName=$displayName, photoUrl=$photoUrl');
-      LoggerService.info('[Backend] baseUrl=${AppConfig.baseUrl}');
+      LoggerService.debug('[Backend] createUserInBackend start');
       
       final token = await getIdToken();
-      LoggerService.info('[Backend] Token получен: ${token?.substring(0, 20) ?? "NULL"}...');
-      
       if (token == null || token.isEmpty) {
-        LoggerService.error('[Backend] ОШИБКА: Токен пустой или null');
         throw Exception('Не удалось получить токен авторизации');
       }
       
       final url = '${AppConfig.baseUrl}/users';
-      LoggerService.info('[Backend] Полный URL: $url');
-      LoggerService.info('[Backend] Отправка POST запроса...');
+      LoggerService.debug('[Backend] POST $url');
 
       final response = await http
           .post(
@@ -369,22 +361,16 @@ class AuthService {
           .timeout(
             const Duration(seconds: 15),
             onTimeout: () {
-              LoggerService.error('[Backend] TIMEOUT: Запрос превысил 15 секунд');
               throw Exception('Timeout: сервер не ответил за 15 секунд');
             },
           );
 
-      LoggerService.info('[Backend] Response получен! Status: ${response.statusCode}');
-      LoggerService.info('[Backend] Response headers: ${response.headers}');
-      LoggerService.info('[Backend] Response body: ${response.body}');
+      LoggerService.debug('[Backend] Response status: ${response.statusCode}');
 
       if (response.statusCode != 201 && response.statusCode != 409) {
         final error = 'Не удалось создать пользователя (${response.statusCode}): ${response.body}';
-        LoggerService.error('[Backend] ОШИБКА: $error');
         throw Exception(error);
       }
-      
-      LoggerService.info('[Backend] === УСПЕХ: Пользователь создан в backend ===');
     } on http.ClientException catch (e) {
       LoggerService.error('[Backend] ClientException (сетевая ошибка)', e);
       rethrow;
@@ -393,7 +379,7 @@ class AuthService {
       rethrow;
     } catch (e, stackTrace) {
       LoggerService.error('[Backend] Unexpected error создания пользователя', e);
-      LoggerService.error('[Backend] StackTrace: $stackTrace');
+      LoggerService.debug('[Backend] StackTrace: $stackTrace');
       rethrow;
     }
   }

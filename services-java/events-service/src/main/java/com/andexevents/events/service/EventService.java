@@ -2,6 +2,10 @@ package com.andexevents.events.service;
 
 import com.andexevents.events.model.EventDtos;
 import com.andexevents.events.repo.EventRepository;
+import com.andexevents.events.repo.CheckInRepository;
+import com.andexevents.events.repo.EventParticipantBanRepository;
+import com.andexevents.events.repo.OrganizerBlockRepository;
+import com.andexevents.events.repo.WaitlistRepository;
 import com.andexevents.events.repo.RatingRepository;
 import org.springframework.stereotype.Service;
 
@@ -15,15 +19,27 @@ public class EventService {
     private final EventRepository repo;
     private final RatingRepository ratingRepo;
     private final EventModerationGuardService eventModerationGuardService;
+    private final EventParticipantBanRepository eventParticipantBanRepository;
+    private final OrganizerBlockRepository organizerBlockRepository;
+    private final WaitlistRepository waitlistRepository;
+    private final CheckInRepository checkInRepository;
 
     public EventService(
             EventRepository repo,
             RatingRepository ratingRepo,
-            EventModerationGuardService eventModerationGuardService
+            EventModerationGuardService eventModerationGuardService,
+            EventParticipantBanRepository eventParticipantBanRepository,
+            OrganizerBlockRepository organizerBlockRepository,
+            WaitlistRepository waitlistRepository,
+            CheckInRepository checkInRepository
     ) {
         this.repo = repo;
         this.ratingRepo = ratingRepo;
         this.eventModerationGuardService = eventModerationGuardService;
+        this.eventParticipantBanRepository = eventParticipantBanRepository;
+        this.organizerBlockRepository = organizerBlockRepository;
+        this.waitlistRepository = waitlistRepository;
+        this.checkInRepository = checkInRepository;
     }
 
     public EventDtos.EventDto create(EventRepository.EventCreateParams p) {
@@ -116,6 +132,21 @@ public class EventService {
             throw new BadRequestException("Cannot participate in unapproved event");
         }
 
+        if (eventParticipantBanRepository.isBanned(eventId, userId)) {
+            throw new ForbiddenException("Вы заблокированы для участия в этом событии");
+        }
+        if (existing.createdById() != null && organizerBlockRepository.isBlocked(existing.createdById(), userId)) {
+            throw new ForbiddenException("Организатор заблокировал вас");
+        }
+
+        if ("GOING".equalsIgnoreCase(status) && existing.maxParticipants() != null) {
+            long going = repo.countGoingParticipants(eventId);
+            if (going >= existing.maxParticipants()) {
+                waitlistRepository.upsertPending(eventId, userId);
+                throw new BadRequestException("Лимит участников достигнут. Вы добавлены в лист ожидания.");
+            }
+        }
+
         eventModerationGuardService.assertCanParticipate(eventId);
         return repo.upsertParticipation(eventId, userId, status).orElseThrow();
     }
@@ -127,6 +158,109 @@ public class EventService {
     public List<EventDtos.ParticipantDto> getParticipants(String eventId) {
         repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
         return repo.findParticipants(eventId);
+    }
+
+    public record ManageParticipant(EventDtos.ParticipantDto participant, boolean checkedIn) {
+    }
+
+    public List<ManageParticipant> getParticipantsForManage(String eventId, String organizerUserId) {
+        EventRepository.EventRow event = repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+        if (organizerUserId == null || organizerUserId.isBlank()) throw new ForbiddenException("Unauthorized");
+        if (event.createdById() == null || !event.createdById().equals(organizerUserId)) {
+            throw new ForbiddenException("Forbidden");
+        }
+        List<EventDtos.ParticipantDto> participants = repo.findParticipants(eventId);
+        var checked = checkInRepository.listCheckedInUserIds(eventId);
+        List<ManageParticipant> out = new ArrayList<>();
+        for (EventDtos.ParticipantDto p : participants) {
+            out.add(new ManageParticipant(p, checked.contains(p.userId())));
+        }
+        return out;
+    }
+
+    public void kickParticipant(String eventId, String targetUserId, String organizerUserId) {
+        EventRepository.EventRow event = repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+        if (organizerUserId == null || organizerUserId.isBlank()) throw new ForbiddenException("Unauthorized");
+        if (event.createdById() == null || !event.createdById().equals(organizerUserId)) {
+            throw new ForbiddenException("Forbidden");
+        }
+        repo.deleteParticipation(eventId, targetUserId);
+    }
+
+    public void setCheckIn(String eventId, String targetUserId, boolean checkedIn, String organizerUserId) {
+        EventRepository.EventRow event = repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+        if (organizerUserId == null || organizerUserId.isBlank()) throw new ForbiddenException("Unauthorized");
+        if (event.createdById() == null || !event.createdById().equals(organizerUserId)) {
+            throw new ForbiddenException("Forbidden");
+        }
+        checkInRepository.setCheckIn(eventId, targetUserId, checkedIn, organizerUserId);
+    }
+
+    public void banUserForEvent(String eventId, String targetUserId, String reason, String organizerUserId) {
+        EventRepository.EventRow event = repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+        if (organizerUserId == null || organizerUserId.isBlank()) throw new ForbiddenException("Unauthorized");
+        if (event.createdById() == null || !event.createdById().equals(organizerUserId)) {
+            throw new ForbiddenException("Forbidden");
+        }
+        eventParticipantBanRepository.upsertBan(eventId, targetUserId, reason, organizerUserId);
+    }
+
+    public void unbanUserForEvent(String eventId, String targetUserId, String organizerUserId) {
+        EventRepository.EventRow event = repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+        if (organizerUserId == null || organizerUserId.isBlank()) throw new ForbiddenException("Unauthorized");
+        if (event.createdById() == null || !event.createdById().equals(organizerUserId)) {
+            throw new ForbiddenException("Forbidden");
+        }
+        eventParticipantBanRepository.deleteBan(eventId, targetUserId);
+    }
+
+    public List<WaitlistRepository.WaitlistEntryRow> listWaitlist(String eventId, String organizerUserId) {
+        EventRepository.EventRow event = repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+        if (organizerUserId == null || organizerUserId.isBlank()) throw new ForbiddenException("Unauthorized");
+        if (event.createdById() == null || !event.createdById().equals(organizerUserId)) {
+            throw new ForbiddenException("Forbidden");
+        }
+        return waitlistRepository.listByEvent(eventId);
+    }
+
+    public void approveWaitlist(String eventId, String targetUserId, String organizerUserId) {
+        EventRepository.EventRow event = repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+        if (organizerUserId == null || organizerUserId.isBlank()) throw new ForbiddenException("Unauthorized");
+        if (event.createdById() == null || !event.createdById().equals(organizerUserId)) {
+            throw new ForbiddenException("Forbidden");
+        }
+        if (event.maxParticipants() != null) {
+            long going = repo.countGoingParticipants(eventId);
+            if (going >= event.maxParticipants()) {
+                throw new BadRequestException("Лимит участников уже заполнен");
+            }
+        }
+        waitlistRepository.approve(eventId, targetUserId);
+        repo.upsertParticipation(eventId, targetUserId, "GOING");
+    }
+
+    public void rejectWaitlist(String eventId, String targetUserId, String organizerUserId) {
+        EventRepository.EventRow event = repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+        if (organizerUserId == null || organizerUserId.isBlank()) throw new ForbiddenException("Unauthorized");
+        if (event.createdById() == null || !event.createdById().equals(organizerUserId)) {
+            throw new ForbiddenException("Forbidden");
+        }
+        waitlistRepository.reject(eventId, targetUserId);
+    }
+
+    public void blockUserGlobally(String organizerUserId, String blockedUserId, String reason) {
+        if (organizerUserId == null || organizerUserId.isBlank()) throw new ForbiddenException("Unauthorized");
+        organizerBlockRepository.upsertBlock(organizerUserId, blockedUserId, reason);
+    }
+
+    public void unblockUserGlobally(String organizerUserId, String blockedUserId) {
+        if (organizerUserId == null || organizerUserId.isBlank()) throw new ForbiddenException("Unauthorized");
+        organizerBlockRepository.deleteBlock(organizerUserId, blockedUserId);
+    }
+
+    public List<EventDtos.UserPreviewDto> listGlobalBlockedUsers(String organizerUserId) {
+        if (organizerUserId == null || organizerUserId.isBlank()) throw new ForbiddenException("Unauthorized");
+        return organizerBlockRepository.listBlockedUsers(organizerUserId);
     }
 
     // ── Rating ─────────────────────────────────────────────────────────────

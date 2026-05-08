@@ -24,6 +24,11 @@ import '../../../data/services/user_service.dart';
 import '../../../core/http/api_client.dart';
 import '../../../data/models/event_review_model.dart';
 import '../../widgets/report_dialog.dart';
+import '../../../data/services/calendar_service.dart';
+import '../../../data/services/event_participants_manage_service.dart';
+import '../../../data/models/managed_participant_model.dart';
+import '../../../data/models/waitlist_entry_model.dart';
+import '../../../data/models/user_preview_model.dart';
 
 const Color _secondaryTextColor = Color(0xFF5E6D86);
 
@@ -49,6 +54,9 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   final ExternalRouteService _routeService = ExternalRouteService();
   final UserService _userService = UserService();
   final RatingService _ratingService = RatingService(ApiClient());
+  final CalendarService _calendarService = CalendarService();
+  final EventParticipantsManageService _manageService =
+      EventParticipantsManageService();
   final ValueNotifier<int?> _myRatingNotifier = ValueNotifier<int?>(null);
   String? _currentUserId;
 
@@ -93,6 +101,38 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
       builder: (_) => ReportDialog(
         reporterId: reporterId,
         targetEventId: event.id,
+      ),
+    );
+  }
+
+  Future<void> _addToCalendar(EventModel event) async {
+    try {
+      await _calendarService.addEventToCalendar(event);
+      if (!mounted) return;
+      CustomNotification.show(
+        context,
+        'Событие добавлено в календарь',
+        isError: false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().replaceFirst('Exception: ', '').trim();
+      CustomNotification.show(
+        context,
+        msg.isEmpty ? 'Не удалось добавить событие в календарь' : msg,
+        isError: true,
+      );
+    }
+  }
+
+  Future<void> _showManageParticipantsSheet(EventModel event) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _EventManageParticipantsSheet(
+        eventId: event.id,
+        service: _manageService,
       ),
     );
   }
@@ -412,6 +452,27 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                 child: IconButton(
                   icon: const Icon(Icons.flag_rounded, color: Color(0xFF243252)),
                   onPressed: () => _openReportDialog(event),
+                ),
+              ),
+              Container(
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.86),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF365892).withValues(alpha: 0.14),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.event_available_rounded,
+                    color: Color(0xFF243252),
+                  ),
+                  onPressed: () => _addToCalendar(event),
                 ),
               ),
               Container(
@@ -914,6 +975,35 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                                 );
                               },
                             ),
+                            if (_isCreator(event)) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.92),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () => _showManageParticipantsSheet(event),
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 8,
+                                      ),
+                                      child: Text(
+                                        'Управление',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                         if (event.description.isNotEmpty) ...[
@@ -1951,3 +2041,606 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
     );
   }
 }
+
+class _EventManageParticipantsSheet extends StatefulWidget {
+  const _EventManageParticipantsSheet({
+    required this.eventId,
+    required this.service,
+  });
+
+  final String eventId;
+  final EventParticipantsManageService service;
+
+  @override
+  State<_EventManageParticipantsSheet> createState() =>
+      _EventManageParticipantsSheetState();
+}
+
+class _EventManageParticipantsSheetState
+    extends State<_EventManageParticipantsSheet> {
+  int _tab = 0;
+  bool _loading = true;
+  bool _actionInProgress = false;
+  String? _error;
+
+  List<ManagedParticipantModel> _participants = const [];
+  List<WaitlistEntryModel> _waitlist = const [];
+  List<UserPreviewModel> _blocked = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final results = await Future.wait<dynamic>([
+        widget.service.listManageParticipants(widget.eventId),
+        widget.service.listWaitlist(widget.eventId),
+        widget.service.listGlobalBlocked(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _participants = results[0] as List<ManagedParticipantModel>;
+        _waitlist = results[1] as List<WaitlistEntryModel>;
+        _blocked = results[2] as List<UserPreviewModel>;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '').trim();
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _run(Future<void> Function() fn) async {
+    setState(() => _actionInProgress = true);
+    try {
+      await fn();
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      CustomNotification.show(
+        context,
+        e.toString().replaceFirst('Exception: ', '').trim(),
+        isError: true,
+      );
+    } finally {
+      if (mounted) setState(() => _actionInProgress = false);
+    }
+  }
+
+  Widget _pill(String text, {required Color bg, required Color fg}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: fg.withValues(alpha: 0.18)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: fg,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.of(context).size.height * 0.86;
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: Container(
+              height: height,
+              decoration: BoxDecoration(
+                color: AppColors.surface.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.28),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Управление участниками',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.dark.withValues(alpha: 0.88),
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: _actionInProgress ? null : () => _load(),
+                          icon: const Icon(Icons.refresh_rounded),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _Segmented(
+                            index: _tab,
+                            labels: const ['Участники', 'Ожидание', 'Блоклист'],
+                            onChanged: (v) => setState(() => _tab = v),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: _loading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
+                            ),
+                          )
+                        : _error != null
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.error_outline_rounded,
+                                        size: 44,
+                                        color: Colors.redAccent,
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        _error!,
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      OutlinedButton(
+                                        onPressed: _load,
+                                        child: const Text('Повторить'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : _tab == 0
+                                ? _buildParticipants()
+                                : _tab == 1
+                                    ? _buildWaitlist()
+                                    : _buildBlocked(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildParticipants() {
+    if (_participants.isEmpty) {
+      return Center(
+        child: Text(
+          'Пока нет участников',
+          style: TextStyle(
+            color: AppColors.dark.withValues(alpha: 0.62),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      itemCount: _participants.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final item = _participants[index];
+        final user = item.participant.user;
+        final checkedIn = item.checkedIn;
+
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.86),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.10)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                    backgroundImage:
+                        user.photoUrl == null ? null : NetworkImage(user.photoUrl!),
+                    child: user.photoUrl == null
+                        ? Text(
+                            user.displayName.isNotEmpty
+                                ? user.displayName[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
+                            ),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.displayName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.dark.withValues(alpha: 0.86),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            _pill(
+                              item.participant.status.toUpperCase(),
+                              bg: AppColors.primary.withValues(alpha: 0.10),
+                              fg: AppColors.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            _pill(
+                              checkedIn ? 'CHECK-IN' : 'NO CHECK-IN',
+                              bg: checkedIn
+                                  ? const Color(0xFF00C853).withValues(alpha: 0.12)
+                                  : AppColors.dark.withValues(alpha: 0.08),
+                              fg: checkedIn
+                                  ? const Color(0xFF00A34A)
+                                  : AppColors.dark.withValues(alpha: 0.70),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _actionInProgress
+                          ? null
+                          : () => _run(() => widget.service.kick(
+                                widget.eventId,
+                                item.participant.userId,
+                              )),
+                      child: const Text('Кик'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _actionInProgress
+                          ? null
+                          : () => _run(() => widget.service.banForEvent(
+                                widget.eventId,
+                                item.participant.userId,
+                              )),
+                      child: const Text('Бан на ивент'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _actionInProgress
+                          ? null
+                          : () => _run(() => widget.service.blockGlobally(
+                                item.participant.userId,
+                              )),
+                      child: const Text('Блок глобально'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _actionInProgress
+                          ? null
+                          : () => _run(() => widget.service.setCheckIn(
+                                widget.eventId,
+                                item.participant.userId,
+                                checkedIn: !checkedIn,
+                              )),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary.withValues(alpha: 0.92),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                      ),
+                      child: Text(checkedIn ? 'Снять чек-ин' : 'Чек-ин'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildWaitlist() {
+    if (_waitlist.isEmpty) {
+      return Center(
+        child: Text(
+          'Лист ожидания пуст',
+          style: TextStyle(
+            color: AppColors.dark.withValues(alpha: 0.62),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      itemCount: _waitlist.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final item = _waitlist[index];
+        final isPending = item.status.toUpperCase() == 'PENDING';
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.86),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.10)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                    backgroundImage: item.user.photoUrl == null
+                        ? null
+                        : NetworkImage(item.user.photoUrl!),
+                    child: item.user.photoUrl == null
+                        ? Text(
+                            item.user.displayName.isNotEmpty
+                                ? item.user.displayName[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
+                            ),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      item.user.displayName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.dark.withValues(alpha: 0.86),
+                      ),
+                    ),
+                  ),
+                  _pill(
+                    item.status,
+                    bg: isPending
+                        ? AppColors.primary.withValues(alpha: 0.10)
+                        : AppColors.dark.withValues(alpha: 0.08),
+                    fg: isPending
+                        ? AppColors.primary
+                        : AppColors.dark.withValues(alpha: 0.70),
+                  ),
+                ],
+              ),
+              if (isPending) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _actionInProgress
+                            ? null
+                            : () => _run(() => widget.service.rejectWaitlist(
+                                  widget.eventId,
+                                  item.userId,
+                                )),
+                        child: const Text('Отклонить'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _actionInProgress
+                            ? null
+                            : () => _run(() => widget.service.approveWaitlist(
+                                  widget.eventId,
+                                  item.userId,
+                                )),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.92),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                        ),
+                        child: const Text('Принять'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBlocked() {
+    if (_blocked.isEmpty) {
+      return Center(
+        child: Text(
+          'Глобальный блоклист пуст',
+          style: TextStyle(
+            color: AppColors.dark.withValues(alpha: 0.62),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      itemCount: _blocked.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final u = _blocked[index];
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.86),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.10)),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                backgroundImage: u.photoUrl == null ? null : NetworkImage(u.photoUrl!),
+                child: u.photoUrl == null
+                    ? Text(
+                        u.displayName.isNotEmpty ? u.displayName[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  u.displayName,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.dark.withValues(alpha: 0.86),
+                  ),
+                ),
+              ),
+              OutlinedButton(
+                onPressed: _actionInProgress
+                    ? null
+                    : () => _run(() => widget.service.unblockGlobally(u.id)),
+                child: const Text('Разблок'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Segmented extends StatelessWidget {
+  const _Segmented({
+    required this.index,
+    required this.labels,
+    required this.onChanged,
+  });
+
+  final int index;
+  final List<String> labels;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.10)),
+      ),
+      child: Row(
+        children: List.generate(labels.length, (i) {
+          final selected = i == index;
+          return Expanded(
+            child: InkWell(
+              onTap: () => onChanged(i),
+              borderRadius: BorderRadius.circular(999),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? AppColors.primary.withValues(alpha: 0.14)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  labels[i],
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: selected
+                        ? AppColors.primary
+                        : AppColors.dark.withValues(alpha: 0.62),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+

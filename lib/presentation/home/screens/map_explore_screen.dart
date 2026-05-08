@@ -48,17 +48,34 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
   }
 
   void _filterEvents(List<EventModel> events, String query) {
-    if (query.isEmpty) {
-      _filteredEvents = events;
-    } else {
-      _filteredEvents = events
-          .where(
-            (event) =>
-                event.title.toLowerCase().contains(query.toLowerCase()) ||
-                event.description.toLowerCase().contains(query.toLowerCase()),
-          )
-          .toList();
+    final normalizedQuery = query.trim().toLowerCase();
+
+    bool matchesQuery(EventModel event) {
+      if (normalizedQuery.isEmpty) return true;
+      return event.title.toLowerCase().contains(normalizedQuery) ||
+          event.description.toLowerCase().contains(normalizedQuery) ||
+          event.location.toLowerCase().contains(normalizedQuery);
     }
+
+    final out = events.where((e) {
+      return matchesQuery(e);
+    }).toList();
+
+    // Default sort on map: nearest if user known, else by time
+    final user = _currentUserLocation;
+    if (user != null) {
+      double dist(EventModel e) {
+        final dx = (e.latitude - user.latitude).abs();
+        final dy = (e.longitude - user.longitude).abs();
+        return dx + dy;
+      }
+
+      out.sort((a, b) => dist(a).compareTo(dist(b)));
+    } else {
+      out.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    }
+
+    _filteredEvents = out;
   }
 
   void _centerOnUserLocation() {
@@ -100,9 +117,9 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
 
         final events = state is EventsLoaded ? state.events : <EventModel>[];
 
-        // Фильтруем события при загрузке
-        if (_searchController.text.isEmpty) {
-          _filteredEvents = events;
+        // Применяем текущие фильтры при загрузке/обновлении списка.
+        if (_filteredEvents.isEmpty || _searchController.text.isEmpty) {
+          _filterEvents(events, _searchController.text);
         }
 
         final double screenWidth = MediaQuery.sizeOf(context).width;
@@ -740,43 +757,53 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
 
                     Row(
                       children: <Widget>[
-                        if (event.ratingCount > 0) ...[
-                          const Icon(
-                            Icons.star_rounded,
-                            size: 14,
-                            color: Colors.amber,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            event.averageRating.toStringAsFixed(1),
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: categoryColor.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(7),
-                          ),
-                          child: Text(
-                            categoryName,
-                            style: TextStyle(
-                              color: categoryColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        Expanded(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              if (event.ratingCount > 0) ...[
+                                const Icon(
+                                  Icons.star_rounded,
+                                  size: 14,
+                                  color: Colors.amber,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  event.averageRating.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: categoryColor.withValues(alpha: 0.14),
+                                    borderRadius: BorderRadius.circular(7),
+                                  ),
+                                  child: Text(
+                                    categoryName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: categoryColor,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Spacer(),
                         Text(
                           formattedTime,
                           style: const TextStyle(

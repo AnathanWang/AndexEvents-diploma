@@ -1,9 +1,15 @@
 import 'package:logger/logger.dart';
+import 'package:flutter/foundation.dart';
 
 class _WarningErrorFilter extends LogFilter {
   @override
   bool shouldLog(LogEvent event) {
-    return event.level.index >= Level.warning.index;
+    // In release builds we keep logs minimal (warning+).
+    // In debug/profile we allow all levels for developer troubleshooting.
+    if (kReleaseMode) {
+      return event.level.index >= Level.warning.index;
+    }
+    return true;
   }
 }
 

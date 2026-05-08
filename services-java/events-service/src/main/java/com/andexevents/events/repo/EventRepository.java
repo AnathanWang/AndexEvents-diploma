@@ -77,6 +77,15 @@ public class EventRepository {
         return v == null ? 0 : v;
     }
 
+    public long countGoingParticipants(String eventId) {
+        Long v = jdbcTemplate.queryForObject(
+                "SELECT COUNT(1) FROM events.\"Participant\" WHERE \"eventId\" = ? AND status = 'GOING'::events.\"ParticipantStatus\"",
+                Long.class,
+                eventId
+        );
+        return v == null ? 0 : v;
+    }
+
     public boolean isParticipating(String eventId, String userId) {
         Integer v = jdbcTemplate.query(
                 "SELECT 1 FROM events.\"Participant\" WHERE \"eventId\" = ? AND \"userId\" = ? LIMIT 1",

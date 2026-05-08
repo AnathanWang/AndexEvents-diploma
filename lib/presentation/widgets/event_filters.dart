@@ -20,6 +20,8 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
   late String _selectedCategory;
   late String _selectedDate;
   late String _sortBy;
+  late String _price;
+  late String _format;
 
   final List<Map<String, String>> _categories = [
     {'value': 'all', 'label': 'Все'},
@@ -45,12 +47,26 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
     {'value': 'rating', 'label': 'По рейтингу'},
   ];
 
+  final List<Map<String, String>> _priceOptions = [
+    {'value': 'all', 'label': 'Любая цена'},
+    {'value': 'free', 'label': 'Бесплатно'},
+    {'value': 'paid', 'label': 'Платно'},
+  ];
+
+  final List<Map<String, String>> _formatOptions = [
+    {'value': 'all', 'label': 'Онлайн + офлайн'},
+    {'value': 'offline', 'label': 'Офлайн'},
+    {'value': 'online', 'label': 'Онлайн'},
+  ];
+
   @override
   void initState() {
     super.initState();
     _selectedCategory = widget.initialFilters['category'] ?? 'all';
     _selectedDate = widget.initialFilters['date'] ?? 'week';
     _sortBy = widget.initialFilters['sort'] ?? 'nearest';
+    _price = widget.initialFilters['price'] ?? 'all';
+    _format = widget.initialFilters['format'] ?? 'all';
   }
 
   void _notifyFiltersChanged() {
@@ -58,6 +74,8 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
       'category': _selectedCategory,
       'date': _selectedDate,
       'sort': _sortBy,
+      'price': _price,
+      'format': _format,
     });
   }
 
@@ -268,6 +286,98 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
                             }).toList(),
                           ),
                           const SizedBox(height: 18),
+
+                          // Price filter
+                          Text(
+                            'Цена',
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.dark.withValues(alpha: 0.84),
+                                ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: _priceOptions.map((option) {
+                              final isSelected = _price == option['value'];
+                              return FilterChip(
+                                label: Text(option['label']!),
+                                selected: isSelected,
+                                onSelected: (_) {
+                                  setModalState(() {
+                                    _price = option['value']!;
+                                  });
+                                },
+                                showCheckmark: false,
+                                backgroundColor:
+                                    AppColors.surface.withValues(alpha: 0.5),
+                                selectedColor:
+                                    AppColors.primary.withValues(alpha: 0.14),
+                                labelStyle: TextStyle(
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.dark.withValues(alpha: 0.64),
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                  fontSize: 12,
+                                ),
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? AppColors.primary.withValues(alpha: 0.34)
+                                      : AppColors.dark.withValues(alpha: 0.14),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 18),
+
+                          // Format filter
+                          Text(
+                            'Формат',
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.dark.withValues(alpha: 0.84),
+                                ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: _formatOptions.map((option) {
+                              final isSelected = _format == option['value'];
+                              return FilterChip(
+                                label: Text(option['label']!),
+                                selected: isSelected,
+                                onSelected: (_) {
+                                  setModalState(() {
+                                    _format = option['value']!;
+                                  });
+                                },
+                                showCheckmark: false,
+                                backgroundColor:
+                                    AppColors.surface.withValues(alpha: 0.5),
+                                selectedColor:
+                                    AppColors.primary.withValues(alpha: 0.14),
+                                labelStyle: TextStyle(
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.dark.withValues(alpha: 0.64),
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                  fontSize: 12,
+                                ),
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? AppColors.primary.withValues(alpha: 0.34)
+                                      : AppColors.dark.withValues(alpha: 0.14),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 18),
                         ],
                       ),
                     ),
@@ -308,11 +418,15 @@ class _EventFiltersWidgetState extends State<EventFiltersWidget> {
     final hasActiveFilters =
         _selectedCategory != 'all' ||
         _selectedDate != 'week' ||
-        _sortBy != 'nearest';
+        _sortBy != 'nearest' ||
+        _price != 'all' ||
+        _format != 'all';
     final int activeFiltersCount =
       (_selectedCategory != 'all' ? 1 : 0) +
       (_selectedDate != 'week' ? 1 : 0) +
-      (_sortBy != 'nearest' ? 1 : 0);
+      (_sortBy != 'nearest' ? 1 : 0) +
+      (_price != 'all' ? 1 : 0) +
+      (_format != 'all' ? 1 : 0);
 
     return Align(
       alignment: Alignment.centerRight,

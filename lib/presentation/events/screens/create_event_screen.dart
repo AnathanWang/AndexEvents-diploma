@@ -10,6 +10,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../widgets/common/custom_notification.dart';
 import '../../../data/services/user_service.dart';
 import '../../../data/models/user_sanction_model.dart';
+import '../../../data/models/event_draft_model.dart';
+import '../../../data/services/event_draft_service.dart';
 import '../bloc/event_bloc.dart';
 import '../bloc/event_event.dart';
 import '../bloc/event_state.dart';
@@ -24,6 +26,7 @@ class CreateEventScreen extends StatefulWidget {
 
 class _CreateEventScreenState extends State<CreateEventScreen> {
   final UserService _userService = UserService();
+  final EventDraftService _draftService = EventDraftService();
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -46,6 +49,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   int _pendingPhotoUploads = 0;
   double? _latitude;
   double? _longitude;
+  String? _activeDraftId;
 
   static const int _maxEventPhotos = 5;
   static const double _pageHorizontalPadding = 16;
@@ -66,6 +70,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _guardCreateEventAccess();
+      _maybeOfferRestoreDraft();
     });
   }
 
@@ -91,6 +96,312 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       Navigator.of(context).maybePop();
     } catch (_) {
       // If sanctions endpoint is temporarily unavailable, do not block UI here.
+    }
+  }
+
+  Future<void> _maybeOfferRestoreDraft() async {
+    final drafts = await _draftService.listDrafts();
+    if (!mounted || drafts.isEmpty) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.14),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.14),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.description_outlined,
+                                size: 18,
+                                color: AppColors.primary.withValues(alpha: 0.92),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Черновики',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.dark.withValues(alpha: 0.86),
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => Navigator.pop(context),
+                              icon: const Icon(Icons.close_rounded),
+                              color: AppColors.dark.withValues(alpha: 0.65),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 340),
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: drafts.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 10),
+                            itemBuilder: (context, index) {
+                              final draft = drafts[index];
+                              final savedAtLabel = DateFormat(
+                                'dd.MM.yyyy HH:mm',
+                                'ru',
+                              ).format(draft.savedAt.toLocal());
+
+                              return Container(
+                                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.84),
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: AppColors.primary.withValues(alpha: 0.10),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            draft.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.dark.withValues(alpha: 0.86),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            savedAtLabel,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.dark.withValues(alpha: 0.6),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Переименовать',
+                                      onPressed: () async {
+                                        final controller = TextEditingController(text: draft.name);
+                                        final newName = await showDialog<String>(
+                                          context: context,
+                                          builder: (_) => AlertDialog(
+                                            title: const Text('Название черновика'),
+                                            content: TextField(
+                                              controller: controller,
+                                              autofocus: true,
+                                              decoration: const InputDecoration(
+                                                hintText: 'Например: “Вечер пятницы”',
+                                              ),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context),
+                                                child: const Text('Отмена'),
+                                              ),
+                                              ElevatedButton(
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  controller.text.trim(),
+                                                ),
+                                                child: const Text('Сохранить'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (newName == null || newName.trim().isEmpty) return;
+                                        await _draftService.renameDraft(draft.id, newName.trim());
+                                        if (context.mounted) Navigator.pop(context);
+                                        if (mounted) _maybeOfferRestoreDraft();
+                                      },
+                                      icon: const Icon(Icons.edit_rounded, size: 20),
+                                      color: AppColors.dark.withValues(alpha: 0.62),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Удалить',
+                                      onPressed: () async {
+                                        await _draftService.deleteDraft(draft.id);
+                                        if (context.mounted) Navigator.pop(context);
+                                        if (mounted) _maybeOfferRestoreDraft();
+                                      },
+                                      icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                                      color: Colors.redAccent.withValues(alpha: 0.85),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                        _applyDraft(draft);
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primary.withValues(alpha: 0.92),
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 10,
+                                        ),
+                                        elevation: 0,
+                                      ),
+                                      child: const Text(
+                                        'Открыть',
+                                        style: TextStyle(fontWeight: FontWeight.w800),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  EventDraftModel _collectDraft({required String id, required String name}) {
+    return EventDraftModel(
+      id: id,
+      name: name,
+      title: _titleController.text,
+      description: _descriptionController.text,
+      locationText: _locationController.text,
+      latitude: _latitude,
+      longitude: _longitude,
+      isOnline: _isOnline,
+      isFree: _isFree,
+      priceText: _priceController.text,
+      selectedDate: _selectedDate,
+      selectedTime: _selectedTime,
+      hasEndDateTime: _hasEndDateTime,
+      selectedEndDate: _selectedEndDate,
+      selectedEndTime: _selectedEndTime,
+      selectedCategories: List<String>.from(_selectedCategories),
+      customCategory: _customCategoryController.text,
+      uploadedPhotoUrls: List<String>.from(_uploadedPhotoUrls),
+      savedAt: DateTime.now(),
+    );
+  }
+
+  void _applyDraft(EventDraftModel draft) {
+    setState(() {
+      _activeDraftId = draft.id;
+      _titleController.text = draft.title;
+      _descriptionController.text = draft.description;
+      _locationController.text = draft.locationText;
+      _latitude = draft.latitude;
+      _longitude = draft.longitude;
+      _isOnline = draft.isOnline;
+      _isFree = draft.isFree;
+      _priceController.text = draft.priceText;
+      _selectedDate = draft.selectedDate;
+      _selectedTime = draft.selectedTime;
+      _hasEndDateTime = draft.hasEndDateTime;
+      _selectedEndDate = draft.selectedEndDate;
+      _selectedEndTime = draft.selectedEndTime;
+
+      _selectedCategories
+        ..clear()
+        ..addAll(draft.selectedCategories.isEmpty ? <String>['Спорт'] : draft.selectedCategories);
+      _customCategoryController.text = draft.customCategory;
+
+      _uploadedPhotoUrls
+        ..clear()
+        ..addAll(draft.uploadedPhotoUrls);
+    });
+
+    CustomNotification.show(context, 'Черновик восстановлен');
+  }
+
+  Future<void> _saveDraft() async {
+    if (_pendingPhotoUploads > 0) {
+      CustomNotification.show(
+        context,
+        'Идёт загрузка фото — часть может не сохраниться в черновик',
+        isError: true,
+      );
+    }
+
+    try {
+      final controller = TextEditingController();
+      final name = await showDialog<String>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Сохранить черновик'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: 'Название (например: “Сбор на спорт”)',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: const Text('Сохранить'),
+            ),
+          ],
+        ),
+      );
+
+      if (name == null || name.trim().isEmpty) return;
+      final id = DateTime.now().microsecondsSinceEpoch.toString();
+      await _draftService.upsertDraft(_collectDraft(id: id, name: name.trim()));
+      if (!mounted) return;
+      CustomNotification.show(context, 'Черновик сохранён');
+    } catch (e) {
+      if (!mounted) return;
+      CustomNotification.show(
+        context,
+        'Не удалось сохранить черновик: $e',
+        isError: true,
+      );
     }
   }
 
@@ -507,6 +818,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           setState(() => _isLoading = true);
         } else if (state is EventCreated) {
           setState(() => _isLoading = false);
+          final usedDraftId = _activeDraftId;
+          if (usedDraftId != null && usedDraftId.trim().isNotEmpty) {
+            _draftService.deleteDraft(usedDraftId);
+            _activeDraftId = null;
+          }
           Navigator.of(context).pop(true);
           CustomNotification.show(context, 'Событие успешно создано!');
         } else if (state is EventError) {
@@ -542,6 +858,16 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             ),
           ),
           centerTitle: true,
+          actions: [
+            IconButton(
+              tooltip: 'Сохранить черновик',
+              onPressed: _isLoading ? null : _saveDraft,
+              icon: Icon(
+                Icons.save_rounded,
+                color: AppColors.dark.withValues(alpha: 0.78),
+              ),
+            ),
+          ],
         ),
       body: Container(
         decoration: BoxDecoration(
@@ -1096,7 +1422,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                                       ),
                                     ),
                                     value: _hasEndDateTime,
-                                    activeColor: AppColors.primary,
+                                    activeThumbColor: AppColors.primary,
+                                    activeTrackColor:
+                                        AppColors.primary.withValues(alpha: 0.22),
                                     onChanged: (bool value) {
                                       setState(() {
                                         _hasEndDateTime = value;

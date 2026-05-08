@@ -51,6 +51,8 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
     'category': 'all',
     'date': 'week',
     'sort': 'nearest',
+    'price': 'all',
+    'format': 'all',
   };
 
   @override
@@ -104,22 +106,82 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
   void _handleFiltersChanged(Map<String, dynamic> filters) {
     setState(() {
       _currentFilters = filters;
+      _filterEvents(_allEvents, _searchController.text);
     });
     LoggerService.debug('Filters changed: $filters');
   }
 
   void _filterEvents(List<EventModel> events, String query) {
     final normalizedQuery = query.trim().toLowerCase();
-    _filteredEvents = events.where((event) {
+    final now = DateTime.now();
+
+    bool matchesDate(EventModel event) {
+      final value = (_currentFilters['date'] ?? 'week') as String;
+      final local = event.dateTime.toLocal();
+      if (value == 'all') return true;
+      if (value == 'today') {
+        return local.year == now.year && local.month == now.month && local.day == now.day;
+      }
+      if (value == 'week') {
+        final end = now.add(const Duration(days: 7));
+        return local.isAfter(now.subtract(const Duration(minutes: 1))) && local.isBefore(end);
+      }
+      if (value == 'month') {
+        final end = DateTime(now.year, now.month + 1, now.day);
+        return local.isAfter(now.subtract(const Duration(minutes: 1))) && local.isBefore(end);
+      }
+      return true;
+    }
+
+    bool matchesCategory(EventModel event) {
+      final value = (_currentFilters['category'] ?? 'all') as String;
+      if (value == 'all') return true;
+      return event.category.toLowerCase() == value.toLowerCase();
+    }
+
+    bool matchesPrice(EventModel event) {
+      final value = (_currentFilters['price'] ?? 'all') as String;
+      if (value == 'all') return true;
+      if (value == 'free') return event.price == 0;
+      if (value == 'paid') return event.price > 0;
+      return true;
+    }
+
+    bool matchesFormat(EventModel event) {
+      final value = (_currentFilters['format'] ?? 'all') as String;
+      if (value == 'all') return true;
+      if (value == 'online') return event.isOnline;
+      if (value == 'offline') return !event.isOnline;
+      return true;
+    }
+
+    List<EventModel> out = events.where((event) {
       final matchesCity = _matchesSelectedCity(event);
       final matchesQuery =
           normalizedQuery.isEmpty ||
           event.title.toLowerCase().contains(normalizedQuery) ||
+          event.description.toLowerCase().contains(normalizedQuery) ||
           event.location.toLowerCase().contains(normalizedQuery) ||
           event.category.toLowerCase().contains(normalizedQuery);
 
-      return matchesCity && matchesQuery;
+      return matchesCity &&
+          matchesQuery &&
+          matchesDate(event) &&
+          matchesCategory(event) &&
+          matchesPrice(event) &&
+          matchesFormat(event);
     }).toList();
+
+    final sort = (_currentFilters['sort'] ?? 'nearest') as String;
+    if (sort == 'rating') {
+      out.sort((a, b) => b.averageRating.compareTo(a.averageRating));
+    } else if (sort == 'popular') {
+      out.sort((a, b) => b.participantsCount.compareTo(a.participantsCount));
+    } else {
+      out.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    }
+
+    _filteredEvents = out;
   }
 
   List<String> _buildCityOptions() {

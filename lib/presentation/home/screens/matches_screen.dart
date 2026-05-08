@@ -679,14 +679,14 @@ class _MatchesScreenState extends State<MatchesScreen>
       children: [
         Positioned.fill(
           child: DecoratedBox(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: <Color>[
-                  AppColors.surface.withValues(alpha: 0.78),
-                  AppColors.accent.withValues(alpha: 0.72),
-                  AppColors.surface.withValues(alpha: 0.9),
+                  Color(0xFFEAF2FF),
+                  Color(0xFFD9E8FF),
+                  Color(0xFFEFF5FF),
                 ],
               ),
             ),
@@ -700,7 +700,7 @@ class _MatchesScreenState extends State<MatchesScreen>
             height: 230,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF7D8CFF).withValues(alpha: 0.14),
+              color: AppColors.primary.withValues(alpha: 0.12),
             ),
           ),
         ),
@@ -712,7 +712,7 @@ class _MatchesScreenState extends State<MatchesScreen>
             height: 260,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF63C9B6).withValues(alpha: 0.14),
+              color: AppColors.accent.withValues(alpha: 0.24),
             ),
           ),
         ),
@@ -756,23 +756,23 @@ class _MatchesScreenState extends State<MatchesScreen>
                       color: Colors.white.withValues(alpha: 0.88),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: const Color(0xFFDCE3FB),
+                      color: AppColors.primary.withValues(alpha: 0.12),
                         width: 1,
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                      Icon(
                           Icons.keyboard_arrow_down,
-                          color: Color(0xFF5563C2),
+                        color: AppColors.primary.withValues(alpha: 0.86),
                           size: 16,
                         ),
                         const SizedBox(width: 4),
-                        const Text(
+                      Text(
                           'Свайп вниз для профиля',
                           style: TextStyle(
-                            color: Color(0xFF4A548F),
+                          color: AppColors.dark.withValues(alpha: 0.72),
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -784,9 +784,9 @@ class _MatchesScreenState extends State<MatchesScreen>
                               _showHint = false;
                             });
                           },
-                          child: const Icon(
+                        child: Icon(
                             Icons.close,
-                            color: Color(0xFF7A84B8),
+                          color: AppColors.dark.withValues(alpha: 0.55),
                             size: 14,
                           ),
                         ),
@@ -802,6 +802,8 @@ class _MatchesScreenState extends State<MatchesScreen>
   }
 
   Widget _buildMatchCard(MatchPreview match, {required bool isTop}) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final bottomNavReserve = kBottomNavigationBarHeight + 10;
     return GestureDetector(
       onPanStart: isTop ? _onPanStart : null,
       onPanUpdate: isTop ? _onPanUpdate : null,
@@ -809,7 +811,7 @@ class _MatchesScreenState extends State<MatchesScreen>
       child: Container(
         margin: EdgeInsets.only(
           top: MediaQuery.of(context).padding.top + 22,
-          bottom: 22,
+          bottom: bottomInset + bottomNavReserve + 22,
           left: 12,
           right: 12,
         ),
@@ -821,7 +823,7 @@ class _MatchesScreenState extends State<MatchesScreen>
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0x1F4253A8),
+              color: AppColors.dark.withValues(alpha: 0.10),
               blurRadius: 22,
               offset: const Offset(0, 12),
             ),
@@ -835,7 +837,11 @@ class _MatchesScreenState extends State<MatchesScreen>
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [const Color(0xFF7C8AFF), const Color(0xFF67D2BF)],
+                    colors: <Color>[
+                      AppColors.primary.withValues(alpha: 0.92),
+                      const Color(0xFF2E8BFF).withValues(alpha: 0.88),
+                      AppColors.accent.withValues(alpha: 0.82),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -852,8 +858,9 @@ class _MatchesScreenState extends State<MatchesScreen>
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              const Color(0xFF7C8AFF),
-                              const Color(0xFF67D2BF),
+                              AppColors.primary.withValues(alpha: 0.92),
+                              const Color(0xFF2E8BFF).withValues(alpha: 0.88),
+                              AppColors.accent.withValues(alpha: 0.82),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,

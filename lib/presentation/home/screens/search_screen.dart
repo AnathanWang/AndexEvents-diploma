@@ -46,14 +46,17 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _filterEvents(List<EventModel> events, String query) {
+    final normalized = query.trim().toLowerCase();
     if (query.isEmpty) {
       _filteredEvents = events;
     } else {
       _filteredEvents = events
           .where(
             (event) =>
-                event.title.toLowerCase().contains(query.toLowerCase()) ||
-                event.description.toLowerCase().contains(query.toLowerCase()),
+                event.title.toLowerCase().contains(normalized) ||
+                event.description.toLowerCase().contains(normalized) ||
+                event.location.toLowerCase().contains(normalized) ||
+                event.category.toLowerCase().contains(normalized),
           )
           .toList();
     }

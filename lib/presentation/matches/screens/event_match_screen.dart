@@ -13,6 +13,8 @@ import '../../widgets/common/custom_notification.dart';
 
 import '../../../data/services/event_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/event_model.dart';
+import 'package:intl/intl.dart';
 
 class EventMatchScreen extends StatefulWidget {
   const EventMatchScreen({super.key, required this.eventId});
@@ -28,6 +30,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
   int _currentIndex = 0;
   bool _isLoading = true;
   bool _isEventFinished = false;
+  EventModel? _event;
   UserModel? _currentUser;
   List<MatchPreview> _matches = [];
 
@@ -194,6 +197,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
         setState(() {
           _currentUser = user;
           _isEventFinished = isFinished;
+          _event = event;
           _isLoading = false;
         });
 
@@ -663,8 +667,8 @@ class _EventMatchScreenState extends State<EventMatchScreen>
   Widget build(BuildContext context) {
     Widget content;
     if (_isLoading) {
-      content = const Center(
-        child: CircularProgressIndicator(color: Color(0xFF75878A)),
+      content = Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
       );
     } else if (_isEventFinished) {
       content = _buildEventFinishedScreen();
@@ -690,10 +694,128 @@ class _EventMatchScreenState extends State<EventMatchScreen>
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Color(0xFF243252)),
+        iconTheme: IconThemeData(
+          color: AppColors.dark.withValues(alpha: 0.88),
+        ),
       ),
-      body: content,
+      body: Column(
+        children: [
+          _buildEventHeaderCard(),
+          Expanded(child: content),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEventHeaderCard() {
+    final event = _event;
+    if (event == null) return const SizedBox.shrink();
+
+    final dateStr = DateFormat('dd.MM.yyyy', 'ru').format(event.dateTime.toLocal());
+    final timeStr = DateFormat('HH:mm', 'ru').format(event.dateTime.toLocal());
+
+    final bool finished = _isEventFinished;
+    final Color pillBg = finished
+        ? AppColors.dark.withValues(alpha: 0.10)
+        : AppColors.primary.withValues(alpha: 0.10);
+    final Color pillFg = finished
+        ? AppColors.dark.withValues(alpha: 0.75)
+        : AppColors.primary;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.86),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.10)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.dark.withValues(alpha: 0.10),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.event_rounded,
+              color: AppColors.primary.withValues(alpha: 0.92),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  event.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.dark.withValues(alpha: 0.86),
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.schedule_rounded,
+                      size: 16,
+                      color: AppColors.dark.withValues(alpha: 0.58),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '$dateStr • $timeStr',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.dark.withValues(alpha: 0.62),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: pillBg,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: pillFg.withValues(alpha: 0.18)),
+                      ),
+                      child: Text(
+                        finished ? 'завершено' : 'идёт',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: pillFg,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -775,7 +897,10 @@ class _EventMatchScreenState extends State<EventMatchScreen>
   Widget _buildEventFinishedScreen() {
     return _buildEmptyStateShell(
       icon: Icons.event_busy_outlined,
-      iconGradient: const <Color>[Color(0xFF8FA3FF), Color(0xFF63C9B6)],
+      iconGradient: <Color>[
+        AppColors.primary.withValues(alpha: 0.70),
+        AppColors.accent.withValues(alpha: 0.70),
+      ],
       title: EventMessages.eventFinishedMatchesTitle,
       subtitle: EventMessages.eventFinishedMatchesDescription,
     );
@@ -818,7 +943,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
             height: 230,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF7D8CFF).withValues(alpha: 0.14),
+              color: AppColors.primary.withValues(alpha: 0.12),
             ),
           ),
         ),
@@ -830,7 +955,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
             height: 260,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF63C9B6).withValues(alpha: 0.14),
+              color: AppColors.accent.withValues(alpha: 0.24),
             ),
           ),
         ),
@@ -874,23 +999,23 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                       color: Colors.white.withValues(alpha: 0.84),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: const Color(0xFFDCE4FF),
+                        color: AppColors.primary.withValues(alpha: 0.12),
                         width: 1,
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.keyboard_arrow_down,
-                          color: Color(0xFF5563C2),
+                          color: AppColors.primary.withValues(alpha: 0.86),
                           size: 16,
                         ),
                         const SizedBox(width: 4),
-                        const Text(
+                        Text(
                           'Свайп вниз для профиля',
                           style: TextStyle(
-                            color: Color(0xFF4A548F),
+                            color: AppColors.dark.withValues(alpha: 0.72),
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -902,9 +1027,9 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                               _showHint = false;
                             });
                           },
-                          child: const Icon(
+                          child: Icon(
                             Icons.close,
-                            color: Color(0xFF7A84B8),
+                            color: AppColors.dark.withValues(alpha: 0.55),
                             size: 14,
                           ),
                         ),
@@ -920,14 +1045,16 @@ class _EventMatchScreenState extends State<EventMatchScreen>
   }
 
   Widget _buildMatchCard(MatchPreview match, {required bool isTop}) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final bottomNavReserve = kBottomNavigationBarHeight + 10;
     return GestureDetector(
       onPanStart: isTop ? _onPanStart : null,
       onPanUpdate: isTop ? _onPanUpdate : null,
       onPanEnd: isTop ? _onPanEnd : null,
       child: Container(
-        margin: const EdgeInsets.only(
+        margin: EdgeInsets.only(
           top: 16,
-          bottom: 22,
+          bottom: bottomInset + bottomNavReserve + 22,
           left: 12,
           right: 12,
         ),
@@ -939,7 +1066,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0x1F4253A8),
+              color: AppColors.dark.withValues(alpha: 0.10),
               blurRadius: 22,
               offset: const Offset(0, 12),
             ),
@@ -953,10 +1080,10 @@ class _EventMatchScreenState extends State<EventMatchScreen>
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: const <Color>[
-                      Color(0xFF5F76FF),
-                      Color(0xFF62A9FF),
-                      Color(0xFF63C9B6),
+                    colors: <Color>[
+                      AppColors.primary.withValues(alpha: 0.92),
+                      const Color(0xFF2E8BFF).withValues(alpha: 0.88),
+                      AppColors.accent.withValues(alpha: 0.82),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -973,10 +1100,10 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                       return Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: const <Color>[
-                              Color(0xFF5F76FF),
-                              Color(0xFF62A9FF),
-                              Color(0xFF63C9B6),
+                            colors: <Color>[
+                              AppColors.primary.withValues(alpha: 0.92),
+                              const Color(0xFF2E8BFF).withValues(alpha: 0.88),
+                              AppColors.accent.withValues(alpha: 0.82),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -1025,8 +1152,8 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                               Expanded(
                                 child: Text(
                                   match.name,
-                                  style: const TextStyle(
-                                    color: Color(0xFF26305E),
+                                  style: TextStyle(
+                                    color: AppColors.dark.withValues(alpha: 0.88),
                                     fontSize: 30,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -1037,8 +1164,8 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                               if (match.age != null)
                                 Text(
                                   '${match.age}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF26305E),
+                                  style: TextStyle(
+                                    color: AppColors.dark.withValues(alpha: 0.88),
                                     fontSize: 30,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -1052,10 +1179,10 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                               vertical: 5,
                             ),
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
+                              gradient: LinearGradient(
                                 colors: <Color>[
-                                  Color(0xFFE8EEFF),
-                                  Color(0xFFE7F6F2),
+                                  AppColors.primary.withValues(alpha: 0.10),
+                                  AppColors.accent.withValues(alpha: 0.16),
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(999),
@@ -1063,16 +1190,16 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.favorite_rounded,
-                                  color: Color(0xFF75878A),
+                                  color: AppColors.dark.withValues(alpha: 0.55),
                                   size: 14,
                                 ),
                                 const SizedBox(width: 5),
                                 Text(
                                   '${match.matchPercentage}% совпадение',
-                                  style: const TextStyle(
-                                    color: Color(0xFF75878A),
+                                  style: TextStyle(
+                                    color: AppColors.dark.withValues(alpha: 0.62),
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -1084,8 +1211,8 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                             const SizedBox(height: 10),
                             Text(
                               match.bio!,
-                              style: const TextStyle(
-                                color: Color(0xFF4B578F),
+                              style: TextStyle(
+                                color: AppColors.dark.withValues(alpha: 0.68),
                                 fontSize: 13,
                                 height: 1.3,
                               ),
@@ -1110,13 +1237,13 @@ class _EventMatchScreenState extends State<EventMatchScreen>
                                         color: Colors.white.withValues(alpha: 0.72),
                                         borderRadius: BorderRadius.circular(999),
                                         border: Border.all(
-                                          color: const Color(0xFFDCE4FF),
+                                          color: AppColors.primary.withValues(alpha: 0.12),
                                         ),
                                       ),
                                       child: Text(
                                         interest,
-                                        style: const TextStyle(
-                                          color: Color(0xFF5D67A4),
+                                        style: TextStyle(
+                                          color: AppColors.dark.withValues(alpha: 0.70),
                                           fontWeight: FontWeight.w500,
                                           fontSize: 12,
                                         ),
