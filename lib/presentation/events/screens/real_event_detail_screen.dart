@@ -31,6 +31,7 @@ import '../../../data/models/user_preview_model.dart';
 import 'real_event_detail/event_manage_participants_sheet.dart';
 import 'real_event_detail/real_event_detail_widgets.dart';
 import 'real_event_detail/event_detail_route_section.dart';
+import 'real_event_detail/event_detail_header_card.dart';
 
 const Color _secondaryTextColor = Color(0xFF5E6D86);
 
@@ -567,129 +568,25 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                  child: EventDetailSectionContainer(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: <Color>[
-                                    categoryColor.withValues(alpha: 0.18),
-                                    categoryColor.withValues(alpha: 0.08),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: categoryColor.withValues(alpha: 0.26),
-                                ),
-                              ),
-                              child: Text(
-                                categoryName,
-                                style: TextStyle(
-                                  color: categoryColor,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: event.price == 0
-                                    ? const Color(0xFFE5F7EF)
-                                    : const Color(0xFFFFF0DB),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: event.price == 0
-                                      ? const Color(0xFFBEE8D1)
-                                      : const Color(0xFFF6D3A3),
-                                ),
-                              ),
-                              child: Text(
-                                event.price == 0
-                                    ? 'Бесплатно'
-                                    : '${event.price.toStringAsFixed(0)} ₽',
-                                style: TextStyle(
-                                  color: event.price == 0
-                                      ? Colors.green
-                                      : Colors.orange,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+                EventDetailHeaderCard(
+                  event: event,
+                  categoryName: categoryName,
+                  categoryColor: categoryColor,
+                  showCreatorReviewButton:
+                      _isEventFinished(event) && _isCreator(event),
+                  showManageButton: _isCreator(event),
+                  onOpenReviews: () => _showReviewsBottomSheet(event),
+                  onOpenMatches: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EventMatchScreen(
+                          eventId: event.id,
                         ),
-                        const SizedBox(height: 14),
-                        Text(
-                          event.title,
-                          style: const TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1F3552),
-                          ),
-                        ),
-                        
-                        // Рейтинг + отзывы
-                        if (event.ratingCount > 0 || (_isEventFinished(event) && _isCreator(event)))
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Row(
-                              children: [
-                                if (event.ratingCount > 0) ...[
-                                  StarRatingWidget(
-                                    rating: event.averageRating,
-                                    starSize: 18,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${event.averageRating.toStringAsFixed(1)} (${event.ratingCount})',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF1F3552).withValues(alpha: 0.6),
-                                    ),
-                                  ),
-                                ] else
-                                  Text(
-                                    'Пока нет оценок',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF1F3552).withValues(alpha: 0.5),
-                                    ),
-                                  ),
-                                const Spacer(),
-                                if (_isEventFinished(event) && _isCreator(event))
-                                  TextButton.icon(
-                                    onPressed: () => _showReviewsBottomSheet(event),
-                                    icon: const Icon(Icons.rate_review_rounded, size: 16),
-                                    label: const Text('Отзывы'),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: AppColors.primary,
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(999),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
+                  onOpenManage: () => _showManageParticipantsSheet(event),
                 ),
                 const SizedBox(height: 20),
 
