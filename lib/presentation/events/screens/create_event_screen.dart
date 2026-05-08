@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/services/logger_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -17,6 +16,9 @@ import 'create_event/create_event_widgets.dart';
 import 'create_event/create_event_drafts_sheet.dart';
 import 'create_event/create_event_sections.dart';
 import 'create_event/create_event_photos_section.dart';
+import 'create_event/create_event_details_section.dart';
+import 'create_event/create_event_schedule_section.dart';
+import 'create_event/create_event_location_price_section.dart';
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({super.key});
@@ -607,57 +609,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     );
   }
 
-  Widget _sectionHeader({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    Widget? trailing,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.14),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 18, color: AppColors.primary.withValues(alpha: 0.92)),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.dark.withValues(alpha: 0.86),
-                  height: 1.1,
-                ),
-              ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.dark.withValues(alpha: 0.58),
-                    height: 1.2,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        if (trailing != null) trailing,
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocListener<EventBloc, EventState>(
@@ -817,372 +768,70 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                           ),
                           const SizedBox(height: 12),
 
-                          Container(
-                            padding: const EdgeInsets.all(14),
+                          CreateEventDetailsSection(
                             decoration: _glassCardDecoration(),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                _sectionHeader(
-                                  icon: Icons.edit_rounded,
-                                  title: 'Описание события',
-                                  subtitle: 'Название, детали и категория',
-                                ),
-                                const SizedBox(height: 12),
-                                TextFormField(
-                                  controller: _titleController,
-                                  decoration: _softInputDecoration(
-                                    label: 'Название',
-                                    hint: 'Например: Йога в парке',
-                                    icon: Icons.event_rounded,
-                                  ),
-                                  validator: (String? value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Введите название события';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-                                TextFormField(
-                                  controller: _descriptionController,
-                                  maxLines: 4,
-                                  decoration: _softInputDecoration(
-                                    label: 'Описание',
-                                    hint: 'Расскажите о формате, кому подойдёт, что взять с собой…',
-                                    icon: Icons.notes_rounded,
-                                    alignLabelWithHint: true,
-                                  ),
-                                  validator: (String? value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Введите описание события';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Категория',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.dark.withValues(alpha: 0.76),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: _categories.map((c) {
-                                    final selected = _selectedCategories.contains(c);
-                                    return FilterChip(
-                                      label: Text(
-                                        c,
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                      selected: selected,
-                                      onSelected: (_) {
-                                        setState(() {
-                                          if (selected) {
-                                            if (_selectedCategories.length > 1 ||
-                                                _customCategoryController.text.trim().isNotEmpty) {
-                                              _selectedCategories.remove(c);
-                                            }
-                                          } else {
-                                            _selectedCategories.add(c);
-                                          }
-                                        });
-                                      },
-                                      selectedColor:
-                                          AppColors.primary.withValues(alpha: 0.16),
-                                      backgroundColor:
-                                          AppColors.surface.withValues(alpha: 0.62),
-                                      checkmarkColor: AppColors.primary,
-                                      side: BorderSide(
-                                        color: selected
-                                            ? AppColors.primary.withValues(alpha: 0.34)
-                                            : AppColors.primary.withValues(alpha: 0.14),
-                                      ),
-                                      labelStyle: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        color: selected
-                                            ? AppColors.primary
-                                            : AppColors.dark.withValues(alpha: 0.78),
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                        vertical: 0,
-                                      ),
-                                      materialTapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    );
-                                  }).toList(),
-                                ),
-                                const SizedBox(height: 12),
-                                TextFormField(
-                                  controller: _customCategoryController,
-                                  style: const TextStyle(fontSize: 13),
-                                  decoration: _softInputDecoration(
-                                    label: 'Своя категория',
-                                    hint: 'Например: Псай-транс вечеринка',
-                                    icon: Icons.category_rounded,
-                                  ),
-                                ),
-                              ],
-                            ),
+                            titleController: _titleController,
+                            descriptionController: _descriptionController,
+                            customCategoryController: _customCategoryController,
+                            categories: _categories,
+                            selectedCategories: _selectedCategories,
+                            onToggleCategory: (c) {
+                              setState(() {
+                                final selected = _selectedCategories.contains(c);
+                                if (selected) {
+                                  if (_selectedCategories.length > 1 ||
+                                      _customCategoryController.text.trim().isNotEmpty) {
+                                    _selectedCategories.remove(c);
+                                  }
+                                } else {
+                                  _selectedCategories.add(c);
+                                }
+                              });
+                            },
+                            inputDecorationBuilder: _softInputDecoration,
                           ),
                           const SizedBox(height: 12),
 
-                          Container(
-                            padding: const EdgeInsets.all(14),
+                          CreateEventScheduleSection(
                             decoration: _glassCardDecoration(),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                _sectionHeader(
-                                  icon: Icons.schedule_rounded,
-                                  title: 'Когда',
-                                  subtitle: 'Дата и время начала (и окончания при необходимости)',
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: <Widget>[
-                                    Expanded(
-                                      child: InkWell(
-                                        onTap: _selectDate,
-                                        borderRadius: BorderRadius.circular(16),
-                                        child: InputDecorator(
-                                          decoration: _softInputDecoration(
-                                            label: 'Дата',
-                                            icon: Icons.calendar_today_rounded,
-                                          ),
-                                          child: Text(
-                                            DateFormat('dd.MM.yyyy').format(_selectedDate),
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.dark.withValues(alpha: 0.82),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: InkWell(
-                                        onTap: _selectTime,
-                                        borderRadius: BorderRadius.circular(16),
-                                        child: InputDecorator(
-                                          decoration: _softInputDecoration(
-                                            label: 'Время',
-                                            icon: Icons.access_time_rounded,
-                                          ),
-                                          child: Text(
-                                            _selectedTime.format(context),
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.dark.withValues(alpha: 0.82),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surface.withValues(alpha: 0.50),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: AppColors.primary.withValues(alpha: 0.14),
-                                    ),
-                                  ),
-                                  child: SwitchListTile(
-                                    title: Text(
-                                      'Указать окончание',
-                                      style: TextStyle(
-                                        color: AppColors.dark.withValues(alpha: 0.84),
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      _hasEndDateTime
-                                          ? 'Будет показано время окончания'
-                                          : 'Полезно для расписания и поиска',
-                                      style: TextStyle(
-                                        color: AppColors.dark.withValues(alpha: 0.58),
-                                      ),
-                                    ),
-                                    value: _hasEndDateTime,
-                                    activeThumbColor: AppColors.primary,
-                                    activeTrackColor:
-                                        AppColors.primary.withValues(alpha: 0.22),
-                                    onChanged: (bool value) {
-                                      setState(() {
-                                        _hasEndDateTime = value;
-                                        if (_hasEndDateTime) {
-                                          _selectedEndDate = _selectedDate;
-                                          _selectedEndTime = _selectedTime;
-                                        }
-                                      });
-                                    },
-                                  ),
-                                ),
-                                AnimatedSize(
-                                  duration: const Duration(milliseconds: 220),
-                                  curve: Curves.easeOutCubic,
-                                  child: _hasEndDateTime
-                                      ? Padding(
-                                          padding: const EdgeInsets.only(top: 10),
-                                          child: Row(
-                                            children: <Widget>[
-                                              Expanded(
-                                                child: InkWell(
-                                                  onTap: _selectEndDate,
-                                                  borderRadius: BorderRadius.circular(16),
-                                                  child: InputDecorator(
-                                                    decoration: _softInputDecoration(
-                                                      label: 'Дата окончания',
-                                                      icon: Icons.event_available_rounded,
-                                                    ),
-                                                    child: Text(
-                                                      DateFormat('dd.MM.yyyy').format(_selectedEndDate),
-                                                      style: TextStyle(
-                                                        fontSize: 15,
-                                                        fontWeight: FontWeight.w800,
-                                                        color: AppColors.dark.withValues(alpha: 0.82),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: InkWell(
-                                                  onTap: _selectEndTime,
-                                                  borderRadius: BorderRadius.circular(16),
-                                                  child: InputDecorator(
-                                                    decoration: _softInputDecoration(
-                                                      label: 'Время окончания',
-                                                      icon: Icons.more_time_rounded,
-                                                    ),
-                                                    child: Text(
-                                                      _selectedEndTime.format(context),
-                                                      style: TextStyle(
-                                                        fontSize: 15,
-                                                        fontWeight: FontWeight.w800,
-                                                        color: AppColors.dark.withValues(alpha: 0.82),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        )
-                                      : const SizedBox.shrink(),
-                                ),
-                              ],
-                            ),
+                            selectedDate: _selectedDate,
+                            selectedTime: _selectedTime,
+                            hasEndDateTime: _hasEndDateTime,
+                            selectedEndDate: _selectedEndDate,
+                            selectedEndTime: _selectedEndTime,
+                            onPickDate: _selectDate,
+                            onPickTime: _selectTime,
+                            onToggleHasEnd: (value) {
+                              setState(() {
+                                _hasEndDateTime = value;
+                                if (_hasEndDateTime) {
+                                  _selectedEndDate = _selectedDate;
+                                  _selectedEndTime = _selectedTime;
+                                }
+                              });
+                            },
+                            onPickEndDate: _selectEndDate,
+                            onPickEndTime: _selectEndTime,
+                            inputDecorationBuilder: _softInputDecoration,
                           ),
                           const SizedBox(height: 12),
 
-                          Container(
-                            padding: const EdgeInsets.all(14),
+                          CreateEventLocationPriceSection(
                             decoration: _glassCardDecoration(),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                _sectionHeader(
-                                  icon: _isOnline ? Icons.videocam_rounded : Icons.place_rounded,
-                                  title: 'Где и стоимость',
-                                  subtitle: _isOnline ? 'Онлайн' : 'Локация и цена',
-                                ),
-                                const SizedBox(height: 12),
-                                if (!_isOnline) ...<Widget>[
-                                  TextFormField(
-                                    controller: _locationController,
-                                    readOnly: true,
-                                    decoration: _softInputDecoration(
-                                      label: 'Место проведения',
-                                      hint: 'Выберите место на карте',
-                                      icon: Icons.location_on_rounded,
-                                      suffix: IconButton(
-                                        icon: Icon(
-                                          Icons.map_rounded,
-                                          color: AppColors.primary.withValues(alpha: 0.86),
-                                        ),
-                                        onPressed: _openMapPicker,
-                                      ),
-                                    ),
-                                    onTap: _openMapPicker,
-                                    validator: (String? value) {
-                                      if (!_isOnline && (value == null || value.isEmpty)) {
-                                        return 'Укажите место проведения';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 12),
-                                ],
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surface.withValues(alpha: 0.62),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: AppColors.primary.withValues(alpha: 0.14),
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.all(4),
-                                  child: Row(
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: CreateEventSegmentButton(
-                                          label: 'Бесплатно',
-                                          icon: Icons.volunteer_activism_rounded,
-                                          isSelected: _isFree,
-                                          onTap: () {
-                                            setState(() {
-                                              _isFree = true;
-                                              _priceController.text = '';
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: CreateEventSegmentButton(
-                                          label: 'Платно',
-                                          icon: Icons.payments_rounded,
-                                          isSelected: !_isFree,
-                                          onTap: () => setState(() => _isFree = false),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                AnimatedSize(
-                                  duration: const Duration(milliseconds: 220),
-                                  curve: Curves.easeOutCubic,
-                                  child: _isFree
-                                      ? const SizedBox.shrink()
-                                      : TextFormField(
-                                          controller: _priceController,
-                                          keyboardType: TextInputType.number,
-                                          decoration: _softInputDecoration(
-                                            label: 'Цена (₽)',
-                                            hint: 'Например: 500',
-                                            icon: Icons.payments_rounded,
-                                          ),
-                                        ),
-                                ),
-                              ],
-                            ),
+                            isOnline: _isOnline,
+                            locationController: _locationController,
+                            onOpenMapPicker: _openMapPicker,
+                            isFree: _isFree,
+                            onSetFree: (value) {
+                              setState(() {
+                                _isFree = value;
+                                if (_isFree) {
+                                  _priceController.text = '';
+                                }
+                              });
+                            },
+                            priceController: _priceController,
+                            inputDecorationBuilder: _softInputDecoration,
                           ),
                         ],
                       ),
