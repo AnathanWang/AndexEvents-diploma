@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -16,6 +14,8 @@ import '../bloc/event_bloc.dart';
 import '../bloc/event_event.dart';
 import '../bloc/event_state.dart';
 import 'map_location_picker.dart';
+import 'create_event/create_event_widgets.dart';
+import 'create_event/create_event_drafts_sheet.dart';
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({super.key});
@@ -108,194 +108,50 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(22),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.14),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.14),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.description_outlined,
-                                size: 18,
-                                color: AppColors.primary.withValues(alpha: 0.92),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Черновики',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.dark.withValues(alpha: 0.86),
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: const Icon(Icons.close_rounded),
-                              color: AppColors.dark.withValues(alpha: 0.65),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 340),
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            itemCount: drafts.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 10),
-                            itemBuilder: (context, index) {
-                              final draft = drafts[index];
-                              final savedAtLabel = DateFormat(
-                                'dd.MM.yyyy HH:mm',
-                                'ru',
-                              ).format(draft.savedAt.toLocal());
-
-                              return Container(
-                                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.84),
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(
-                                    color: AppColors.primary.withValues(alpha: 0.10),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            draft.name,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.dark.withValues(alpha: 0.86),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            savedAtLabel,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.dark.withValues(alpha: 0.6),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    IconButton(
-                                      tooltip: 'Переименовать',
-                                      onPressed: () async {
-                                        final controller = TextEditingController(text: draft.name);
-                                        final newName = await showDialog<String>(
-                                          context: context,
-                                          builder: (_) => AlertDialog(
-                                            title: const Text('Название черновика'),
-                                            content: TextField(
-                                              controller: controller,
-                                              autofocus: true,
-                                              decoration: const InputDecoration(
-                                                hintText: 'Например: “Вечер пятницы”',
-                                              ),
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(context),
-                                                child: const Text('Отмена'),
-                                              ),
-                                              ElevatedButton(
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  controller.text.trim(),
-                                                ),
-                                                child: const Text('Сохранить'),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                        if (newName == null || newName.trim().isEmpty) return;
-                                        await _draftService.renameDraft(draft.id, newName.trim());
-                                        if (context.mounted) Navigator.pop(context);
-                                        if (mounted) _maybeOfferRestoreDraft();
-                                      },
-                                      icon: const Icon(Icons.edit_rounded, size: 20),
-                                      color: AppColors.dark.withValues(alpha: 0.62),
-                                    ),
-                                    IconButton(
-                                      tooltip: 'Удалить',
-                                      onPressed: () async {
-                                        await _draftService.deleteDraft(draft.id);
-                                        if (context.mounted) Navigator.pop(context);
-                                        if (mounted) _maybeOfferRestoreDraft();
-                                      },
-                                      icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                                      color: Colors.redAccent.withValues(alpha: 0.85),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                        _applyDraft(draft);
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.primary.withValues(alpha: 0.92),
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(14),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 10,
-                                        ),
-                                        elevation: 0,
-                                      ),
-                                      child: const Text(
-                                        'Открыть',
-                                        style: TextStyle(fontWeight: FontWeight.w800),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
+        return CreateEventDraftsSheet(
+          drafts: drafts,
+          onOpen: (draft) {
+            Navigator.pop(context);
+            _applyDraft(draft);
+          },
+          onRename: (draft) async {
+            final controller = TextEditingController(text: draft.name);
+            final newName = await showDialog<String>(
+              context: context,
+              builder: (_) => AlertDialog(
+                title: const Text('Название черновика'),
+                content: TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    hintText: 'Например: “Вечер пятницы”',
                   ),
                 ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Отмена'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(
+                      context,
+                      controller.text.trim(),
+                    ),
+                    child: const Text('Сохранить'),
+                  ),
+                ],
               ),
-            ),
-          ),
+            );
+            if (newName == null || newName.trim().isEmpty) return;
+            await _draftService.renameDraft(draft.id, newName.trim());
+            if (context.mounted) Navigator.pop(context);
+            if (mounted) _maybeOfferRestoreDraft();
+          },
+          onDelete: (draft) async {
+            await _draftService.deleteDraft(draft.id);
+            if (context.mounted) Navigator.pop(context);
+            if (mounted) _maybeOfferRestoreDraft();
+          },
         );
       },
     );
@@ -886,7 +742,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             const Positioned(
               left: -120,
               top: -140,
-              child: _BlurCircle(
+              child: CreateEventBlurCircle(
                 size: 260,
                 color: Color(0x330961F6),
               ),
@@ -894,7 +750,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             Positioned(
               right: -140,
               bottom: -180,
-              child: _BlurCircle(
+              child: CreateEventBlurCircle(
                 size: 320,
                 color: AppColors.accent,
               ),
@@ -1001,7 +857,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                                   child: Row(
                                     children: <Widget>[
                                       Expanded(
-                                        child: _SegmentButton(
+                                        child: CreateEventSegmentButton(
                                           label: 'Оффлайн',
                                           icon: Icons.place_rounded,
                                           isSelected: !_isOnline,
@@ -1010,7 +866,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                                       ),
                                       const SizedBox(width: 6),
                                       Expanded(
-                                        child: _SegmentButton(
+                                        child: CreateEventSegmentButton(
                                           label: 'Онлайн',
                                           icon: Icons.videocam_rounded,
                                           isSelected: _isOnline,
@@ -1545,7 +1401,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                                   child: Row(
                                     children: <Widget>[
                                       Expanded(
-                                        child: _SegmentButton(
+                                        child: CreateEventSegmentButton(
                                           label: 'Бесплатно',
                                           icon: Icons.volunteer_activism_rounded,
                                           isSelected: _isFree,
@@ -1559,7 +1415,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                                       ),
                                       const SizedBox(width: 6),
                                       Expanded(
-                                        child: _SegmentButton(
+                                        child: CreateEventSegmentButton(
                                           label: 'Платно',
                                           icon: Icons.payments_rounded,
                                           isSelected: !_isFree,
@@ -1596,9 +1452,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     left: _pageHorizontalPadding,
                     right: _pageHorizontalPadding,
                     bottom: 12,
-                    child: _BottomActionBar(
+                    child: CreateEventBottomActionBar(
                       onPressed: _isLoading ? null : _handleCreateEvent,
-                      isLoading: _isLoading,
                       child: _isLoading
                           ? const SizedBox(
                               height: 20,
@@ -1626,172 +1481,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           ],
         ),
       ),
-      ),
-    );
-  }
-}
-
-class _BlurCircle extends StatelessWidget {
-  const _BlurCircle({
-    required this.size,
-    required this.color,
-  });
-
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipOval(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-        child: Container(
-          width: size,
-          height: size,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
-class _SegmentButton extends StatelessWidget {
-  const _SegmentButton({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-    this.icon,
-  });
-
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            gradient: isSelected
-                ? LinearGradient(
-                    colors: <Color>[
-                      AppColors.primary.withValues(alpha: 0.16),
-                      AppColors.primary.withValues(alpha: 0.10),
-                    ],
-                  )
-                : null,
-            border: Border.all(
-              color: isSelected
-                  ? AppColors.primary.withValues(alpha: 0.34)
-                  : AppColors.primary.withValues(alpha: 0.12),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              if (icon != null) ...[
-                Icon(
-                  icon,
-                  size: 16,
-                  color: isSelected
-                      ? AppColors.primary.withValues(alpha: 0.92)
-                      : AppColors.dark.withValues(alpha: 0.64),
-                ),
-                const SizedBox(width: 6),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: isSelected
-                      ? AppColors.primary
-                      : AppColors.dark.withValues(alpha: 0.72),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomActionBar extends StatelessWidget {
-  const _BottomActionBar({
-    required this.onPressed,
-    required this.isLoading,
-    required this.child,
-  });
-
-  final VoidCallback? onPressed;
-  final bool isLoading;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.surface.withValues(alpha: 0.62),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.12),
-            ),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: AppColors.dark.withValues(alpha: 0.10),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Opacity(
-            opacity: onPressed == null ? 0.64 : 1,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: <Color>[
-                    AppColors.primary,
-                    const Color(0xFF2E8BFF),
-                  ],
-                ),
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.22),
-                    blurRadius: 14,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: onPressed,
-                  borderRadius: BorderRadius.circular(16),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Center(child: child),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

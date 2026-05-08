@@ -2,7 +2,6 @@ import 'package:andexevents/data/services/auth_service.dart';
 import 'package:andexevents/presentation/auth/bloc/auth_bloc.dart';
 import 'package:andexevents/presentation/auth/bloc/auth_state.dart';
 import 'package:andexevents/presentation/auth/screens/register_screen.dart';
-import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';

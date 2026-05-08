@@ -5,7 +5,7 @@ import 'package:andexevents/data/models/user_model.dart';
 void main() {
   final now = DateTime(2025, 6, 15, 12, 0, 0);
 
-  UserModel _makeUser({
+  UserModel makeUser({
     String id = 'u-1',
     String email = 'test@example.com',
     String? displayName = 'Test User',
@@ -39,7 +39,7 @@ void main() {
 
   group('MatchPreview.fromUserModel', () {
     test('basic fields are mapped', () {
-      final user = _makeUser(
+      final user = makeUser(
         id: 'u-123',
         displayName: 'John',
         age: 30,
@@ -64,7 +64,7 @@ void main() {
     });
 
     test('uses email prefix when displayName is null', () {
-      final user = _makeUser(
+      final user = makeUser(
         displayName: null,
         email: 'john@example.com',
       );
@@ -74,7 +74,7 @@ void main() {
     });
 
     test('uses email prefix when displayName is empty', () {
-      final user = _makeUser(
+      final user = makeUser(
         displayName: '',
         email: 'john@example.com',
       );
@@ -84,7 +84,7 @@ void main() {
     });
 
     test('bio defaults to "Нет описания" when null', () {
-      final user = _makeUser(bio: null);
+      final user = makeUser(bio: null);
       final preview = MatchPreview.fromUserModel(user);
       expect(preview.bio, 'Нет описания');
     });
@@ -92,7 +92,7 @@ void main() {
 
   group('Match percentage (Jaccard similarity)', () {
     test('returns 50 when both interest lists are empty', () {
-      final user = _makeUser(interests: []);
+      final user = makeUser(interests: []);
       final preview = MatchPreview.fromUserModel(
         user,
         currentUserInterests: [],
@@ -101,7 +101,7 @@ void main() {
     });
 
     test('returns 50 when current user has no interests', () {
-      final user = _makeUser(interests: ['music']);
+      final user = makeUser(interests: ['music']);
       final preview = MatchPreview.fromUserModel(
         user,
         currentUserInterests: [],
@@ -110,7 +110,7 @@ void main() {
     });
 
     test('returns 100 when interests are identical', () {
-      final user = _makeUser(interests: ['music', 'sports']);
+      final user = makeUser(interests: ['music', 'sports']);
       final preview = MatchPreview.fromUserModel(
         user,
         currentUserInterests: ['music', 'sports'],
@@ -119,7 +119,7 @@ void main() {
     });
 
     test('returns value between 50 and 100 for partial overlap', () {
-      final user = _makeUser(interests: ['music', 'sports', 'travel']);
+      final user = makeUser(interests: ['music', 'sports', 'travel']);
       final preview = MatchPreview.fromUserModel(
         user,
         currentUserInterests: ['music', 'coding'],
@@ -130,7 +130,7 @@ void main() {
     });
 
     test('case insensitive matching', () {
-      final user = _makeUser(interests: ['Music', 'SPORTS']);
+      final user = makeUser(interests: ['Music', 'SPORTS']);
       final preview = MatchPreview.fromUserModel(
         user,
         currentUserInterests: ['music', 'sports'],
@@ -139,7 +139,7 @@ void main() {
     });
 
     test('trims whitespace in interests', () {
-      final user = _makeUser(interests: [' music ', '  sports  ']);
+      final user = makeUser(interests: [' music ', '  sports  ']);
       final preview = MatchPreview.fromUserModel(
         user,
         currentUserInterests: ['music', 'sports'],
@@ -148,7 +148,7 @@ void main() {
     });
 
     test('ignores empty string interests', () {
-      final user = _makeUser(interests: ['music', '', '  ']);
+      final user = makeUser(interests: ['music', '', '  ']);
       final preview = MatchPreview.fromUserModel(
         user,
         currentUserInterests: ['music'],
@@ -159,7 +159,7 @@ void main() {
 
   group('Common interests', () {
     test('returns empty when no overlap', () {
-      final user = _makeUser(interests: ['music']);
+      final user = makeUser(interests: ['music']);
       final preview = MatchPreview.fromUserModel(
         user,
         currentUserInterests: ['sports'],
@@ -168,7 +168,7 @@ void main() {
     });
 
     test('returns overlapping interests', () {
-      final user = _makeUser(interests: ['music', 'sports', 'travel']);
+      final user = makeUser(interests: ['music', 'sports', 'travel']);
       final preview = MatchPreview.fromUserModel(
         user,
         currentUserInterests: ['sports', 'music', 'coding'],
@@ -178,7 +178,7 @@ void main() {
     });
 
     test('limited to 3 common interests', () {
-      final user = _makeUser(interests: ['a', 'b', 'c', 'd', 'e']);
+      final user = makeUser(interests: ['a', 'b', 'c', 'd', 'e']);
       final preview = MatchPreview.fromUserModel(
         user,
         currentUserInterests: ['a', 'b', 'c', 'd', 'e'],
@@ -187,7 +187,7 @@ void main() {
     });
 
     test('sorted alphabetically', () {
-      final user = _makeUser(interests: ['travel', 'music', 'art']);
+      final user = makeUser(interests: ['travel', 'music', 'art']);
       final preview = MatchPreview.fromUserModel(
         user,
         currentUserInterests: ['travel', 'music', 'art'],
@@ -198,31 +198,31 @@ void main() {
 
   group('subtitle', () {
     test('shows age and gender for male', () {
-      final user = _makeUser(age: 25, gender: 'male');
+      final user = makeUser(age: 25, gender: 'male');
       final preview = MatchPreview.fromUserModel(user);
       expect(preview.subtitle, '25 лет, М');
     });
 
     test('shows age and gender for female', () {
-      final user = _makeUser(age: 22, gender: 'female');
+      final user = makeUser(age: 22, gender: 'female');
       final preview = MatchPreview.fromUserModel(user);
       expect(preview.subtitle, '22 лет, Ж');
     });
 
     test('shows only age when gender is null', () {
-      final user = _makeUser(age: 25, gender: null);
+      final user = makeUser(age: 25, gender: null);
       final preview = MatchPreview.fromUserModel(user);
       expect(preview.subtitle, '25 лет');
     });
 
     test('shows only gender when age is null', () {
-      final user = _makeUser(age: null, gender: 'male');
+      final user = makeUser(age: null, gender: 'male');
       final preview = MatchPreview.fromUserModel(user);
       expect(preview.subtitle, 'М');
     });
 
     test('shows "Пользователь" when both are null', () {
-      final user = _makeUser(age: null, gender: null);
+      final user = makeUser(age: null, gender: null);
       final preview = MatchPreview.fromUserModel(user);
       expect(preview.subtitle, 'Пользователь');
     });
@@ -230,7 +230,7 @@ void main() {
 
   group('avatar', () {
     test('returns photoUrl when available', () {
-      final user = _makeUser(
+      final user = makeUser(
         photoUrl: 'https://example.com/photo.jpg',
         photos: ['other.jpg'],
       );
@@ -239,7 +239,7 @@ void main() {
     });
 
     test('returns first photo when photoUrl is null', () {
-      final user = _makeUser(
+      final user = makeUser(
         photoUrl: null,
         photos: ['first.jpg', 'second.jpg'],
       );
@@ -248,7 +248,7 @@ void main() {
     });
 
     test('returns null when no photos', () {
-      final user = _makeUser(photoUrl: null, photos: []);
+      final user = makeUser(photoUrl: null, photos: []);
       final preview = MatchPreview.fromUserModel(user);
       expect(preview.avatar, isNull);
     });
