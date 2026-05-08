@@ -9,8 +9,14 @@ import java.util.List;
 public class AuthConfigProperties {
     private String firebaseProjectId;
     private String firebaseJwksUrl;
+    /**
+     * If true: any request that is not explicitly public requires a valid Bearer token.
+     * Default false to preserve current dev behavior.
+     */
+    private boolean defaultRequireAuth = false;
     private List<PathRule> requiredPaths = new ArrayList<>();
     private List<PathRule> optionalPaths = new ArrayList<>();
+    private List<PathRule> publicPaths = new ArrayList<>();
 
     public String getFirebaseProjectId() {
         return firebaseProjectId;
@@ -28,6 +34,14 @@ public class AuthConfigProperties {
         this.firebaseJwksUrl = firebaseJwksUrl;
     }
 
+    public boolean isDefaultRequireAuth() {
+        return defaultRequireAuth;
+    }
+
+    public void setDefaultRequireAuth(boolean defaultRequireAuth) {
+        this.defaultRequireAuth = defaultRequireAuth;
+    }
+
     public List<PathRule> getRequiredPaths() {
         return requiredPaths;
     }
@@ -42,6 +56,14 @@ public class AuthConfigProperties {
 
     public void setOptionalPaths(List<PathRule> optionalPaths) {
         this.optionalPaths = optionalPaths;
+    }
+
+    public List<PathRule> getPublicPaths() {
+        return publicPaths;
+    }
+
+    public void setPublicPaths(List<PathRule> publicPaths) {
+        this.publicPaths = publicPaths;
     }
 
     public static class PathRule {

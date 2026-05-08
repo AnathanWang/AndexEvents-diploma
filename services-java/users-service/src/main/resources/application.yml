@@ -28,6 +28,7 @@ app:
   auth:
     firebaseProjectId: ${FIREBASE_PROJECT_ID:}
     firebaseJwksUrl: ${FIREBASE_JWKS_URL:}
+    defaultRequireAuth: ${APP_AUTH_DEFAULTREQUIREAUTH:false}
     requiredPaths:
       - method: POST
         pattern: /api/users
@@ -71,6 +72,9 @@ app:
         pattern: /api/users/reports
       - method: PUT
         pattern: /api/users/reports/*
+
+  cors:
+    allowedOriginPatterns: ${APP_CORS_ALLOWEDORIGINPATTERNS:http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*}
 
 springdoc:
   api-docs:

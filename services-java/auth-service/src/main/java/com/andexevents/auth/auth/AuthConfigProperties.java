@@ -9,7 +9,9 @@ import java.util.List;
 public class AuthConfigProperties {
     private String firebaseProjectId;
     private String firebaseJwksUrl;
+    private boolean defaultRequireAuth = false;
     private List<PathRule> requiredPaths = new ArrayList<>();
+    private List<PathRule> publicPaths = new ArrayList<>();
 
     public String getFirebaseProjectId() {
         return firebaseProjectId;
@@ -27,12 +29,28 @@ public class AuthConfigProperties {
         this.firebaseJwksUrl = firebaseJwksUrl;
     }
 
+    public boolean isDefaultRequireAuth() {
+        return defaultRequireAuth;
+    }
+
+    public void setDefaultRequireAuth(boolean defaultRequireAuth) {
+        this.defaultRequireAuth = defaultRequireAuth;
+    }
+
     public List<PathRule> getRequiredPaths() {
         return requiredPaths;
     }
 
     public void setRequiredPaths(List<PathRule> requiredPaths) {
         this.requiredPaths = requiredPaths;
+    }
+
+    public List<PathRule> getPublicPaths() {
+        return publicPaths;
+    }
+
+    public void setPublicPaths(List<PathRule> publicPaths) {
+        this.publicPaths = publicPaths;
     }
 
     public static class PathRule {

@@ -1,4 +1,4 @@
-package com.andexevents.events.config;
+package com.andexevents.auth.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -27,3 +27,4 @@ public class WebCorsConfig implements WebMvcConfigurer {
                 .maxAge(3600);
     }
 }
+

@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -29,6 +30,8 @@ public class AuthFilter extends OncePerRequestFilter {
 
     private final RequestMatcher required;
     private final RequestMatcher optional;
+    private final RequestMatcher publicMatcher;
+    private final boolean defaultRequireAuth;
 
     public AuthFilter(
             AuthConfigProperties props,
@@ -39,9 +42,11 @@ public class AuthFilter extends OncePerRequestFilter {
         this.jwtVerifier = jwtVerifier;
         this.userLookupRepository = userLookupRepository;
         this.objectMapper = objectMapper;
+        this.defaultRequireAuth = props.isDefaultRequireAuth();
 
         this.required = toMatcher(props.getRequiredPaths());
         this.optional = toMatcher(props.getOptionalPaths());
+        this.publicMatcher = toPublicMatcher(props);
     }
 
     private RequestMatcher toMatcher(List<AuthConfigProperties.PathRule> rules) {
@@ -52,9 +57,36 @@ public class AuthFilter extends OncePerRequestFilter {
         return matchers.isEmpty() ? request -> false : new OrRequestMatcher(matchers);
     }
 
+    private RequestMatcher toPublicMatcher(AuthConfigProperties props) {
+        List<RequestMatcher> matchers = new ArrayList<>();
+
+        // Explicit public paths (new, prod-safe configuration)
+        matchers.addAll(props.getPublicPaths().stream()
+                .map(p -> new AntPathRequestMatcher(p.getPattern(), p.getMethod()))
+                .map(m -> (RequestMatcher) m)
+                .toList());
+
+        // Backward compatible behavior: "optionalPaths" are considered public (auth is optional).
+        matchers.addAll(props.getOptionalPaths().stream()
+                .map(p -> new AntPathRequestMatcher(p.getPattern(), p.getMethod()))
+                .map(m -> (RequestMatcher) m)
+                .toList());
+
+        // Always-public introspection endpoints
+        matchers.add(new AntPathRequestMatcher("/health", null));
+        matchers.add(new AntPathRequestMatcher("/actuator/**", null));
+        matchers.add(new AntPathRequestMatcher("/swagger-ui/**", null));
+        matchers.add(new AntPathRequestMatcher("/v3/api-docs/**", null));
+
+        return matchers.isEmpty() ? request -> false : new OrRequestMatcher(matchers);
+    }
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !(required.matches(request) || optional.matches(request));
+        if (!defaultRequireAuth) {
+            return !(required.matches(request) || optional.matches(request));
+        }
+        return publicMatcher.matches(request);
     }
 
     @Override
@@ -63,7 +95,8 @@ public class AuthFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        boolean requireAuth = required.matches(request);
+        boolean isPublic = publicMatcher.matches(request);
+        boolean requireAuth = defaultRequireAuth ? !isPublic : required.matches(request);
 
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -104,7 +137,7 @@ public class AuthFilter extends OncePerRequestFilter {
                 writeUnauthorized(response, "Unauthorized: Invalid token");
                 return;
             }
-            // optional auth: ignore invalid token (Node behavior)
+            // Public endpoints: ignore invalid token.
             filterChain.doFilter(request, response);
         }
     }
