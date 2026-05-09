@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 class StarRatingWidget extends StatefulWidget {
   const StarRatingWidget({
-    Key? key,
+    super.key,
     required this.rating,
     this.starCount = 5,
     this.starSize = 24.0,
     this.color = const Color(0xFFFACC15), // Yellow
     this.isInteractive = false,
     this.onRatingChanged,
-  }) : super(key: key);
+  });
 
   final double rating;
   final int starCount;

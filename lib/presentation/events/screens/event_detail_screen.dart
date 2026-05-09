@@ -53,9 +53,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   void _shareEvent() {
     final eventTitle = widget.eventPreview.title;
     final eventDate = widget.eventPreview.date.toString().substring(0, 16);
-    Share.share(
-      'Пошли вместе на "$eventTitle"!\n🕒 $eventDate\n📍 ${widget.eventPreview.location}\n\nУзнай подробности в приложении Andex Events.',
-      subject: eventTitle,
+    SharePlus.instance.share(
+      ShareParams(
+        text:
+            'Пошли вместе на "$eventTitle"!\n🕒 $eventDate\n📍 ${widget.eventPreview.location}\n\nУзнай подробности в приложении Andex Events.',
+        subject: eventTitle,
+      ),
     );
   }
 
@@ -77,7 +80,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
     showDialog<void>(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
@@ -121,15 +124,17 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               currentDialogRating,
                               comment: textController.text.isNotEmpty ? textController.text : null,
                             );
-                            if (mounted) {
-                              Navigator.of(context).pop();
-                              CustomNotification.show(context, 'Оценка сохранена!');
-                              // In a real app, we would also trigger a refresh of the event details
-                            }
+                            if (!dialogContext.mounted) return;
+                            Navigator.of(dialogContext).pop();
+                            CustomNotification.show(dialogContext, 'Оценка сохранена!');
+                            // In a real app, we would also trigger a refresh of the event details
                           } catch (e) {
-                            if (mounted) {
-                              CustomNotification.show(context, 'Ошибка: $e', isError: true);
-                            }
+                            if (!dialogContext.mounted) return;
+                            CustomNotification.show(
+                              dialogContext,
+                              'Ошибка: $e',
+                              isError: true,
+                            );
                           }
                         },
                   child: const Text('Отправить'),

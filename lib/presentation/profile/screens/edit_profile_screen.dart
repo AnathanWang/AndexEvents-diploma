@@ -4,7 +4,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
 import '../../../core/services/logger_service.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../bloc/profile_bloc.dart';
@@ -15,6 +14,8 @@ import '../../../data/services/user_service.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'privacy_settings_screen.dart';
 import '../widgets/photo_gallery_sheet.dart';
+import '../../auth/widgets/auth_glass_card.dart';
+import '../../auth/widgets/auth_glass_scaffold.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -734,8 +735,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       builder: (context, state) {
         final user = state is ProfileLoaded ? state.user : _currentUser;
 
-        return Scaffold(
-          backgroundColor: AppColors.background,
+        return AuthGlassScaffold(
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
@@ -775,42 +775,47 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ],
           ),
-          body: _isLoading && user == null
+          child: _isLoading && user == null
               ? const Center(child: CircularProgressIndicator())
-              : DecoratedBox(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: <Color>[
-                        Color(0xFFEAF2FF),
-                        Color(0xFFD9E8FF),
-                        Color(0xFFEFF5FF),
-                      ],
-                    ),
-                  ),
-                  child: Form(
-                    key: _formKey,
-                    child: ListView(
+              : Form(
+                  key: _formKey,
+                  child: ListView(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
                     children: <Widget>[
                       // Обложка профиля
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: SizedBox(
-                          height: 140,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: <Widget>[
-                              if (_newCoverImage != null)
-                                Image.file(_newCoverImage!, fit: BoxFit.cover)
-                              else if (user?.coverImageUrl != null &&
-                                  user!.coverImageUrl!.isNotEmpty)
-                                CachedNetworkImage(
-                                  imageUrl: user.coverImageUrl!,
-                                  fit: BoxFit.cover,
-                                  errorWidget: (context, url, error) =>
-                                      const DecoratedBox(
+                      AuthGlassCard(
+                        padding: const EdgeInsets.all(0),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: SizedBox(
+                            height: 140,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: <Widget>[
+                                if (_newCoverImage != null)
+                                  Image.file(_newCoverImage!, fit: BoxFit.cover)
+                                else if (user?.coverImageUrl != null &&
+                                    user!.coverImageUrl!.isNotEmpty)
+                                  CachedNetworkImage(
+                                    imageUrl: user.coverImageUrl!,
+                                    fit: BoxFit.cover,
+                                    errorWidget: (context, url, error) =>
+                                        const DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: <Color>[
+                                            Color(0xFF5F76FF),
+                                            Color(0xFF62A9FF),
+                                            Color(0xFF63C9B5),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  const DecoratedBox(
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         begin: Alignment.topLeft,
@@ -823,39 +828,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       ),
                                     ),
                                   ),
-                                )
-                              else
-                                const DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: <Color>[
-                                        Color(0xFF5F76FF),
-                                        Color(0xFF62A9FF),
-                                        Color(0xFF63C9B5),
-                                      ],
+                                Align(
+                                  alignment: Alignment.bottomRight,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(10),
+                                    child: OutlinedButton.icon(
+                                      onPressed: _pickCoverImage,
+                                      icon: const Icon(
+                                        Icons.wallpaper_outlined,
+                                        size: 16,
+                                      ),
+                                      label: const Text('Фон'),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.white,
+                                        side: const BorderSide(color: Colors.white),
+                                        backgroundColor:
+                                            Colors.black.withValues(alpha: 0.28),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              Align(
-                                alignment: Alignment.bottomRight,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(10),
-                                  child: OutlinedButton.icon(
-                                    onPressed: _pickCoverImage,
-                                    icon: const Icon(Icons.wallpaper_outlined, size: 16),
-                                    label: const Text('Фон'),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: Colors.white,
-                                      side: const BorderSide(color: Colors.white),
-                                      backgroundColor:
-                                          Colors.black.withValues(alpha: 0.28),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -1262,11 +1256,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 32),
-	                    ],
-	                  ),
-	                ),
-	              ),
-	        );
+                    ],
+                  ),
+                ),
+            );
       },
     );
   }

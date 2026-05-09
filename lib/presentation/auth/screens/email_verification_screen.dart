@@ -2,12 +2,13 @@ import 'dart:async';
 import 'package:andexevents/data/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/theme/app_colors.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'login_screen.dart';
 import 'setup_profile_screen.dart';
+import '../widgets/auth_glass_card.dart';
+import '../widgets/auth_glass_scaffold.dart';
 
 /// Screen for email verification with resend functionality
 class EmailVerificationScreen extends StatefulWidget {
@@ -232,7 +233,11 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                       : () async {
                           final newEmail = emailController.text.trim();
                           if (newEmail.isEmpty || !newEmail.contains('@')) {
-                            CustomNotification.show(context, 'Введите корректный email', isError: true);
+                            CustomNotification.show(
+                              dialogContext,
+                              'Введите корректный email',
+                              isError: true,
+                            );
                             return;
                           }
 
@@ -249,24 +254,25 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                               // В последних версиях firebase_auth используется метод verifyBeforeUpdateEmail,
                               // который заодно отправляет письмо подтверждения на новый адрес
                               await user.verifyBeforeUpdateEmail(newEmail);
-                              
-                              if (mounted) {
-                                setState(() {
-                                  _currentEmail = newEmail;
-                                  _message = 'Письмо отправлено на новый адрес';
-                                  _isError = false;
-                                });
-                                _startCooldown();
-                                Navigator.pop(dialogContext);
-                                CustomNotification.show(context, 'Email успешно изменен');
-                              }
+
+                              if (!mounted) return;
+                              setState(() {
+                                _currentEmail = newEmail;
+                                _message = 'Письмо отправлено на новый адрес';
+                                _isError = false;
+                              });
+                              _startCooldown();
+                              if (!dialogContext.mounted) return;
+                              Navigator.pop(dialogContext);
+                              CustomNotification.show(dialogContext, 'Email успешно изменен');
                             }
                           } catch (e) {
                             setDialogState(() => isUpdating = false);
                             final errorMsg = e.toString().contains('requires-recent-login') 
                                 ? 'Требуется недавний вход. Выйдите и зарегистрируйтесь заново.'
                                 : 'Ошибка смены email. Возможно адрес уже занят.';
-                            CustomNotification.show(context, errorMsg, isError: true);
+                            if (!dialogContext.mounted) return;
+                            CustomNotification.show(dialogContext, errorMsg, isError: true);
                           }
                         },
                   child: isUpdating
@@ -283,58 +289,19 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return AuthGlassScaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
       ),
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[
-              Color(0xFFEAF2FF),
-              Color(0xFFD9E8FF),
-              Color(0xFFEFF5FF),
-            ],
-          ),
-        ),
-        child: Stack(
-          children: <Widget>[
-            Positioned(
-              top: -110,
-              right: -75,
-              child: Container(
-                width: 260,
-                height: 260,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF0F6CF8).withValues(alpha: 0.16),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -120,
-              left: -85,
-              child: Container(
-                width: 300,
-                height: 300,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF8CB9FF).withValues(alpha: 0.16),
-                ),
-              ),
-            ),
-            SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
                     const SizedBox(height: 10),
                     Center(
                       child: Container(
@@ -397,22 +364,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                       ),
                     ),
                     const SizedBox(height: 26),
-                    Container(
+                    AuthGlassCard(
                       padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.88),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.85),
-                        ),
-                        boxShadow: <BoxShadow>[
-                          BoxShadow(
-                            color: const Color(0xFF184B94).withValues(alpha: 0.12),
-                            blurRadius: 22,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -559,11 +512,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

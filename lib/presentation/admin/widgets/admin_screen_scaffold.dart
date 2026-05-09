@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../auth/widgets/auth_glass_scaffold.dart';
 
 class AdminScreenScaffold extends StatelessWidget {
   const AdminScreenScaffold({
@@ -16,8 +17,7 @@ class AdminScreenScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return AuthGlassScaffold(
       appBar: AppBar(
         title: Text(
           title,
@@ -26,14 +26,15 @@ class AdminScreenScaffold extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
         actions: actions,
       ),
-      body: SafeArea(child: body),
+      child: SafeArea(child: body),
     );
   }
 }

@@ -2,9 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/services/logger_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../widgets/common/custom_notification.dart';
@@ -13,6 +11,7 @@ import '../bloc/event_bloc.dart';
 import '../bloc/event_event.dart';
 import '../bloc/event_state.dart';
 import 'map_location_picker.dart';
+import 'edit_event/edit_event_sections.dart';
 
 class EditEventScreen extends StatefulWidget {
   final EventModel event;
@@ -404,56 +403,6 @@ class _EditEventScreenState extends State<EditEventScreen> {
     );
   }
 
-  Widget _sectionHeader({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    Widget? trailing,
-  }) {
-    return Row(
-      children: <Widget>[
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.14),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 18, color: AppColors.primary.withValues(alpha: 0.92)),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.dark.withValues(alpha: 0.86),
-                  height: 1.1,
-                ),
-              ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.dark.withValues(alpha: 0.58),
-                    height: 1.2,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        if (trailing != null) trailing,
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocListener<EventBloc, EventState>(
@@ -562,452 +511,105 @@ class _EditEventScreenState extends State<EditEventScreen> {
                       140,
                     ),
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(14),
+                      EditEventPhotosSection(
                         decoration: _glassCardDecoration(),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            _sectionHeader(
-                              icon: Icons.photo_camera_back_rounded,
-                              title: 'Обложка',
-                              subtitle: 'До $_maxEventPhotos фото • первое будет главным',
-                              trailing: Text(
-                                '${_uploadedPhotoUrls.length}/$_maxEventPhotos',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.dark.withValues(alpha: 0.56),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            GestureDetector(
-                              onTap: _pickImages,
-                              child: Container(
-                                height: 176,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface.withValues(alpha: 0.84),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: AppColors.primary.withValues(alpha: 0.14),
-                                  ),
-                                ),
-                                child: _isPhotoUploading
-                                    ? const Center(
-                                        child: SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(strokeWidth: 2),
-                                        ),
-                                      )
-                                    : _uploadedPhotoUrls.isNotEmpty
-                                        ? ClipRRect(
-                                            borderRadius: BorderRadius.circular(16),
-                                            child: CachedNetworkImage(
-                                              imageUrl: _uploadedPhotoUrls.first,
-                                              fit: BoxFit.cover,
-                                              placeholder: (context, url) => const Center(
-                                                child: SizedBox(
-                                                  width: 24,
-                                                  height: 24,
-                                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                                ),
-                                              ),
-                                              errorWidget: (context, url, error) => Icon(
-                                                Icons.broken_image_rounded,
-                                                size: 30,
-                                                color: AppColors.dark.withValues(alpha: 0.44),
-                                              ),
-                                            ),
-                                          )
-                                        : Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: <Widget>[
-                                              Container(
-                                                width: 56,
-                                                height: 56,
-                                                decoration: BoxDecoration(
-                                                  color: AppColors.primary.withValues(alpha: 0.12),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: Icon(
-                                                  Icons.add_photo_alternate_outlined,
-                                                  size: 28,
-                                                  color: AppColors.primary.withValues(alpha: 0.92),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 10),
-                                              Text(
-                                                'Изменить фото',
-                                                style: TextStyle(
-                                                  color: AppColors.dark.withValues(alpha: 0.78),
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.w800,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                              ),
-                            ),
-                            if (_uploadedPhotoUrls.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                height: 86,
-                                child: ListView.separated(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: _uploadedPhotoUrls.length +
-                                      (_uploadedPhotoUrls.length + _pendingPhotoUploads < _maxEventPhotos ? 1 : 0),
-                                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                                  itemBuilder: (context, index) {
-                                    if (index == _uploadedPhotoUrls.length &&
-                                        _uploadedPhotoUrls.length + _pendingPhotoUploads < _maxEventPhotos) {
-                                      return GestureDetector(
-                                        onTap: _pickImages,
-                                        child: Container(
-                                          width: 86,
-                                          height: 86,
-                                          decoration: BoxDecoration(
-                                            color: AppColors.surface.withValues(alpha: 0.84),
-                                            borderRadius: BorderRadius.circular(14),
-                                            border: Border.all(
-                                              color: AppColors.primary.withValues(alpha: 0.14),
-                                            ),
-                                          ),
-                                          child: Icon(
-                                            Icons.add_photo_alternate_outlined,
-                                            color: AppColors.primary.withValues(alpha: 0.7),
-                                          ),
-                                        ),
-                                      );
-                                    }
-
-                                    final url = _uploadedPhotoUrls[index];
-                                    return Stack(
-                                      children: [
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(14),
-                                          child: CachedNetworkImage(
-                                            imageUrl: url,
-                                            width: 86,
-                                            height: 86,
-                                            fit: BoxFit.cover,
-                                            placeholder: (context, _) => Container(
-                                              width: 86,
-                                              height: 86,
-                                              color: AppColors.surface.withValues(alpha: 0.84),
-                                              child: const Center(
-                                                child: SizedBox(
-                                                  width: 18,
-                                                  height: 18,
-                                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                                ),
-                                              ),
-                                            ),
-                                            errorWidget: (context, _, __) => Container(
-                                              width: 86,
-                                              height: 86,
-                                              color: AppColors.surface.withValues(alpha: 0.84),
-                                              child: Icon(
-                                                Icons.broken_image_rounded,
-                                                color: AppColors.dark.withValues(alpha: 0.42),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        Positioned(
-                                          top: 5,
-                                          right: 5,
-                                          child: GestureDetector(
-                                            onTap: () => _removeUploadedPhoto(index),
-                                            child: Container(
-                                              width: 22,
-                                              height: 22,
-                                              decoration: BoxDecoration(
-                                                color: AppColors.dark.withValues(alpha: 0.62),
-                                                shape: BoxShape.circle,
-                                                border: Border.all(
-                                                  color: Colors.white.withValues(alpha: 0.22),
-                                                ),
-                                              ),
-                                              child: const Icon(Icons.close, size: 14, color: Colors.white),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
+                        maxPhotos: _maxEventPhotos,
+                        photoUrls: _uploadedPhotoUrls,
+                        pendingUploads: _pendingPhotoUploads,
+                        isUploading: _isPhotoUploading,
+                        onPickImages: _pickImages,
+                        onRemovePhoto: _removeUploadedPhoto,
                       ),
                       const SizedBox(height: 12),
 
-                      Container(
-                        padding: const EdgeInsets.all(14),
+                      EditEventDetailsSection(
                         decoration: _glassCardDecoration(),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _sectionHeader(
-                              icon: Icons.edit_rounded,
-                              title: 'Описание события',
-                              subtitle: 'Название, детали и категория',
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _titleController,
-                              decoration: _softInputDecoration(
-                                label: 'Название',
-                                icon: Icons.title_rounded,
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Пожалуйста, введите название';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Категория',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.dark.withValues(alpha: 0.76),
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: <Widget>[
-                                ..._categories.map((c) {
-                                  final selected = _selectedCategories.contains(c);
-                                  return FilterChip(
-                                    label: Text(
-                                      c,
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                    selected: selected,
-                                    onSelected: (_) {
-                                      setState(() {
-                                        if (selected) {
-                                          if (_selectedCategories.length > 1 || _customCategoryController.text.trim().isNotEmpty) {
-                                            _selectedCategories.remove(c);
-                                          }
-                                        } else {
-                                          _selectedCategories.add(c);
-                                        }
-                                      });
-                                    },
-                                    selectedColor: AppColors.primary.withValues(alpha: 0.16),
-                                    backgroundColor: AppColors.surface.withValues(alpha: 0.62),
-                                    checkmarkColor: AppColors.primary,
-                                    side: BorderSide(
-                                      color: selected
-                                          ? AppColors.primary.withValues(alpha: 0.34)
-                                          : AppColors.primary.withValues(alpha: 0.14),
-                                    ),
-                                    labelStyle: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      color: selected
-                                          ? AppColors.primary
-                                          : AppColors.dark.withValues(alpha: 0.78),
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                  );
-                                }),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _customCategoryController,
-                              style: const TextStyle(fontSize: 13),
-                              decoration: _softInputDecoration(
-                                label: 'Своя категория',
-                                hint: 'Например: Псай-транс вечеринка',
-                                icon: Icons.category_rounded,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _descriptionController,
-                              maxLines: 4,
-                              decoration: _softInputDecoration(
-                                label: 'Описание',
-                                alignLabelWithHint: true,
-                                hint: 'Расскажите о формате, деталях...',
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Пожалуйста, введите описание';
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
-                        ),
+                        titleController: _titleController,
+                        descriptionController: _descriptionController,
+                        customCategoryController: _customCategoryController,
+                        categories: _categories,
+                        selectedCategories: _selectedCategories,
+                        onToggleCategory: (c) {
+                          setState(() {
+                            final selected = _selectedCategories.contains(c);
+                            if (selected) {
+                              if (_selectedCategories.length > 1 ||
+                                  _customCategoryController.text.trim().isNotEmpty) {
+                                _selectedCategories.remove(c);
+                              }
+                            } else {
+                              _selectedCategories.add(c);
+                            }
+                          });
+                        },
+                        inputDecorationBuilder: ({
+                          required String label,
+                          String? hint,
+                          IconData? icon,
+                          Widget? suffix,
+                          bool alignLabelWithHint = false,
+                        }) {
+                          return _softInputDecoration(
+                            label: label,
+                            hint: hint,
+                            icon: icon,
+                            suffix: suffix,
+                            alignLabelWithHint: alignLabelWithHint,
+                          );
+                        },
                       ),
                       const SizedBox(height: 12),
 
-                      Container(
-                        padding: const EdgeInsets.all(14),
+                      EditEventScheduleSection(
                         decoration: _glassCardDecoration(),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _sectionHeader(
-                              icon: Icons.schedule_rounded,
-                              title: 'Когда',
-                              subtitle: 'Дата и время начала',
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: InkWell(
-                                    onTap: _selectDate,
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: InputDecorator(
-                                      decoration: _softInputDecoration(
-                                        label: 'Дата',
-                                        icon: Icons.calendar_today_rounded,
-                                      ),
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          DateFormat('dd.MM.yyyy').format(_selectedDate),
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.dark.withValues(alpha: 0.82),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: InkWell(
-                                    onTap: _selectTime,
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: InputDecorator(
-                                      decoration: _softInputDecoration(
-                                        label: 'Время',
-                                        icon: Icons.access_time_rounded,
-                                      ),
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          _selectedTime.format(context),
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.dark.withValues(alpha: 0.82),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                        selectedDate: _selectedDate,
+                        selectedTime: _selectedTime,
+                        onPickDate: _selectDate,
+                        onPickTime: _selectTime,
+                        inputDecorationBuilder: ({
+                          required String label,
+                          String? hint,
+                          IconData? icon,
+                          Widget? suffix,
+                          bool alignLabelWithHint = false,
+                        }) {
+                          return _softInputDecoration(
+                            label: label,
+                            hint: hint,
+                            icon: icon,
+                            suffix: suffix,
+                            alignLabelWithHint: alignLabelWithHint,
+                          );
+                        },
                       ),
                       const SizedBox(height: 12),
 
-                      Container(
-                        padding: const EdgeInsets.all(14),
+                      EditEventLocationPriceSection(
                         decoration: _glassCardDecoration(),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _sectionHeader(
-                              icon: _isOnline ? Icons.videocam_rounded : Icons.place_rounded,
-                              title: 'Где и стоимость',
-                              subtitle: _isOnline ? 'Онлайн' : 'Локация и цена',
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _locationController,
-                              readOnly: true,
-                              onTap: _pickLocation,
-                              decoration: _softInputDecoration(
-                                label: 'Местоположение',
-                                hint: 'Выберите место на карте',
-                                icon: Icons.location_on_rounded,
-                                suffix: IconButton(
-                                  icon: Icon(Icons.map_rounded, color: AppColors.primary.withValues(alpha: 0.86)),
-                                  onPressed: _pickLocation,
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Пожалуйста, выберите местоположение';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 10),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.surface.withValues(alpha: 0.50),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: AppColors.primary.withValues(alpha: 0.14),
-                                ),
-                              ),
-                              child: SwitchListTile(
-                                title: Text(
-                                  'Онлайн событие',
-                                  style: TextStyle(
-                                    color: AppColors.dark.withValues(alpha: 0.84),
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                value: _isOnline,
-                                activeColor: AppColors.primary,
-                                onChanged: (bool value) {
-                                  setState(() {
-                                    _isOnline = value;
-                                  });
-                                },
-                                secondary: Icon(_isOnline ? Icons.videocam_rounded : Icons.people_rounded),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _priceController,
-                              keyboardType: TextInputType.number,
-                              decoration: _softInputDecoration(
-                                label: 'Цена (₽)',
-                                hint: 'Например: 500',
-                                icon: Icons.payments_rounded,
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Пожалуйста, введите цену';
-                                }
-                                if (double.tryParse(value) == null) {
-                                  return 'Введите корректное число';
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
-                        ),
+                        isOnline: _isOnline,
+                        locationController: _locationController,
+                        onOpenMapPicker: _pickLocation,
+                        priceController: _priceController,
+                        onToggleOnline: (value) {
+                          setState(() {
+                            _isOnline = value;
+                          });
+                        },
+                        inputDecorationBuilder: ({
+                          required String label,
+                          String? hint,
+                          IconData? icon,
+                          Widget? suffix,
+                          bool alignLabelWithHint = false,
+                        }) {
+                          return _softInputDecoration(
+                            label: label,
+                            hint: hint,
+                            icon: icon,
+                            suffix: suffix,
+                            alignLabelWithHint: alignLabelWithHint,
+                          );
+                        },
                       ),
                       const SizedBox(height: 24),
 

@@ -184,44 +184,71 @@ Authorization: Bearer <firebase-jwt>
 
 ---
 
-## Match Service (Go, Port 8005)
+## Match Service (Go, Gin, Port 8005)
 
-### Get Potential Matches
+Все методы ниже требуют заголовок `Authorization: Bearer <firebase-jwt>`.
+
+### Mutual matches и связанные списки
 ```
-GET /api/matches?latitude=55.75&longitude=37.62&radius=5000
-Authorization: Bearer <firebase-jwt>
+GET /api/matches
 ```
 
-### Mark Match as Seen
+### История действий текущего пользователя
 ```
-POST /api/matches/seen
-Authorization: Bearer <firebase-jwt>
+GET /api/matches/actions
+```
+
+### Входящие лайки (ещё без ответа)
+```
+GET /api/matches/incoming-likes
+```
+
+### Действия свайпа
+```
+POST /api/matches/like
+POST /api/matches/dislike
+POST /api/matches/super-like
 Content-Type: application/json
-
-{
-  "matchUserId": "user-456"
-}
 ```
+Тело запроса и поля зависят от реализации handler’ов — см. `services/match-service/internal/handler/`.
 
 ---
 
-## Upload Service (Go, Port 8006)
+## Upload Service (Go, Gin, Port 8006)
 
 ### Upload File
 ```
-POST /api/uploads
+POST /api/upload?bucket=avatars
 Authorization: Bearer <firebase-jwt>
 Content-Type: multipart/form-data
 
 file: <binary>
 ```
 
-Response:
+Параметр `bucket` опционален (по умолчанию часто `events`). Допустимые значения ограничены конфигурацией сервиса (`AllowedBucket`).
+
+### Delete uploaded photo
+```
+DELETE /api/upload
+Authorization: Bearer <firebase-jwt>
+```
+(параметры — см. `upload_handler.go`.)
+
+### Публичная выдача файла
+```
+GET /uploads/{bucket}/{userId}/{filename}
+```
+Без Authorization; URL формируется из `UPLOADS_PUBLIC_BASE_URL` и пути объекта в MinIO.
+
+Response (успех, упрощённо):
 ```json
 {
   "success": true,
-  "data": {
-    "fileUrl": "https://minio-host/bucket/path/file.jpg"
+  "fileUrl": "http://localhost/uploads/events/<firebaseUid>/<filename>.jpg",
+  "file": {
+    "name": "<filename>.jpg",
+    "size": 12345,
+    "bucket": "events"
   }
 }
 ```

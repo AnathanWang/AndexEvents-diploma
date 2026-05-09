@@ -1,28 +1,22 @@
-# 📚 Документация Go Микросервисов
+# 📚 Документация backend-сервисов
 
-Эта папка содержит документацию по Go микросервисам проекта AndexEvents.
+Эта папка содержит документацию по backend-сервисам проекта Andex Events (часть сервисов написана на Go, часть — на Java/Spring Boot).
 
 ## 📁 Структура документации
 
 | Файл | Описание |
 |------|----------|
-| [auth-service.md](./auth-service.md) | Auth Service - аутентификация и управление пользователями |
-| [match-service.md](./match-service.md) | Match Service - лайки/дизлайки и взаимные мэтчи |
-| [upload-service.md](./upload-service.md) | Upload Service - загрузка изображений и публичные `/uploads/*` |
+| [auth-service.md](./auth-service.md) | Auth service: аутентификация, валидация JWT, интеграция с Firebase |
+| [users-service.md](./users-service.md) | Users service: профили пользователей, интересы, настройки, админ-операции |
+| [events-service.md](./events-service.md) | Events service: события, участие, модерация, геопоиск (PostGIS) |
+| [match-service.md](./match-service.md) | Match service: лайки/дизлайки, взаимные мэтчи, подборки |
+| [upload-service.md](./upload-service.md) | Upload service: загрузка изображений и публичная раздача файлов |
 | [architecture.md](./architecture.md) | Общая архитектура микросервисов |
 | [api-reference.md](./api-reference.md) | Справочник по всем API endpoints |
 
 ## 🚀 Быстрый старт
 
-```bash
-# Запуск auth-service
-cd services/auth-service
-FIREBASE_CREDENTIALS_FILE=../../secrets/firebase-service-account.json \
-FIREBASE_PROJECT_ID=andexevents \
-DB_HOST=localhost DB_PORT=5432 \
-DB_USER=andexadmin DB_PASSWORD=andexevents DB_NAME=andexevents \
-go run cmd/main.go
-```
+Актуальная инструкция по локальному запуску находится в `docs/setup.md` в корне репозитория.
 
 ## 📖 Дополнительно
 

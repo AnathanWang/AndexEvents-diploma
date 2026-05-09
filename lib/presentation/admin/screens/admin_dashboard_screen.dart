@@ -3,8 +3,8 @@ import 'package:andexevents/presentation/admin/screens/admin_audit_logs_screen.d
 import 'package:andexevents/presentation/admin/screens/reports_screen.dart';
 import 'package:andexevents/presentation/admin/screens/users_list_screen.dart';
 import 'package:andexevents/presentation/admin/screens/event_moderation_screen.dart';
-import 'package:andexevents/presentation/admin/widgets/admin_gradient_background.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../auth/widgets/auth_glass_scaffold.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({
@@ -23,124 +23,121 @@ class AdminDashboardScreen extends StatelessWidget {
   bool get _isAdmin => userRole.trim().toUpperCase() == 'ADMIN';
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: AdminGradientBackground(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            _buildAppBar(context),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                child: Row(
-                  children: [
-                    const Text(
-                      'Инструменты управления',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.dark,
-                        letterSpacing: -0.5,
+    return AuthGlassScaffold(
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          _buildAppBar(context),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+              child: Row(
+                children: [
+                  const Text(
+                    'Инструменты управления',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      _isAdmin ? 'ADMIN' : 'MOD',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.primary,
                       ),
                     ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        _isAdmin ? 'ADMIN' : 'MOD',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 0.85,
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 0.85,
+              ),
+              delegate: SliverChildListDelegate([
+                _buildGridCard(
+                  context,
+                  title: 'Модерация',
+                  subtitle: 'События и жалобы',
+                  icon: Icons.gavel_rounded,
+                  color: const Color(0xFF0961F6),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const EventModerationScreen(),
+                    ),
+                  ),
                 ),
-                delegate: SliverChildListDelegate([
+                if (_isAdmin)
                   _buildGridCard(
                     context,
-                    title: 'Модерация',
-                    subtitle: 'События и жалобы',
-                    icon: Icons.gavel_rounded,
+                    title: 'Пользователи',
+                    subtitle: 'Доступ и роли',
+                    icon: Icons.people_alt_rounded,
                     color: const Color(0xFF0961F6),
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const EventModerationScreen(),
+                        builder: (_) => const UsersListScreen(),
                       ),
                     ),
                   ),
-                  if (_isAdmin)
-                    _buildGridCard(
-                      context,
-                      title: 'Пользователи',
-                      subtitle: 'Доступ и роли',
-                      icon: Icons.people_alt_rounded,
-                      color: const Color(0xFF0961F6),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const UsersListScreen(),
-                        ),
-                      ),
-                    ),
+                _buildGridCard(
+                  context,
+                  title: 'Отчёты',
+                  subtitle: 'Аналитика жалоб',
+                  icon: Icons.analytics_rounded,
+                  color: const Color(0xFF0961F6),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                  ),
+                ),
+                if (_isAdmin)
                   _buildGridCard(
                     context,
-                    title: 'Отчёты',
-                    subtitle: 'Аналитика жалоб',
-                    icon: Icons.analytics_rounded,
+                    title: 'Аудит',
+                    subtitle: 'Логи действий',
+                    icon: Icons.security_rounded,
                     color: const Color(0xFF0961F6),
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const ReportsScreen()),
-                    ),
-                  ),
-                  if (_isAdmin)
-                    _buildGridCard(
-                      context,
-                      title: 'Аудит',
-                      subtitle: 'Логи действий',
-                      icon: Icons.security_rounded,
-                      color: const Color(0xFF0961F6),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AdminAuditLogsScreen(),
-                        ),
+                      MaterialPageRoute(
+                        builder: (_) => const AdminAuditLogsScreen(),
                       ),
                     ),
-                ]),
+                  ),
+              ]),
+            ),
+          ),
+          if (_isAdmin)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
+                child: _buildSystemStatusCard(),
               ),
             ),
-            if (_isAdmin)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
-                  child: _buildSystemStatusCard(),
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }

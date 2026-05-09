@@ -29,21 +29,21 @@ class UserProfileScreen extends StatefulWidget {
         canViewSensitiveInfo = false;
 
   UserProfileScreen.fromUser({
-    required UserModel user,
+    required this.user,
     this.matchPercentage,
     this.commonInterests = const <String>[],
     this.canViewSensitiveInfo = false,
     this.eventService,
     super.key,
-  })  : userName = (user.displayName?.isNotEmpty == true)
+  })  : assert(user != null),
+        userName = (user!.displayName?.isNotEmpty == true)
             ? user.displayName!
             : user.email.split('@').first,
         userInitials = _initialsFrom(
           (user.displayName?.isNotEmpty == true)
               ? user.displayName!
               : user.email.split('@').first,
-        ),
-        user = user;
+        );
 
   final String userName;
   final String userInitials;

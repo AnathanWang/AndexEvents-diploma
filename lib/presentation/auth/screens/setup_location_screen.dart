@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../../core/services/logger_service.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/user_service.dart';
 import '../../home/home_shell.dart';
 import '../../widgets/common/custom_notification.dart';
+import '../widgets/auth_glass_card.dart';
+import '../widgets/auth_glass_scaffold.dart';
 
 /// Экран 3: Настройка геолокации
 /// Запрос разрешения на доступ к местоположению
@@ -162,8 +163,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
         _permissionStatus == LocationPermission.whileInUse ||
         _permissionStatus == LocationPermission.always;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return AuthGlassScaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
@@ -186,50 +186,12 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
           ),
         ],
       ),
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[
-              Color(0xFFEAF2FF),
-              Color(0xFFD9E8FF),
-              Color(0xFFEFF5FF),
-            ],
-          ),
-        ),
-        child: Stack(
-          children: <Widget>[
-            Positioned(
-              top: -100,
-              right: -65,
-              child: Container(
-                width: 260,
-                height: 260,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF6D86FF).withValues(alpha: 0.16),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -130,
-              left: -90,
-              child: Container(
-                width: 290,
-                height: 290,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF63C9B6).withValues(alpha: 0.14),
-                ),
-              ),
-            ),
-            SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
                     Row(
                       children: <Widget>[
                         Expanded(
@@ -300,20 +262,8 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
                       ),
                     ),
                     const SizedBox(height: 22),
-                    Container(
+                    AuthGlassCard(
                       padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.84),
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: const Color(0xFFDCE4FF)),
-                        boxShadow: <BoxShadow>[
-                          BoxShadow(
-                            color: const Color(0xFF5762A8).withValues(alpha: 0.09),
-                            blurRadius: 30,
-                            offset: const Offset(0, 12),
-                          ),
-                        ],
-                      ),
                       child: Column(
                         children: <Widget>[
                           Container(
@@ -516,9 +466,6 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
                 ),
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 

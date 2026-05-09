@@ -1,10 +1,7 @@
-import 'dart:ui';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../core/theme/app_colors.dart';
 
 import '../models/event_preview.dart';
 import '../models/match_preview.dart';
@@ -12,13 +9,16 @@ import '../events/screens/create_event_screen.dart';
 import '../events/bloc/event_bloc.dart';
 import '../events/bloc/event_event.dart';
 import '../profile/bloc/profile_bloc.dart';
+import '../../core/theme/app_colors.dart';
 import '../../data/services/user_service.dart';
 import '../../data/models/user_sanction_model.dart';
+import '../widgets/glass_scene_stack.dart';
 import 'sample_data.dart';
 import 'screens/events_feed_screen.dart';
 import 'screens/map_explore_screen.dart';
 import 'screens/matches_screen.dart';
 import 'screens/profile_screen.dart';
+import 'widgets/home_floating_nav_bar.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -219,240 +219,29 @@ class _HomeShellState extends State<HomeShell> {
       value: _profileBloc,
       child: Scaffold(
         extendBody: true,
-        body: Stack(
-          children: <Widget>[
-            Positioned.fill(
-              child: IndexedStack(
-                index: _index,
-                children: _tabs,
-              ),
-            ),
-            Positioned(
-              left: horizontalInset,
-              right: horizontalInset,
-              bottom: floatingBarBottom,
-              child: _buildFloatingNavBar(
-                navItemWidth: navItemWidth,
-                sideGap: sideGap,
-                centerGap: centerGap,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFloatingNavBar({
-    required double navItemWidth,
-    required double sideGap,
-    required double centerGap,
-  }) {
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.bottomCenter,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(26),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface.withValues(alpha: 0.56),
-                borderRadius: BorderRadius.circular(26),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.dark.withValues(alpha: 0.12),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final double rowWidth =
-                        (navItemWidth * 4) + (sideGap * 2) + centerGap;
-                    final double startX = (constraints.maxWidth - rowWidth) / 2;
-                    final double indicatorWidth = navItemWidth + 2;
-
-                    double itemLeft(int index) {
-                      switch (index) {
-                        case 0:
-                          return startX;
-                        case 1:
-                          return startX + navItemWidth + sideGap;
-                        case 2:
-                          return startX + (navItemWidth * 2) + sideGap + centerGap;
-                        case 3:
-                          return startX + (navItemWidth * 3) + (sideGap * 2) + centerGap;
-                        default:
-                          return startX;
-                      }
-                    }
-
-                    return Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        AnimatedPositioned(
-                          duration: const Duration(milliseconds: 320),
-                          curve: Curves.easeOutCubic,
-                          left: (itemLeft(_index) - 1).clamp(
-                            0.0,
-                            constraints.maxWidth - indicatorWidth,
-                          ),
-                          top: 1,
-                          child: IgnorePointer(
-                            child: Container(
-                              width: indicatorWidth,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(14),
-                                gradient: LinearGradient(
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                  colors: [
-                                    AppColors.primary.withValues(alpha: 0.12),
-                                    AppColors.primary.withValues(alpha: 0.22),
-                                    AppColors.primary.withValues(alpha: 0.12),
-                                  ],
-                                  stops: const [0.0, 0.5, 1.0],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.1),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            _buildNavItem(
-                              CupertinoIcons.map,
-                              'Карта',
-                              0,
-                              itemWidth: navItemWidth,
-                            ),
-                            SizedBox(width: sideGap),
-                            _buildNavItem(
-                              CupertinoIcons.calendar,
-                              'Афиша',
-                              1,
-                              itemWidth: navItemWidth,
-                            ),
-                            SizedBox(width: centerGap),
-                            _buildNavItem(
-                              CupertinoIcons.heart,
-                              'Матчи',
-                              2,
-                              itemWidth: navItemWidth,
-                            ),
-                            SizedBox(width: sideGap),
-                            _buildNavItem(
-                              CupertinoIcons.person,
-                              'Профиль',
-                              3,
-                              itemWidth: navItemWidth,
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
-        if (!_isFullBanActive)
-          Positioned(
-            left: 0,
-            right: 0,
-            top: -10,
-            child: Center(
-              child: GestureDetector(
-                onTap: _openCreateEventScreen,
-                child: Container(
-                  width: 58,
-                  height: 58,
-                  decoration: BoxDecoration(
-                    color:
-                        _isCreateEventBlocked
-                            ? AppColors.dark.withValues(alpha: 0.6)
-                            : AppColors.primary,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.accent.withValues(alpha: 0.9),
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color:
-                            (_isCreateEventBlocked
-                                    ? AppColors.dark.withValues(alpha: 0.6)
-                                    : AppColors.primary)
-                                .withValues(alpha: 0.28),
-                        blurRadius: 14,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    _isCreateEventBlocked
-                        ? CupertinoIcons.lock_fill
-                        : CupertinoIcons.add,
-                    color: AppColors.accent,
-                    size: 28,
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildNavItem(
-    IconData icon,
-    String label,
-    int index, {
-    required double itemWidth,
-  }) {
-    final bool isSelected = _index == index;
-    return SizedBox(
-      width: itemWidth,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => _onNavTapped(index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+        backgroundColor: AppColors.background,
+        body: GlassSceneStack(
+          child: Stack(
             children: <Widget>[
-              Icon(
-                icon,
-                color: isSelected ? AppColors.primary : AppColors.dark.withValues(alpha: 0.58),
-                size: 22,
+              Positioned.fill(
+                child: IndexedStack(
+                  index: _index,
+                  children: _tabs,
+                ),
               ),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected ? AppColors.primary : AppColors.dark.withValues(alpha: 0.58),
+              Positioned(
+                left: horizontalInset,
+                right: horizontalInset,
+                bottom: floatingBarBottom,
+                child: HomeFloatingNavBar(
+                  index: _index,
+                  onTap: _onNavTapped,
+                  onTapCreate: _openCreateEventScreen,
+                  navItemWidth: navItemWidth,
+                  sideGap: sideGap,
+                  centerGap: centerGap,
+                  isFullBanActive: _isFullBanActive,
+                  isCreateEventBlocked: _isCreateEventBlocked,
                 ),
               ),
             ],

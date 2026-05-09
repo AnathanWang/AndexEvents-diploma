@@ -10,7 +10,9 @@ import '../../widgets/common/custom_dropdown.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import 'login_screen.dart';
-import '../../../core/theme/app_colors.dart';
+import '../widgets/auth_glass_card.dart';
+import '../widgets/auth_glass_scaffold.dart';
+import '../widgets/auth_input_decoration.dart';
 
 /// Экран 1: Настройка базового профиля
 /// Фото, возраст, пол
@@ -160,34 +162,6 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
     return false;
   }
 
-  InputDecoration _buildInputDecoration({
-    required String label,
-    required String hint,
-    required IconData icon,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      prefixIcon: Icon(icon, color: const Color(0xFF637DFF)),
-      filled: true,
-      fillColor: const Color(0xFFF5F8FF),
-      labelStyle: const TextStyle(color: Color(0xFF5D668C)),
-      hintStyle: const TextStyle(color: Color(0xFF97A0C4)),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFE3E9FF)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF637DFF), width: 1.8),
-      ),
-    );
-  }
-
   Future<void> _continueWithoutPhoto() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
@@ -201,7 +175,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
         gender: _selectedGender,
       );
 
-      if (!context.mounted) return;
+      if (!mounted) return;
       setState(() => _isLoading = false);
       Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -209,7 +183,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
         ),
       );
     } catch (e) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       setState(() => _isLoading = false);
       CustomNotification.show(
         context,
@@ -227,8 +201,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
         if (didPop) return;
         await _handleBackPress();
       },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
+      child: AuthGlassScaffold(
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           surfaceTintColor: Colors.transparent,
@@ -251,40 +224,14 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
             ),
           ],
         ),
-        body: Stack(
-          children: <Widget>[
-            Positioned(
-              top: -110,
-              right: -70,
-              child: Container(
-                width: 250,
-                height: 250,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF7E8CFF).withValues(alpha: 0.17),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -130,
-              left: -90,
-              child: Container(
-                width: 280,
-                height: 280,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF63C9B6).withValues(alpha: 0.14),
-                ),
-              ),
-            ),
-            SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
                       Row(
                         children: <Widget>[
                           Expanded(
@@ -343,22 +290,8 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 22),
-                      Container(
+                      AuthGlassCard(
                         padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.82),
-                          borderRadius: BorderRadius.circular(28),
-                          border: Border.all(
-                            color: const Color(0xFFDCE4FF),
-                          ),
-                          boxShadow: <BoxShadow>[
-                            BoxShadow(
-                              color: const Color(0xFF5762A8).withValues(alpha: 0.09),
-                              blurRadius: 30,
-                              offset: const Offset(0, 12),
-                            ),
-                          ],
-                        ),
                         child: Column(
                           children: <Widget>[
                             GestureDetector(
@@ -434,7 +367,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                             TextFormField(
                               controller: _ageController,
                               keyboardType: TextInputType.number,
-                              decoration: _buildInputDecoration(
+                              decoration: authInputDecoration(
                                 label: 'Возраст',
                                 hint: 'Введите ваш возраст',
                                 icon: Icons.cake_outlined,
@@ -518,12 +451,10 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     ); // PopScope

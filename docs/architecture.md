@@ -20,7 +20,7 @@ Andex Events is a location-based social events platform with a Flutter mobile cl
         ▼                  ▼                  ▼                  ▼                  ▼
 ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
 │ auth-service │  │users-service │  │events-service│  │match-service │  │upload-service│
-│ (Java/Spring)│  │(Java/Spring) │  │(Java/Spring) │  │   (Go/Chi)   │  │   (Go/Chi)   │
+│ (Java/Spring)│  │(Java/Spring) │  │(Java/Spring) │  │   (Go/Gin)   │  │   (Go/Gin)   │
 │  Port 8083   │  │  Port 8081   │  │  Port 8082   │  │  Port 8005   │  │  Port 8006   │
 └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
        │                 │                 │                 │                 │
@@ -39,7 +39,7 @@ Andex Events is a location-based social events platform with a Flutter mobile cl
 |-------|-----------|---------|
 | Mobile | Flutter (Dart) | SDK ^3.9.2 |
 | Java Services | Spring Boot | 3.3.5 |
-| Go Services | Go + Chi | 1.23–1.24 |
+| Go Services | Go + Gin | 1.23–1.24 |
 | Database | PostgreSQL + PostGIS | 16 |
 | Object Storage | MinIO | Latest |
 | Cache | Redis | 7 |

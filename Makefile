@@ -106,6 +106,7 @@ tidy:
 
 clean:
 	rm -rf bin/
+	rm -rf build/ coverage/
 	rm -rf services/*/coverage.out services/*/coverage.html
 
 .DEFAULT_GOAL := help

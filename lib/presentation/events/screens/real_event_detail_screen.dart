@@ -13,6 +13,9 @@ import '../../../data/models/event_model.dart';
 import '../../../data/services/external_route_service.dart';
 import '../../matches/screens/event_match_screen.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../auth/widgets/auth_glass_card.dart';
+import '../../auth/widgets/auth_glass_scaffold.dart';
+import '../../widgets/glass_scene_stack.dart';
 import '../../profile/screens/user_profile_screen.dart';
 import '../../../data/services/rating_service.dart';
 import '../../../data/services/user_service.dart';
@@ -292,31 +295,82 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
         }
 
         if (state is EventDetailLoading) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          return const AuthGlassScaffold(
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
           );
         }
 
         if (state is EventError) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Ошибка')),
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(state.message),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<EventBloc>().add(
-                        EventDetailLoadRequested(widget.eventId),
-                      );
-                    },
-                    child: const Text('Попробовать снова'),
+          return AuthGlassScaffold(
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF273043)),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              title: const Text(
+                'Ошибка',
+                style: TextStyle(
+                  color: Color(0xFF1F3552),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              centerTitle: true,
+            ),
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: AuthGlassCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.error_outline_rounded,
+                        size: 52,
+                        color: AppColors.dark.withValues(alpha: 0.55),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        state.message,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.dark.withValues(alpha: 0.78),
+                          height: 1.35,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            context.read<EventBloc>().add(
+                                  EventDetailLoadRequested(widget.eventId),
+                                );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Попробовать снова',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           );
@@ -327,7 +381,11 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
           return _buildEventDetail(context, state.event);
         }
 
-        return const Scaffold(body: Center(child: Text('Загрузка...')));
+        return const AuthGlassScaffold(
+          child: Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          ),
+        );
       },
     );
   }
@@ -343,48 +401,8 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: <Color>[
-                    Color(0xFFEAF2FF),
-                    Color(0xFFD9E8FF),
-                    Color(0xFFEFF5FF),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: -120,
-            right: -80,
-            child: Container(
-              width: 280,
-              height: 280,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF0F6CF8).withValues(alpha: 0.12),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -140,
-            left: -90,
-            child: Container(
-              width: 320,
-              height: 320,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF8CB9FF).withValues(alpha: 0.14),
-              ),
-            ),
-          ),
-          CustomScrollView(
+      body: GlassSceneStack(
+        child: CustomScrollView(
             slivers: [
           // App Bar с изображением
           EventDetailSliverAppBar(
@@ -481,10 +499,8 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
           ),
         ],
       ),
-    ],
-  ),
+    ),
 
-      // Нижняя панель с кнопкой участия
       bottomSheet: EventDetailBottomBar(
         event: event,
         isEventFinished: _isEventFinished(event),

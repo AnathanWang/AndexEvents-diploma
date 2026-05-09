@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
 import '../auth/screens/login_screen.dart';
+import '../auth/widgets/auth_glass_card.dart';
+import '../auth/widgets/auth_glass_scaffold.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -69,96 +70,50 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     final bool isLastPage = _currentPage == _pages.length - 1;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFFEAF2FF), Color(0xFFD9E8FF), Color(0xFFEFF5FF)],
-          ),
-        ),
-        child: Stack(
-          children: <Widget>[
-            Positioned(
-              top: -90,
-              right: -60,
-              child: Container(
-                width: 250,
-                height: 250,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF0F6CF8).withValues(alpha: 0.16),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -100,
-              left: -70,
-              child: Container(
-                width: 290,
-                height: 290,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF8CB9FF).withValues(alpha: 0.18),
-                ),
-              ),
-            ),
-            SafeArea(
-              child: Column(
-                children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: <Widget>[
-                        TextButton(
-                          onPressed: _navigateToLogin,
-                          child: const Text(
-                            'Пропустить',
-                            style: TextStyle(
-                              color: Color(0xFF4A6285),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
+    return AuthGlassScaffold(
+      child: Stack(
+        children: <Widget>[
+          SafeArea(
+            child: Column(
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: <Widget>[
+                      TextButton(
+                        onPressed: _navigateToLogin,
+                        child: const Text(
+                          'Пропустить',
+                          style: TextStyle(
+                            color: Color(0xFF4A6285),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    child: PageView.builder(
-                      controller: _pageController,
-                      onPageChanged: _onPageChanged,
-                      itemCount: _pages.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        return OnboardingPage(data: _pages[index]);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.9),
-                  ),
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(
-                      color: const Color(0xFF184B94).withValues(alpha: 0.12),
-                      blurRadius: 22,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
                 ),
+                Expanded(
+                  child: PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: _onPageChanged,
+                    itemCount: _pages.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      return OnboardingPage(data: _pages[index]);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+              child: AuthGlassCard(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
@@ -174,7 +129,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           height: 8,
                           decoration: BoxDecoration(
                             color: _currentPage == index
-                                ? AppColors.primary
+                                ? const Color(0xFF0961F6)
                                 : const Color(0xFFD4DFEE),
                             borderRadius: BorderRadius.circular(999),
                           ),
@@ -231,8 +186,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

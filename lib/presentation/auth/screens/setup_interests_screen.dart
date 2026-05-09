@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_colors.dart';
 import '../../../data/services/user_service.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'setup_location_screen.dart';
+import '../widgets/auth_glass_card.dart';
+import '../widgets/auth_glass_scaffold.dart';
 
 /// Экран 2: Выбор интересов
 /// Минимум 3 интереса для продолжения
@@ -124,8 +125,7 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return AuthGlassScaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
@@ -135,50 +135,12 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[
-              Color(0xFFEAF2FF),
-              Color(0xFFD9E8FF),
-              Color(0xFFEFF5FF),
-            ],
-          ),
-        ),
-        child: Stack(
-          children: <Widget>[
-            Positioned(
-              top: -110,
-              right: -70,
-              child: Container(
-                width: 260,
-                height: 260,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF6C8BFF).withValues(alpha: 0.16),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -140,
-              left: -100,
-              child: Container(
-                width: 300,
-                height: 300,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF62C9B5).withValues(alpha: 0.14),
-                ),
-              ),
-            ),
-            SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
                     Row(
                       children: <Widget>[
                         Expanded(
@@ -242,20 +204,8 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
                       ),
                     ),
                     const SizedBox(height: 22),
-                    Container(
+                    AuthGlassCard(
                       padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.84),
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: const Color(0xFFDCE4FF)),
-                        boxShadow: <BoxShadow>[
-                          BoxShadow(
-                            color: const Color(0xFF5762A8).withValues(alpha: 0.09),
-                            blurRadius: 30,
-                            offset: const Offset(0, 12),
-                          ),
-                        ],
-                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
@@ -458,9 +408,6 @@ class _SetupInterestsScreenState extends State<SetupInterestsScreen> {
                 ),
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }

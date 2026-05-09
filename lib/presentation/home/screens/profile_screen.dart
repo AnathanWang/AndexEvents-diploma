@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -27,6 +26,7 @@ import '../../profile/widgets/photo_gallery_sheet.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:andexevents/presentation/widgets/event_countdown_timer.dart';
+import 'profile/profile_widgets.dart';
 
 enum _ProfileMatchFilter { mutual, incoming, liked, skipped, postponed }
 
@@ -636,10 +636,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                 order: 2,
                 child: _buildAnimatedSection(
                   start: 0.12,
-                  child: _buildSurfaceSection(
+                  child: ProfileSurfaceSection(
                     child: Column(
                       children: <Widget>[
-                        _buildSectionBadge(
+                        const ProfileSectionBadge(
                           title: 'Мероприятия',
                           caption: 'Созданные, запланированные и понравившиеся',
                           icon: Icons.event_note_rounded,
@@ -649,7 +649,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             state.userEvents.isEmpty &&
                             state.goingEvents.isEmpty &&
                             state.interestedEvents.isEmpty)
-                          _buildEmptyStateCard(
+                          const ProfileEmptyStateCard(
                             icon: Icons.auto_awesome_rounded,
                             title: 'Мероприятий пока нет',
                             subtitle:
@@ -673,10 +673,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                 order: 3,
                 child: _buildAnimatedSection(
                   start: 0.24,
-                  child: _buildSurfaceSection(
+                  child: ProfileSurfaceSection(
                     child: Column(
                       children: <Widget>[
-                        _buildSectionBadge(
+                        const ProfileSectionBadge(
                           title: 'Связи и совпадения',
                           caption: 'Последние матчи и приглашения',
                           icon: Icons.hub_rounded,
@@ -705,31 +705,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         );
       },
-    );
-  }
-
-  Widget _buildSurfaceSection({required Widget child}) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.surface.withValues(alpha: 0.56),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.dark.withValues(alpha: 0.12),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: child,
-        ),
-      ),
     );
   }
 
@@ -1420,6 +1395,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     
     return GestureDetector(
       onTap: () async {
+        final navigator = Navigator.of(context);
+        final profileBloc = context.read<ProfileBloc>();
         if (isEditable) {
           if (isFinished) {
             if (context.mounted) {
@@ -1429,8 +1406,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               );
             }
           } else {
-            final result = await Navigator.push(
-              context,
+            final result = await navigator.push(
               CupertinoPageRoute(
                 builder: (_) => BlocProvider(
                   create: (context) => EventBloc(),
@@ -1438,14 +1414,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
               ),
             );
-            if (result == true && context.mounted) {
-              context.read<ProfileBloc>().add(const ProfileLoadRequested());
+            if (!mounted) return;
+            if (result == true) {
+              profileBloc.add(const ProfileLoadRequested());
               return;
             }
           }
         } else {
-          await Navigator.push(
-            context,
+          await navigator.push(
             CupertinoPageRoute(
               builder: (_) => BlocProvider(
                 create: (context) => EventBloc(),
@@ -1456,13 +1432,11 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
           );
           // Всегда обновляем при возврате, так как могли поставить оценку
-          if (context.mounted) {
-            context.read<ProfileBloc>().add(const ProfileLoadRequested());
-          }
+          if (!mounted) return;
+          profileBloc.add(const ProfileLoadRequested());
           return;
         }
-        await Navigator.push(
-          context,
+        await navigator.push(
           CupertinoPageRoute(
             builder: (_) => BlocProvider(
               create: (context) => EventBloc(),
@@ -1472,9 +1446,8 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
           ),
         );
-        if (context.mounted) {
-          context.read<ProfileBloc>().add(const ProfileLoadRequested());
-        }
+        if (!mounted) return;
+        profileBloc.add(const ProfileLoadRequested());
       },
       child: Container(
         width: 148,
@@ -1609,121 +1582,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           color: AppColors.dark.withValues(alpha: 0.32),
           size: 24,
         ),
-      ),
-    );
-  }
-
-  Widget _buildSectionBadge({
-    required String title,
-    required String caption,
-    required IconData icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: <Color>[
-            Colors.white.withValues(alpha: 0.72),
-            AppColors.accent.withValues(alpha: 0.48),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: <Color>[Color(0xFFE8EEFF), Color(0xFFE7F6F2)],
-              ),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-            ),
-            child: Icon(icon, size: 16, color: AppColors.primary),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.dark.withValues(alpha: 0.84),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  caption,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.dark.withValues(alpha: 0.58),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyStateCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.74),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: <Color>[Color(0xFFE8EEFF), Color(0xFFE7F6F2)],
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: AppColors.primary, size: 17),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.dark.withValues(alpha: 0.82),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.dark.withValues(alpha: 0.58),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

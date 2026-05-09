@@ -217,132 +217,139 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
           child: ExpansionTile(
-          collapsedShape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          leading: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
+            collapsedShape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-            child: Icon(
-              report.status.toUpperCase() == 'PENDING'
-                  ? Icons.warning_amber_rounded
-                  : Icons.check_circle_outline,
-              color: statusColor,
-              size: 20,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-          ),
-          title: Text(
-            report.reason.displayName,
-            style: const TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-              color: AppColors.dark,
-            ),
-          ),
-          subtitle: Text(
-            'От: ${report.reporterId.substring(0, 8)} • ${DateFormat('dd.MM.yyyy').format(report.createdAt)}',
-            style: const TextStyle(fontSize: 12, color: _secondaryTextColor),
-          ),
-          childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          children: [
-            const Divider(height: 1),
-            const SizedBox(height: 16),
-            if (report.targetUserId != null)
-              _buildInfoRow(
-                'Цель (Юзер)',
-                report.targetUserId!,
-                Icons.person_outline_rounded,
+            leading: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
-            if (report.targetEventId != null)
-              _buildInfoRow(
-                'Цель (Событие)',
-                report.targetEventId!,
-                Icons.event_note_rounded,
+              child: Icon(
+                report.status.toUpperCase() == 'PENDING'
+                    ? Icons.warning_amber_rounded
+                    : Icons.check_circle_outline,
+                color: statusColor,
+                size: 20,
               ),
-            if (report.details != null && report.details!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(16),
+            ),
+            title: Text(
+              report.reason.displayName,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                color: AppColors.dark,
+              ),
+            ),
+            subtitle: Text(
+              'От: ${report.reporterId.substring(0, 8)} • ${DateFormat('dd.MM.yyyy').format(report.createdAt)}',
+              style: const TextStyle(fontSize: 12, color: _secondaryTextColor),
+            ),
+            childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            children: [
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+              if (report.targetUserId != null)
+                _buildInfoRow(
+                  'Цель (Юзер)',
+                  report.targetUserId!,
+                  Icons.person_outline_rounded,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Описание:',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: _secondaryTextColor,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      report.details!,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.dark,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
+              if (report.targetEventId != null)
+                _buildInfoRow(
+                  'Цель (Событие)',
+                  report.targetEventId!,
+                  Icons.event_note_rounded,
                 ),
-              ),
-            ],
-            if (report.status.toUpperCase() == 'PENDING') ...[
-              const SizedBox(height: 20),
-              isWorking
-                  ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
-                    )
-                  : Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => _resolveReport(report, 'REJECTED'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF5E6D86),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              side: const BorderSide(color: Color(0xFFD7E2F7)),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: const Text('Отклонить'),
-                          ),
+              if (report.details != null && report.details!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Описание:',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: _secondaryTextColor,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => _resolveReport(report, 'RESOLVED'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        report.details!,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.dark,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              if (report.status.toUpperCase() == 'PENDING') ...[
+                const SizedBox(height: 20),
+                isWorking
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () =>
+                                  _resolveReport(report, 'REJECTED'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF5E6D86),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                side:
+                                    const BorderSide(color: Color(0xFFD7E2F7)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
                               ),
-                              elevation: 0,
-                            ),
-                            child: const Text(
-                              'Решить',
-                              style: TextStyle(fontWeight: FontWeight.w800),
+                              child: const Text('Отклонить'),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () =>
+                                  _resolveReport(report, 'RESOLVED'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Text(
+                                'Решить',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+              ],
             ],
-          ],
           ),
         ),
       ),

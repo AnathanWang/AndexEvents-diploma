@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui;
-import 'dart:math' as math;
 import '../../../core/constants/event_messages.dart';
 import '../../../core/services/logger_service.dart';
 import '../../../data/services/user_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/match_seen_service.dart';
+import '../../matches/widgets/match_swipe_deck.dart';
 import '../../models/match_preview.dart';
 import '../../profile/screens/edit_profile_screen.dart';
 import '../../profile/screens/user_profile_screen.dart';
@@ -27,22 +26,11 @@ class EventMatchScreen extends StatefulWidget {
 
 class _EventMatchScreenState extends State<EventMatchScreen>
     with TickerProviderStateMixin {
-  int _currentIndex = 0;
   bool _isLoading = true;
   bool _isEventFinished = false;
   EventModel? _event;
   UserModel? _currentUser;
   List<MatchPreview> _matches = [];
-
-  // Для анимации свайпа
-  Offset _dragPosition = Offset.zero;
-  bool _isDragging = false;
-  double _dragDistance = 0;
-  bool _isAnimating =
-      false; // Флаг для предотвращения свайпов во время анимации
-
-  // Подсказка свайпа
-  bool _showHint = true;
 
   final UserService _userService = UserService();
   final MatchSeenService _matchSeenService = MatchSeenService();
@@ -119,7 +107,6 @@ class _EventMatchScreenState extends State<EventMatchScreen>
             );
             return match;
           }).toList();
-          _currentIndex = 0;
           LoggerService.info(
             '🟢 [EventMatchScreen] Loaded ${_matches.length} matches into state',
           );
@@ -247,189 +234,11 @@ class _EventMatchScreenState extends State<EventMatchScreen>
     await _loadUserData();
   }
 
-  void _onPanStart(DragStartDetails details) {
-    // Не позволяем начинать свайп во время анимации
-    if (_isAnimating) {
-      return;
-    }
-
-    setState(() {
-      _isDragging = true;
-    });
-  }
-
-  void _onPanUpdate(DragUpdateDetails details) {
-    // Не позволяем обновлять позицию во время анимации
-    if (_isAnimating) {
-      return;
-    }
-
-    setState(() {
-      _dragPosition += details.delta;
-      _dragDistance = _dragPosition.distance;
-    });
-  }
-
-  void _onPanEnd(DragEndDetails details) {
-    // Не позволяем завершить свайп во время анимации
-    if (_isAnimating) {
-      return;
-    }
-
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    // Свайп вниз - показать детали (больший радиус)
-    if (_dragPosition.dy > screenHeight * 0.25) {
-      _openUserProfile(_matches[_currentIndex]);
-      _resetDrag();
-      return;
-    }
-
-    // Свайп вверх - "подумаю" (больший радиус)
-    if (_dragPosition.dy < -screenHeight * 0.25) {
-      _handleSuperLike();
-      _animateCardOut(const Offset(0, -1000));
-      return;
-    }
-
-    // Свайп влево - дизлайк (больший радиус)
-    if (_dragPosition.dx < -screenWidth * 0.4) {
-      _handleDislike();
-      _animateCardOut(const Offset(-1000, 0));
-      return;
-    }
-
-    // Свайп вправо - лайк (больший радиус)
-    if (_dragPosition.dx > screenWidth * 0.4) {
-      _handleLike();
-      _animateCardOut(const Offset(1000, 0));
-      return;
-    }
-
-    // Вернуть карточку на место с плавной анимацией
-    _resetDragWithAnimation();
-  }
-
-  void _resetDrag() {
-    setState(() {
-      _dragPosition = Offset.zero;
-      _isDragging = false;
-      _dragDistance = 0;
-    });
-  }
-
-  void _resetDragWithAnimation() {
-    // Плавный возврат карточки с анимацией
-    final startPosition = _dragPosition;
-    final animationDuration = const Duration(milliseconds: 300);
-    final startTime = DateTime.now();
-
-    void animateReset() {
-      if (!mounted) {
-        return;
-      }
-
-      final elapsed = DateTime.now().difference(startTime);
-      final progress =
-          (elapsed.inMilliseconds / animationDuration.inMilliseconds).clamp(
-            0.0,
-            1.0,
-          );
-
-      // Кривая анимации (ease-out cubic)
-      final easeProgress = 1 - (1 - progress) * (1 - progress) * (1 - progress);
-
-      setState(() {
-        _dragPosition = Offset(
-          startPosition.dx * (1 - easeProgress),
-          startPosition.dy * (1 - easeProgress),
-        );
-        _dragDistance = _dragPosition.distance;
-      });
-
-      if (progress < 1.0) {
-        Future.delayed(const Duration(milliseconds: 16), animateReset);
-      } else {
-        _resetDrag();
-      }
-    }
-
-    animateReset();
-  }
-
-  void _animateCardOut(Offset targetPosition) {
-    // Плавная анимация вылета карточки
-    _isAnimating = true;
-
-    final startPosition = _dragPosition;
-    final animationDuration = const Duration(milliseconds: 400);
-    final startTime = DateTime.now();
-
-    void animateOut() {
-      if (!mounted) {
-        _isAnimating = false;
-        return;
-      }
-
-      final elapsed = DateTime.now().difference(startTime);
-      final progress =
-          (elapsed.inMilliseconds / animationDuration.inMilliseconds).clamp(
-            0.0,
-            1.0,
-          );
-
-      // Кривая анимации (ease-in cubic)
-      final easeProgress = progress * progress * progress;
-
-      setState(() {
-        _dragPosition = Offset(
-          startPosition.dx +
-              (targetPosition.dx - startPosition.dx) * easeProgress,
-          startPosition.dy +
-              (targetPosition.dy - startPosition.dy) * easeProgress,
-        );
-      });
-
-      if (progress < 1.0) {
-        Future.delayed(const Duration(milliseconds: 16), animateOut);
-      } else {
-        _nextCard();
-        _isAnimating = false;
-      }
-    }
-
-    animateOut();
-  }
-
-  void _nextCard() {
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      if (_currentIndex < _matches.length - 1) {
-        _currentIndex++;
-      } else {
-        // Достигли конца списка матчей: не зацикливаемся на начало
-        _currentIndex = 0;
-        _matches = <MatchPreview>[];
-      }
-
-      // Сброс состояния свайпа
-      _dragPosition = Offset.zero;
-      _isDragging = false;
-      _dragDistance = 0;
-    });
-  }
-
-  void _handleLike() {
+  void _handleLike(MatchPreview match) {
     if (_isEventFinished) {
       CustomNotification.show(context, EventMessages.eventFinishedMatchesUnavailable);
       return;
     }
-
-    final match = _matches[_currentIndex];
     LoggerService.info('🟢 [_handleLike] Like: ${match.name}');
 
     final currentUserId = _currentUser?.id;
@@ -453,13 +262,11 @@ class _EventMatchScreenState extends State<EventMatchScreen>
         });
   }
 
-  void _handleDislike() {
+  void _handleDislike(MatchPreview match) {
     if (_isEventFinished) {
       CustomNotification.show(context, EventMessages.eventFinishedMatchesUnavailable);
       return;
     }
-
-    final match = _matches[_currentIndex];
     LoggerService.debug('🔴 [_handleDislike] Dislike: ${match.name}');
 
     final currentUserId = _currentUser?.id;
@@ -483,13 +290,11 @@ class _EventMatchScreenState extends State<EventMatchScreen>
         });
   }
 
-  void _handleSuperLike() {
+  void _handleSuperLike(MatchPreview match) {
     if (_isEventFinished) {
       CustomNotification.show(context, EventMessages.eventFinishedMatchesUnavailable);
       return;
     }
-
-    final match = _matches[_currentIndex];
     LoggerService.debug('🔵 [_handleSuperLike] Super Like: ${match.name}');
 
     final currentUserId = _currentUser?.id;
@@ -511,38 +316,6 @@ class _EventMatchScreenState extends State<EventMatchScreen>
         .catchError((e) {
           LoggerService.error('🔴 [_handleSuperLike] Error sending super like: $e');
         });
-  }
-
-  double get _rotation {
-    if (_dragPosition.dx == 0) return 0;
-    const maxRotation = 0.1;
-    return (_dragPosition.dx / MediaQuery.of(context).size.width) * maxRotation;
-  }
-
-  Color _getSwipeIndicatorColor() {
-    if (_dragPosition.dx > 50) {
-      return Colors.green;
-    } else if (_dragPosition.dx < -50) {
-      return Colors.red;
-    } else if (_dragPosition.dy < -50) {
-      return Colors.blue;
-    } else if (_dragPosition.dy > 50) {
-      return Colors.purple;
-    }
-    return Colors.transparent;
-  }
-
-  String _getSwipeIndicatorText() {
-    if (_dragPosition.dx > 50) {
-      return 'НРАВИТСЯ';
-    } else if (_dragPosition.dx < -50) {
-      return 'НЕ НРАВИТСЯ';
-    } else if (_dragPosition.dy < -50) {
-      return 'ЕЩЁ ПОДУМАЮ';
-    } else if (_dragPosition.dy > 50) {
-      return 'INFO';
-    }
-    return '';
   }
 
   Widget _buildEmptyStateShell({
@@ -911,13 +684,6 @@ class _EventMatchScreenState extends State<EventMatchScreen>
   }
 
   Widget _buildMainContent() {
-    if (_currentIndex >= _matches.length) {
-      LoggerService.error(
-        '🔴 [_buildMainContent] ERROR: _currentIndex($_currentIndex) >= _matches.length(${_matches.length})',
-      );
-      return _buildNoEventMatchScreen();
-    }
-
     return Stack(
       children: [
         Positioned.fill(
@@ -959,405 +725,33 @@ class _EventMatchScreenState extends State<EventMatchScreen>
             ),
           ),
         ),
-        if (_currentIndex < _matches.length - 1)
-          Positioned.fill(
-            child: Transform.scale(
-              scale: 0.965,
-              child: Opacity(
-                opacity: 0.55,
-                child: _buildMatchCard(_matches[_currentIndex + 1], isTop: false),
-              ),
-            ),
-          ),
         Positioned.fill(
-          child: Transform.translate(
-            offset: _dragPosition,
-            child: Transform.rotate(
-              angle: _rotation,
-              child: _buildMatchCard(_matches[_currentIndex], isTop: true),
-            ),
+          child: MatchSwipeDeck(
+            matches: _matches,
+            topPadding: 16,
+            onOpenProfile: _openUserProfile,
+            onSwipe: (action, match) {
+              switch (action) {
+                case MatchSwipeAction.like:
+                  _handleLike(match);
+                  break;
+                case MatchSwipeAction.dislike:
+                  _handleDislike(match);
+                  break;
+                case MatchSwipeAction.later:
+                  _handleSuperLike(match);
+                  break;
+                case MatchSwipeAction.info:
+                  break;
+              }
+            },
+            onDeckEmpty: () {
+              if (!mounted) return;
+              setState(() => _matches = <MatchPreview>[]);
+            },
           ),
         ),
-        if (_isDragging && _dragDistance > 30)
-          Positioned.fill(child: IgnorePointer(child: _buildSwipeIndicator())),
-        if (_showHint)
-          Positioned(
-            top: 16,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.84),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.12),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.keyboard_arrow_down,
-                          color: AppColors.primary.withValues(alpha: 0.86),
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Свайп вниз для профиля',
-                          style: TextStyle(
-                            color: AppColors.dark.withValues(alpha: 0.72),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _showHint = false;
-                            });
-                          },
-                          child: Icon(
-                            Icons.close,
-                            color: AppColors.dark.withValues(alpha: 0.55),
-                            size: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
       ],
-    );
-  }
-
-  Widget _buildMatchCard(MatchPreview match, {required bool isTop}) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    final bottomNavReserve = kBottomNavigationBarHeight + 10;
-    return GestureDetector(
-      onPanStart: isTop ? _onPanStart : null,
-      onPanUpdate: isTop ? _onPanUpdate : null,
-      onPanEnd: isTop ? _onPanEnd : null,
-      child: Container(
-        margin: EdgeInsets.only(
-          top: 16,
-          bottom: bottomInset + bottomNavReserve + 22,
-          left: 12,
-          right: 12,
-        ),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(36),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.85),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.dark.withValues(alpha: 0.10),
-              blurRadius: 22,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(36),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: <Color>[
-                      AppColors.primary.withValues(alpha: 0.92),
-                      const Color(0xFF2E8BFF).withValues(alpha: 0.88),
-                      AppColors.accent.withValues(alpha: 0.82),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-              ),
-              if (match.photoUrl != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(36),
-                  child: Image.network(
-                    match.photoUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: <Color>[
-                              AppColors.primary.withValues(alpha: 0.92),
-                              const Color(0xFF2E8BFF).withValues(alpha: 0.88),
-                              AppColors.accent.withValues(alpha: 0.82),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      Colors.white.withValues(alpha: 0.05),
-                      Colors.black.withValues(alpha: 0.28),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: const [0.0, 0.55, 1.0],
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 18,
-                right: 18,
-                bottom: 22,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.56),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.72),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  match.name,
-                                  style: TextStyle(
-                                    color: AppColors.dark.withValues(alpha: 0.88),
-                                    fontSize: 30,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (match.age != null)
-                                Text(
-                                  '${match.age}',
-                                  style: TextStyle(
-                                    color: AppColors.dark.withValues(alpha: 0.88),
-                                    fontSize: 30,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: <Color>[
-                                  AppColors.primary.withValues(alpha: 0.10),
-                                  AppColors.accent.withValues(alpha: 0.16),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.favorite_rounded,
-                                  color: AppColors.dark.withValues(alpha: 0.55),
-                                  size: 14,
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  '${match.matchPercentage}% совпадение',
-                                  style: TextStyle(
-                                    color: AppColors.dark.withValues(alpha: 0.62),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (match.bio != null && match.bio!.isNotEmpty) ...[
-                            const SizedBox(height: 10),
-                            Text(
-                              match.bio!,
-                              style: TextStyle(
-                                color: AppColors.dark.withValues(alpha: 0.68),
-                                fontSize: 13,
-                                height: 1.3,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                          if (match.commonInterests.isNotEmpty) ...[
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: match.commonInterests
-                                  .take(3)
-                                  .map(
-                                    (interest) => Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.72),
-                                        borderRadius: BorderRadius.circular(999),
-                                        border: Border.all(
-                                          color: AppColors.primary.withValues(alpha: 0.12),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        interest,
-                                        style: TextStyle(
-                                          color: AppColors.dark.withValues(alpha: 0.70),
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSwipeIndicator() {
-    final color = _getSwipeIndicatorColor();
-    final text = _getSwipeIndicatorText();
-    final opacity = math.min(_dragDistance / 100, 1.0);
-
-    if (text.isEmpty) return const SizedBox.shrink();
-
-    final IconData icon;
-    final String caption;
-    if (_dragPosition.dx > 50) {
-      icon = Icons.favorite_rounded;
-      caption = 'Отпустите, чтобы поставить лайк';
-    } else if (_dragPosition.dx < -50) {
-      icon = Icons.block_rounded;
-      caption = 'Отпустите, чтобы пропустить';
-    } else if (_dragPosition.dy < -50) {
-      icon = Icons.bookmark_add_rounded;
-      caption = 'Отпустите, чтобы вернуться позже';
-    } else {
-      icon = Icons.info_outline_rounded;
-      caption = 'Отпустите, чтобы открыть профиль';
-    }
-
-    final panelColor = Color.lerp(
-      Colors.white.withValues(alpha: 0.78),
-      color.withValues(alpha: 0.20),
-      0.55,
-    );
-
-    return Container(
-      color: color.withValues(alpha: 0.05 * opacity),
-      child: Center(
-        child: Opacity(
-          opacity: opacity,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: panelColor,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: color.withValues(alpha: 0.45),
-                    width: 1.4,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: color.withValues(alpha: 0.14),
-                      ),
-                      child: Icon(icon, color: color, size: 18),
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          text,
-                          style: TextStyle(
-                            color: color,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          caption,
-                          style: const TextStyle(
-                            color: Color(0xFF4E568A),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

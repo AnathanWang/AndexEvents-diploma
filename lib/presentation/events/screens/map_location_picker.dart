@@ -7,6 +7,8 @@ import 'package:geolocator/geolocator.dart';
 import '../../../core/services/logger_service.dart';
 import '../../../data/services/geocoding_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../auth/widgets/auth_glass_card.dart';
+import '../../auth/widgets/auth_glass_scaffold.dart';
 
 class MapLocationPicker extends StatefulWidget {
   final double? initialLatitude;
@@ -27,7 +29,7 @@ class MapLocationPicker extends StatefulWidget {
 class _MapLocationPickerState extends State<MapLocationPicker> {
   late YandexMapController _mapController;
   final GeocodingService _geocodingService = GeocodingService();
-  
+
   Point? _selectedPoint;
   String? _selectedAddress;
   bool _isLoadingAddress = false;
@@ -53,7 +55,6 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
 
   Future<void> _getUserLocation() async {
     try {
-      // Проверяем разрешения
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -62,7 +63,7 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
           return;
         }
       }
-      
+
       if (permission == LocationPermission.deniedForever) {
         LoggerService.debug('Location permissions are permanently denied');
         return;
@@ -73,17 +74,16 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
           accuracy: LocationAccuracy.high,
         ),
       );
-      
+
       final userPoint = Point(
         latitude: position.latitude,
         longitude: position.longitude,
       );
-      
+
       setState(() {
         _selectedPoint = userPoint;
       });
-      
-      // Перемещаем камеру к пользователю
+
       await _mapController.moveCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(target: userPoint, zoom: 15),
@@ -101,8 +101,7 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
 
   Future<void> _onMapCreated(YandexMapController controller) async {
     _mapController = controller;
-    
-    // Если есть начальные координаты - центрируем карту
+
     if (_selectedPoint != null) {
       await _mapController.moveCamera(
         CameraUpdate.newCameraPosition(
@@ -110,7 +109,6 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
         ),
       );
     } else {
-      // Если начальных координат нет - получаем местоположение пользователя
       await _getUserLocation();
     }
   }
@@ -130,7 +128,8 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
 
       if (mounted) {
         setState(() {
-          _selectedAddress = address ?? '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
+          _selectedAddress = address ??
+              '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
           _isLoadingAddress = false;
         });
       }
@@ -138,7 +137,8 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
       LoggerService.error('Error getting address: $e');
       if (mounted) {
         setState(() {
-          _selectedAddress = '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
+          _selectedAddress =
+              '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
           _isLoadingAddress = false;
         });
       }
@@ -146,19 +146,17 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
   }
 
   Future<Uint8List> _createMarkerIcon() async {
-    // Создаем маркер в стиле приложения
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     final paint = Paint()
       ..color = AppColors.primary
       ..style = PaintingStyle.fill;
-    
+
     final strokePaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
 
-    // Рисуем круг с белой обводкой + небольшой "блик"
     canvas.drawCircle(const Offset(30, 30), 15, strokePaint);
     canvas.drawCircle(const Offset(30, 30), 15, paint);
     canvas.drawCircle(
@@ -166,14 +164,12 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
       4,
       Paint()..color = Colors.white.withValues(alpha: 0.65),
     );
-    
+
     final picture = recorder.endRecording();
     final img = await picture.toImage(60, 60);
     final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
     return bytes!.buffer.asUint8List();
   }
-
-
 
   void _confirmSelection() {
     if (_selectedPoint != null && _selectedAddress != null) {
@@ -185,82 +181,34 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
     }
   }
 
-  BoxDecoration _glassCardDecoration({
-    double radius = 24,
-    double alpha = 0.72,
-    double borderAlpha = 0.14,
-  }) {
-    return BoxDecoration(
-      color: Colors.white.withValues(alpha: alpha),
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: AppColors.primary.withValues(alpha: borderAlpha)),
-      boxShadow: <BoxShadow>[
-        BoxShadow(
-          color: AppColors.dark.withValues(alpha: 0.12),
-          blurRadius: 18,
-          offset: const Offset(0, 10),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AuthGlassScaffold(
       extendBodyBehindAppBar: true,
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface.withValues(alpha: 0.86),
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        title: Text(
+        title: const Text(
           'Выберите место',
           style: TextStyle(
-            color: AppColors.dark.withValues(alpha: 0.88),
+            color: Color(0xFF1F3552),
             fontWeight: FontWeight.w800,
           ),
         ),
         centerTitle: true,
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: Icon(
-            Icons.close_rounded,
-            color: AppColors.dark.withValues(alpha: 0.78),
-          ),
+          icon: const Icon(Icons.close_rounded, color: Color(0xFF273043)),
         ),
       ),
-      body: Stack(
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: <Color>[
-                    Color(0xFFEAF2FF),
-                    Color(0xFFD9E8FF),
-                    Color(0xFFEFF5FF),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const Positioned(
-            left: -120,
-            top: -140,
-            child: _BlurCircle(size: 260, color: Color(0x330961F6)),
-          ),
-          const Positioned(
-            right: -140,
-            bottom: -180,
-            child: _BlurCircle(size: 320, color: AppColors.accent),
-          ),
-          // Карта
           YandexMap(
             onMapCreated: _onMapCreated,
-            onMapTap: (argument) => _onMapTap(argument),
+            onMapTap: _onMapTap,
             mapObjects: _selectedPoint != null && _markerIcon != null
                 ? [
                     PlacemarkMapObject(
@@ -277,8 +225,6 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
                   ]
                 : [],
           ),
-
-          // Кнопки управления зумом
           Positioned(
             right: 16,
             bottom: 132,
@@ -320,8 +266,6 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
               ],
             ),
           ),
-
-          // Выбранный адрес
           if (_selectedAddress != null)
             Positioned(
               bottom: 12,
@@ -329,112 +273,88 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
               right: 16,
               child: SafeArea(
                 top: false,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: _glassCardDecoration(radius: 24, alpha: 0.78),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                child: AuthGlassCard(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 10, 14),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              const Expanded(
-                                child: Text(
-                                  'Выбранное место',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _selectedPoint = null;
-                                    _selectedAddress = null;
-                                  });
-                                },
-                                icon: const Icon(Icons.close_rounded),
-                                color: AppColors.dark.withValues(alpha: 0.62),
-                                tooltip: 'Сбросить',
-                              ),
-                            ],
-                          ),
-                          if (_isLoadingAddress)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 10),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                ),
-                              ),
-                            )
-                          else
-                            Text(
-                              _selectedAddress!,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                          const Expanded(
+                            child: Text(
+                              'Выбранное место',
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.dark.withValues(alpha: 0.84),
-                                height: 1.25,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
                               ),
                             ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: (_selectedPoint != null && !_isLoadingAddress)
-                                  ? _confirmSelection
-                                  : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              child: const Text(
-                                'Подтвердить',
-                                style: TextStyle(fontWeight: FontWeight.w800),
-                              ),
-                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _selectedPoint = null;
+                                _selectedAddress = null;
+                              });
+                            },
+                            icon: const Icon(Icons.close_rounded),
+                            color: AppColors.dark.withValues(alpha: 0.62),
+                            tooltip: 'Сбросить',
                           ),
                         ],
                       ),
-                    ),
+                      if (_isLoadingAddress)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 10),
+                          child: Center(
+                            child: SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        )
+                      else
+                        Text(
+                          _selectedAddress!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.dark.withValues(alpha: 0.84),
+                            height: 1.25,
+                          ),
+                        ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: (_selectedPoint != null && !_isLoadingAddress)
+                              ? _confirmSelection
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Text(
+                            'Подтвердить',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _BlurCircle extends StatelessWidget {
-  const _BlurCircle({required this.size, required this.color});
-
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipOval(
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-        child: Container(width: size, height: size, color: color),
       ),
     );
   }
@@ -459,6 +379,12 @@ class _MapFab extends StatelessWidget {
       elevation: 0,
       backgroundColor: Colors.white.withValues(alpha: 0.92),
       foregroundColor: AppColors.primary,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: AppColors.primary.withValues(alpha: 0.12),
+        ),
+      ),
       onPressed: onPressed,
       child: Icon(icon),
     );

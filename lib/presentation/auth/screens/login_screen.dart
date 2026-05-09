@@ -6,11 +6,13 @@ import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import 'register_screen.dart';
-import 'setup_profile_screen.dart';
-import 'email_verification_screen.dart';
 import 'forgot_password_screen.dart';
+import 'email_verification_screen.dart';
+import 'setup_profile_screen.dart';
 import '../../home/home_shell.dart';
-import '../../../core/theme/app_colors.dart';
+import '../widgets/auth_glass_card.dart';
+import '../widgets/auth_glass_scaffold.dart';
+import '../widgets/auth_input_decoration.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -63,44 +65,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  InputDecoration _buildInputDecoration({
-    required String label,
-    required String hint,
-    required IconData icon,
-    Widget? suffixIcon,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      prefixIcon: Icon(icon, color: const Color(0xFF5E74FF)),
-      suffixIcon: suffixIcon,
-      filled: true,
-      fillColor: const Color(0xFFF4F8FF),
-      labelStyle: const TextStyle(color: Color(0xFF5E688B)),
-      hintStyle: const TextStyle(color: Color(0xFF9DA9C8)),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFDDE6FF)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF5E74FF), width: 1.8),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFDE5A77)),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFDE5A77), width: 1.6),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     // Сбрасываем _isLoading при каждой перестройке если не в состоянии AuthLoading
@@ -126,11 +90,10 @@ class _LoginScreenState extends State<LoginScreen> {
         if (state is AuthFailure) {
           CustomNotification.error(context, state.message);
         }
-        
-        // При успешной аутентификации навигация через andex_app.dart
+
         if (state is AuthAuthenticated) {
-          LoggerService.debug('DEBUG: AuthAuthenticated received, навигация к ${state.isOnboardingCompleted ? "HomeShell" : "SetupProfileScreen"}');
-          // Переходим к правильному экрану в зависимости от статуса onboarding
+          // Важно: AndexApp не может автоматически заменить текущий route,
+          // если пользователь уже находится на LoginScreen.
           Widget destination;
           if (!state.user.emailVerified) {
             destination = EmailVerificationScreen(userEmail: state.user.email ?? '');
@@ -139,61 +102,22 @@ class _LoginScreenState extends State<LoginScreen> {
           } else {
             destination = const SetupProfileScreen();
           }
-          
+
           Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute<void>(builder: (context) => destination),
-            (route) => false, // Удаляем все предыдущие routes
+            MaterialPageRoute<void>(builder: (_) => destination),
+            (route) => false,
           );
         }
       },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: <Color>[
-                Color(0xFFEAF2FF),
-                Color(0xFFD9E8FF),
-                Color(0xFFEFF5FF),
-              ],
-            ),
-          ),
-          child: Stack(
-            children: <Widget>[
-              Positioned(
-                top: -110,
-                right: -75,
-                child: Container(
-                  width: 260,
-                  height: 260,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF0F6CF8).withValues(alpha: 0.16),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: -120,
-                left: -85,
-                child: Container(
-                  width: 300,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF8CB9FF).withValues(alpha: 0.16),
-                  ),
-                ),
-              ),
-              SafeArea(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
+      child: AuthGlassScaffold(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
                         const SizedBox(height: 10),
                         Center(
                           child: Container(
@@ -246,29 +170,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 26),
-                        Container(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.88),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.85),
-                            ),
-                            boxShadow: <BoxShadow>[
-                              BoxShadow(
-                                color: const Color(0xFF184B94).withValues(alpha: 0.12),
-                                blurRadius: 22,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
-                          ),
+                        AuthGlassCard(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: <Widget>[
                               TextFormField(
                                 controller: _emailController,
                                 keyboardType: TextInputType.emailAddress,
-                                decoration: _buildInputDecoration(
+                                decoration: authInputDecoration(
                                   label: 'Email',
                                   hint: 'example@email.com',
                                   icon: Icons.email_outlined,
@@ -290,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               TextFormField(
                                 controller: _passwordController,
                                 obscureText: _obscurePassword,
-                                decoration: _buildInputDecoration(
+                                decoration: authInputDecoration(
                                   label: 'Пароль',
                                   hint: '••••••••',
                                   icon: Icons.lock_outline,
@@ -456,10 +365,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ), // BlocListener
+            ),
     );
   }
 }

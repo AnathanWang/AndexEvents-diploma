@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../../core/services/logger_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,7 +7,9 @@ import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import 'email_verification_screen.dart';
-import '../../../core/theme/app_colors.dart';
+import '../widgets/auth_glass_card.dart';
+import '../widgets/auth_glass_scaffold.dart';
+import '../widgets/auth_input_decoration.dart';
 
 enum EmailAvailabilityStatus {
   initial,
@@ -150,44 +151,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  InputDecoration _buildInputDecoration({
-    required String label,
-    required String hint,
-    required IconData icon,
-    Widget? suffixIcon,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      prefixIcon: Icon(icon, color: const Color(0xFF5E74FF)),
-      suffixIcon: suffixIcon,
-      filled: true,
-      fillColor: const Color(0xFFF4F8FF),
-      labelStyle: const TextStyle(color: Color(0xFF5E688B)),
-      hintStyle: const TextStyle(color: Color(0xFF9DA9C8)),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFDDE6FF)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF5E74FF), width: 1.8),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFDE5A77)),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFDE5A77), width: 1.6),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final bool isSubmitDisabled =
@@ -205,23 +168,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
 
         if (state is AuthAuthenticated) {
-          // Регистрация успешна - переходим к проверке email
-          LoggerService.warning('🟡 [RegisterScreen] AuthAuthenticated получен, переход к EmailVerificationScreen');
+          // Важно: AndexApp не может автоматически заменить текущий route,
+          // если пользователь сейчас внутри RegisterScreen.
+          // Поэтому делаем явный переход на следующий шаг здесь.
+          final email = state.user.email ?? _emailController.text.trim();
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute<void>(
-              builder: (context) => EmailVerificationScreen(
-                userEmail: _emailController.text.trim(),
-              ),
+              builder: (_) => EmailVerificationScreen(userEmail: email),
             ),
-            (route) => false, // Удаляем все предыдущие routes
+            (route) => false,
           );
-        } else if (state is AuthFailure) {
+          return;
+        }
+
+        if (state is AuthFailure) {
           // Показываем ошибку
           CustomNotification.error(context, state.message);
         }
       },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
+      child: AuthGlassScaffold(
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           surfaceTintColor: Colors.transparent,
@@ -231,48 +196,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
-        body: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: <Color>[Color(0xFFEAF2FF), Color(0xFFD9E8FF), Color(0xFFEFF5FF)],
-            ),
-          ),
-          child: Stack(
-            children: <Widget>[
-              Positioned(
-                top: -110,
-                right: -80,
-                child: Container(
-                  width: 270,
-                  height: 270,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF0F6CF8).withValues(alpha: 0.16),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: -120,
-                left: -90,
-                child: Container(
-                  width: 300,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF8CB9FF).withValues(alpha: 0.16),
-                  ),
-                ),
-              ),
-              SafeArea(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
                         const Text(
                           'Создать аккаунт',
                           style: TextStyle(
@@ -292,22 +223,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        Container(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.88),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.85),
-                            ),
-                            boxShadow: <BoxShadow>[
-                              BoxShadow(
-                                color: const Color(0xFF184B94).withValues(alpha: 0.12),
-                                blurRadius: 22,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
-                          ),
+                        AuthGlassCard(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: <Widget>[
@@ -315,7 +231,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 key: const Key('register_name_textField'),
                                 controller: _nameController,
                                 textCapitalization: TextCapitalization.words,
-                                decoration: _buildInputDecoration(
+                                decoration: authInputDecoration(
                                   label: 'Имя',
                                   hint: 'Иван Иванов',
                                   icon: Icons.person_outline,
@@ -338,7 +254,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     key: const Key('register_email_textField'),
                                     controller: _emailController,
                                     keyboardType: TextInputType.emailAddress,
-                                    decoration: _buildInputDecoration(
+                                    decoration: authInputDecoration(
                                       label: 'Email',
                                       hint: 'example@email.com',
                                       icon: Icons.email_outlined,
@@ -369,7 +285,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 key: const Key('register_password_textField'),
                                 controller: _passwordController,
                                 obscureText: _obscurePassword,
-                                decoration: _buildInputDecoration(
+                                decoration: authInputDecoration(
                                   label: 'Пароль',
                                   hint: '••••••••',
                                   icon: Icons.lock_outline,
@@ -405,7 +321,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 key: const Key('register_confirmPassword_textField'),
                                 controller: _confirmPasswordController,
                                 obscureText: _obscureConfirmPassword,
-                                decoration: _buildInputDecoration(
+                                decoration: authInputDecoration(
                                   label: 'Подтвердите пароль',
                                   hint: '••••••••',
                                   icon: Icons.lock_outline,
@@ -594,10 +510,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ), // Scaffold
+            ),
     ); // BlocListener
   }
 

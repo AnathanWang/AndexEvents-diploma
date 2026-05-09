@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:andexevents/data/models/report_model.dart';
 import 'package:andexevents/data/services/report_service.dart';

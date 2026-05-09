@@ -1,5 +1,13 @@
 # Andex Events - Итоговые выводы и рекомендации
 
+## Статус документа
+
+Этот документ содержит обзор и рекомендации, собранные в ходе одной из итераций проекта. Часть разделов может ссылаться на более раннюю реализацию (например, Node/Supabase/Prisma). Актуальное описание текущего состояния системы см. в:
+
+- `architecture.md`
+- `setup.md`
+- `api-reference.md`
+
 ## 📊 Общий анализ проекта
 
 ### Текущее состояние проекта
@@ -20,11 +28,10 @@
 - ✅ Современный Material Design 3
 - ✅ Yandex MapKit для работы с картами
 
-**Backend (Node.js + TypeScript):**
-- ✅ Слоистая архитектура (Routes → Controllers → Services)
-- ✅ Prisma ORM для type-safe работы с БД
-- ✅ Express.js с middleware для безопасности
-- ✅ Winston для структурированного логирования
+**Backend (Java + Go):**
+- ✅ Микросервисный backend (Java/Spring Boot + Go)
+- ✅ Единая инфраструктура для локального запуска (Docker Compose)
+- ✅ PostgreSQL + PostGIS, Redis, объектное хранилище (MinIO/S3)
 
 ### 2. База данных
 
@@ -987,5 +994,4 @@ io.to(`user:${userId}`).emit('notification', {
 ---
 
 **Составлен:** 2024-12-13  
-**Автор:** AI Code Analyst  
 **Версия:** 1.0
