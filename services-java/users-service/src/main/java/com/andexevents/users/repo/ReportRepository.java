@@ -5,6 +5,7 @@ import com.andexevents.users.model.ReportReason;
 import com.andexevents.users.model.ReportStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
@@ -32,7 +33,7 @@ public class ReportRepository {
                 """
                 INSERT INTO users."Report" ("id", "reporterId", "targetUserId", "targetEventId",
                     "reason", "details", "status", "createdAt", "updatedAt")
-                VALUES (?, ?, ?, ?, ?::"ReportReason", ?, 'PENDING', ?, ?)
+                VALUES (?, ?, ?, ?, ?::users."ReportReason", ?, 'PENDING'::users."ReportStatus", ?, ?)
                 """,
                 id, reporterId, targetUserId, targetEventId,
                 reason.name(), details,
@@ -77,14 +78,14 @@ public class ReportRepository {
         jdbcTemplate.update(
                 """
                 UPDATE users."Report"
-                SET "status" = ?::"ReportStatus", "resolverId" = ?, "resolvedAt" = NOW(), "updatedAt" = NOW()
+            SET "status" = ?::users."ReportStatus", "resolverId" = ?, "resolvedAt" = NOW(), "updatedAt" = NOW()
                 WHERE "id" = ?
                 """,
                 status, resolverId, reportId
         );
     }
 
-    private RowMapper<ReportDto> mapper() {
+    private @NonNull RowMapper<ReportDto> mapper() {
         return (ResultSet rs, int rowNum) -> mapRow(rs);
     }
 

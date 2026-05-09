@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/event_preview.dart';
+import '../../../data/models/event_model.dart';
 import '../../profile/screens/user_profile_screen.dart';
 import '../../widgets/common/custom_notification.dart';
+import '../../widgets/common/star_rating_widget.dart';
+import '../../widgets/event_countdown_timer.dart';
+import '../../../data/services/rating_service.dart';
+import '../../../core/http/api_client.dart';
 
 class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({
-    required this.event,
+    required this.eventPreview,
+    this.fullEvent,
     super.key,
   });
 
-  final EventPreview event;
+  final EventPreview eventPreview;
+  final EventModel? fullEvent; // we might have fullEvent from a provider/API
 
   @override
   State<EventDetailScreen> createState() => _EventDetailScreenState();
@@ -42,11 +51,99 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   void _shareEvent() {
-    // TODO: Реализовать шаринг
-    CustomNotification.show(
-      context,
-      'Поделиться событием',
-      duration: const Duration(seconds: 1),
+    final eventTitle = widget.eventPreview.title;
+    final eventDate = widget.eventPreview.date.toString().substring(0, 16);
+    SharePlus.instance.share(
+      ShareParams(
+        text:
+            'Пошли вместе на "$eventTitle"!\n🕒 $eventDate\n📍 ${widget.eventPreview.location}\n\nУзнай подробности в приложении Andex Events.',
+        subject: eventTitle,
+      ),
+    );
+  }
+
+  Future<void> _openMap() async {
+    final address = Uri.encodeComponent(widget.eventPreview.location);
+    final url = Uri.parse('https://yandex.ru/maps/?text=$address');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        CustomNotification.show(context, 'Не удалось открыть карту', isError: true);
+      }
+    }
+  }
+
+  void _showRatingDialog() {
+    int currentDialogRating = widget.fullEvent?.myRating ?? 0;
+    final textController = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Оцените событие'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  StarRatingWidget(
+                    rating: currentDialogRating.toDouble(),
+                    isInteractive: true,
+                    onRatingChanged: (val) {
+                      setState(() {
+                        currentDialogRating = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: textController,
+                    decoration: const InputDecoration(
+                      hintText: 'Оставьте комментарий (необязательно)',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Отмена'),
+                ),
+                 ElevatedButton(
+                  onPressed: currentDialogRating == 0
+                      ? null
+                      : () async {
+                          try {
+                            final ratingService = RatingService(ApiClient());
+                            await ratingService.rateEvent(
+                              widget.eventPreview.id,
+                              currentDialogRating,
+                              comment: textController.text.isNotEmpty ? textController.text : null,
+                            );
+                            if (!dialogContext.mounted) return;
+                            Navigator.of(dialogContext).pop();
+                            CustomNotification.show(dialogContext, 'Оценка сохранена!');
+                            // In a real app, we would also trigger a refresh of the event details
+                          } catch (e) {
+                            if (!dialogContext.mounted) return;
+                            CustomNotification.show(
+                              dialogContext,
+                              'Ошибка: $e',
+                              isError: true,
+                            );
+                          }
+                        },
+                  child: const Text('Отправить'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -72,7 +169,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ],
               ),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF161823)),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ),
@@ -92,7 +189,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 child: IconButton(
                   icon: Icon(
                     _isFavorite ? Icons.favorite : Icons.favorite_outline,
-                    color: _isFavorite ? Colors.red : const Color(0xFF4A4D6A),
+                    color: _isFavorite ? Colors.red : const Color(0xFF161823),
                   ),
                   onPressed: _toggleFavorite,
                 ),
@@ -110,7 +207,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ],
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.share, color: Color(0xFF4A4D6A)),
+                  icon: const Icon(Icons.share, color: Color(0xFF161823)),
                   onPressed: _shareEvent,
                 ),
               ),
@@ -125,8 +222,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: <Color>[
-                          const Color(0xFF5E60CE).withValues(alpha: 0.7),
-                          const Color(0xFF9370DB).withValues(alpha: 0.7),
+                          const Color(0xFF75878A).withValues(alpha: 0.7),
+                          const Color(0xFF81D8D0).withValues(alpha: 0.7),
                         ],
                       ),
                     ),
@@ -166,13 +263,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
+                          color: const Color(0xFF75878A).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          widget.event.category,
+                          widget.eventPreview.category,
                           style: const TextStyle(
-                            color: Color(0xFF5E60CE),
+                            color: Color(0xFF75878A),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -181,15 +278,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: widget.event.isFree
+                          color: widget.eventPreview.isFree
                               ? Colors.green.withValues(alpha: 0.1)
                               : Colors.orange.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          widget.event.isFree ? 'Бесплатно' : '${widget.event.price} ₽',
+                          widget.eventPreview.isFree ? 'Бесплатно' : '${widget.eventPreview.price} ₽',
                           style: TextStyle(
-                            color: widget.event.isFree ? Colors.green : Colors.orange,
+                            color: widget.eventPreview.isFree ? Colors.green : Colors.orange,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -202,33 +299,99 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Text(
-                    widget.event.title,
+                    widget.eventPreview.title,
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF4A4D6A),
+                      color: Color(0xFF161823),
                     ),
                   ),
                 ),
+                
+                // Рейтинг события
+                if (widget.fullEvent != null && widget.fullEvent!.ratingCount > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20, right: 20, top: 8),
+                    child: Row(
+                      children: [
+                        StarRatingWidget(
+                          rating: widget.fullEvent!.averageRating,
+                          starSize: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${widget.fullEvent!.averageRating.toStringAsFixed(1)} (${widget.fullEvent!.ratingCount})',
+                          style: const TextStyle(
+                            color: Color(0xFF75878A),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                
                 const SizedBox(height: 20),
                 
                 // Дата и время
                 _buildInfoRow(
                   Icons.calendar_today,
-                  _formatDate(widget.event.date),
+                  _formatDate(widget.eventPreview.date),
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   Icons.access_time,
-                  _formatTime(widget.event.date),
+                  _formatTime(widget.eventPreview.date),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEAF7F5),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.timer_outlined,
+                          color: Color(0xFF75878A),
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'До окончания',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF8D8D8D),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            EventCountdownTimer(
+                              expirationTime: widget.eventPreview.actualExpirationTime,
+                              isMinimal: true,
+                              textStyle: const TextStyle(
+                                color: Color(0xFF161823),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   Icons.location_on,
-                  widget.event.location,
-                  onTap: () {
-                    // TODO: Открыть карту
-                  },
+                  widget.eventPreview.location,
+                  onTap: _openMap,
                 ),
                 const SizedBox(height: 24),
                 
@@ -243,7 +406,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF4A4D6A),
+                          color: Color(0xFF161823),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -255,7 +418,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             child: Stack(
                               children: <Widget>[
                                 ...List<Widget>.generate(
-                                  widget.event.attendeeNames.length > 4 ? 4 : widget.event.attendeeNames.length,
+                                  widget.eventPreview.attendeeNames.length > 4 ? 4 : widget.eventPreview.attendeeNames.length,
                                   (int index) => Positioned(
                                     left: index * 25.0,
                                     child: CircleAvatar(
@@ -265,7 +428,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                         radius: 18,
                                         backgroundColor: _getAvatarColor(index),
                                         child: Text(
-                                          widget.event.attendeeNames[index][0].toUpperCase(),
+                                          widget.eventPreview.attendeeNames[index][0].toUpperCase(),
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.w600,
@@ -280,7 +443,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '+${widget.event.attendees} участников',
+                            '+${widget.eventPreview.attendees} участников',
                             style: const TextStyle(
                               color: Color(0xFF9E9E9E),
                               fontSize: 14,
@@ -289,7 +452,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           const Spacer(),
                           TextButton(
                             onPressed: () {
-                              // TODO: Показать всех участников
+                              CustomNotification.show(context, 'Полный список участников в разработке');
                             },
                             child: const Text('Все'),
                           ),
@@ -311,19 +474,19 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF4A4D6A),
+                          color: Color(0xFF161823),
                         ),
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Присоединяйтесь к нам на ${widget.event.title}! '
+                        'Присоединяйтесь к нам на ${widget.eventPreview.title}! '
                         'Это будет незабываемое событие, где вы сможете встретить '
                         'единомышленников, получить новый опыт и отлично провести время. '
                         'Мероприятие подходит как для новичков, так и для опытных участников. '
                         'Не упустите возможность стать частью нашего сообщества!',
                         style: const TextStyle(
                           fontSize: 16,
-                          color: Color(0xFF4A4D6A),
+                          color: Color(0xFF161823),
                           height: 1.5,
                         ),
                       ),
@@ -343,7 +506,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF4A4D6A),
+                          color: Color(0xFF161823),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -357,10 +520,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           children: <Widget>[
                             CircleAvatar(
                               radius: 30,
-                              backgroundColor: const Color(0xFF5E60CE),
+                              backgroundColor: const Color(0xFF75878A),
                               child: Text(
-                                widget.event.attendeeNames.isNotEmpty
-                                    ? widget.event.attendeeNames[0][0].toUpperCase()
+                                widget.eventPreview.attendeeNames.isNotEmpty
+                                    ? widget.eventPreview.attendeeNames[0][0].toUpperCase()
                                     : 'О',
                                 style: const TextStyle(
                                   color: Colors.white,
@@ -375,13 +538,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: <Widget>[
                                   Text(
-                                    widget.event.attendeeNames.isNotEmpty
-                                        ? widget.event.attendeeNames[0]
+                                    widget.eventPreview.attendeeNames.isNotEmpty
+                                        ? widget.eventPreview.attendeeNames[0]
                                         : 'Организатор',
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFF4A4D6A),
+                                      color: Color(0xFF161823),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -400,11 +563,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 Navigator.of(context).push(
                                   MaterialPageRoute<void>(
                                     builder: (BuildContext context) => UserProfileScreen(
-                                      userName: widget.event.attendeeNames.isNotEmpty
-                                          ? widget.event.attendeeNames[0]
+                                      userName: widget.eventPreview.attendeeNames.isNotEmpty
+                                          ? widget.eventPreview.attendeeNames[0]
                                           : 'Организатор',
-                                      userInitials: widget.event.attendeeNames.isNotEmpty
-                                          ? widget.event.attendeeNames[0]
+                                      userInitials: widget.eventPreview.attendeeNames.isNotEmpty
+                                          ? widget.eventPreview.attendeeNames[0]
                                               .split(' ')
                                               .map((String word) => word[0])
                                               .take(2)
@@ -416,7 +579,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 );
                               },
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF5E60CE),
+                                foregroundColor: const Color(0xFF75878A),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -442,7 +605,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF4A4D6A),
+                          color: Color(0xFF161823),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -479,14 +642,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 bottom: 16,
                                 right: 16,
                                 child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    // TODO: Открыть полноэкранную карту
-                                  },
+                                  onPressed: _openMap,
                                   icon: const Icon(Icons.directions),
                                   label: const Text('Маршрут'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.white,
-                                    foregroundColor: const Color(0xFF5E60CE),
+                                    foregroundColor: const Color(0xFF75878A),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -521,25 +682,62 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ],
         ),
         child: SafeArea(
-          child: ElevatedButton(
-            onPressed: _toggleGoing,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _isGoing ? Colors.grey : const Color(0xFF5E60CE),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 0,
-              minimumSize: const Size(double.infinity, 0),
-            ),
-            child: Text(
-              _isGoing ? 'Отменить участие' : 'Участвовать',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+          child: Builder(
+            builder: (context) {
+              final isEnded = widget.eventPreview.actualExpirationTime.isBefore(DateTime.now());
+              final isParticipating = widget.fullEvent?.isParticipating ?? _isGoing;
+
+              if (isEnded && isParticipating) {
+                return ElevatedButton(
+                  onPressed: _showRatingDialog,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFACC15),
+                    foregroundColor: Colors.black87,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                    minimumSize: const Size(double.infinity, 0),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.star),
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.fullEvent?.myRating != null ? 'Изменить оценку' : 'Оценить событие',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return ElevatedButton(
+                onPressed: isEnded ? null : _toggleGoing,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isGoing ? Colors.grey : const Color(0xFF75878A),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                  minimumSize: const Size(double.infinity, 0),
+                ),
+                child: Text(
+                  isEnded ? 'Событие завершено' : (_isGoing ? 'Отменить участие' : 'Участвовать'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              );
+            }
           ),
         ),
       ),
@@ -556,12 +754,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
+                color: const Color(0xFF75878A).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 icon,
-                color: const Color(0xFF5E60CE),
+                color: const Color(0xFF75878A),
                 size: 20,
               ),
             ),
@@ -571,7 +769,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 text,
                 style: const TextStyle(
                   fontSize: 16,
-                  color: Color(0xFF4A4D6A),
+                  color: Color(0xFF161823),
                 ),
               ),
             ),
@@ -589,9 +787,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   Color _getAvatarColor(int index) {
     final List<Color> colors = <Color>[
-      const Color(0xFF5E60CE),
-      const Color(0xFF7B68EE),
-      const Color(0xFF9370DB),
+      const Color(0xFF75878A),
+      const Color(0xFF81D8D0),
+      const Color(0xFF81D8D0),
       const Color(0xFFBA55D3),
     ];
     return colors[index % colors.length];

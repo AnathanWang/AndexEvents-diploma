@@ -40,8 +40,8 @@ class ExpandTransition extends StatelessWidget {
           child: Transform(
             alignment: Alignment.center,
             transform: Matrix4.identity()
-              ..scale(scale, scale)
-              ..translate(0.0, verticalShift),
+              ..scaleByDouble(scale, scale, 1.0, 1.0)
+              ..translateByDouble(0.0, verticalShift, 0.0, 1.0),
             child: child,
           ),
         );

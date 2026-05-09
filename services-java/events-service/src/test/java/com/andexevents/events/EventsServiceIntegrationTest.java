@@ -59,8 +59,17 @@ class EventsServiceIntegrationTest {
     void setup() {
         // Minimal shared User table for joins and lookups.
         jdbc.execute("CREATE SCHEMA IF NOT EXISTS users");
+        jdbc.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'UserSanctionType' AND typnamespace = 'users'::regnamespace) THEN " +
+                "CREATE TYPE users.\"UserSanctionType\" AS ENUM ('WARNING', 'MUTE', 'EVENT_CREATE_BAN', 'FULL_BAN'); END IF; END $$;");
         jdbc.execute("CREATE TABLE IF NOT EXISTS users.\"User\" (id TEXT PRIMARY KEY, \"firebaseUid\" TEXT, \"supabaseUid\" TEXT, email TEXT, \"displayName\" TEXT, \"photoUrl\" TEXT)");
         jdbc.execute("CREATE UNIQUE INDEX IF NOT EXISTS \"User_firebaseUid_key\" ON users.\"User\"(\"firebaseUid\")");
+
+        // Added UserSanction table for test stability (used by UserSanctionGuardService)
+        jdbc.execute("CREATE TABLE IF NOT EXISTS users.\"UserSanction\" (" +
+                "id TEXT PRIMARY KEY, \"targetUserId\" TEXT REFERENCES users.\"User\"(id), " +
+                "\"createdByUserId\" TEXT, type users.\"UserSanctionType\", reason TEXT, \"expiresAt\" TIMESTAMP(3), " +
+                "\"revokedAt\" TIMESTAMP(3), \"revokedByUserId\" TEXT, " +
+                "\"createdAt\" TIMESTAMP(3), \"updatedAt\" TIMESTAMP(3))");
 
             DecodedJWT jwt1 = jwt("firebase-1", "u1@example.com");
             DecodedJWT jwt2 = jwt("firebase-2", "u2@example.com");
@@ -84,7 +93,7 @@ class EventsServiceIntegrationTest {
                         "location", "L",
                         "latitude", 55.751244,
                         "longitude", 37.618423,
-                        "dateTime", "2026-02-09T12:00:00Z",
+                        "dateTime", "2027-02-09T12:00:00Z",
                         "price", 0,
                         "imageUrl", "",
                         "isOnline", false
@@ -95,6 +104,9 @@ class EventsServiceIntegrationTest {
         Map createdData = (Map) created.getBody().get("data");
         String eventId = (String) createdData.get("id");
         assertThat(eventId).isNotBlank();
+
+        // Manual approval for listing
+        jdbc.update("UPDATE events.\"Event\" SET status = 'APPROVED' WHERE id = ?", eventId);
 
         // list all
         ResponseEntity<Map> list = rest.exchange("/api/events", HttpMethod.GET, new HttpEntity<>(new HttpHeaders()), Map.class);
@@ -161,6 +173,9 @@ class EventsServiceIntegrationTest {
         assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         Map createdData = (Map) created.getBody().get("data");
         String eventId = (String) createdData.get("id");
+
+        // Manual approval for listing
+        jdbc.update("UPDATE events.\"Event\" SET status = 'APPROVED' WHERE id = ?", eventId);
 
         ResponseEntity<Map> participate = rest.exchange(
             "/api/events/" + eventId + "/participate",

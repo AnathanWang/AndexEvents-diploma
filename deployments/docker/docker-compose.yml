@@ -60,9 +60,6 @@ services:
       mc mb --ignore-existing local/events;
       mc mb --ignore-existing local/photos;
       mc mb --ignore-existing local/media;
-      mc anonymous set download local/avatars;
-      mc anonymous set download local/events;
-      mc anonymous set download local/photos;
       echo 'MinIO buckets created and configured!';
       "
     networks:
@@ -93,7 +90,7 @@ services:
     container_name: andexevents-traefik
     restart: unless-stopped
     command:
-      - "--api.insecure=true"
+      # Dashboard is intentionally disabled for prod-like deploys.
       - "--providers.docker=true"
       - "--providers.docker.endpoint=unix:///var/run/docker.sock"
       - "--providers.docker.exposedbydefault=false"
@@ -101,7 +98,6 @@ services:
       - "--log.level=INFO"
     ports:
       - "80:80"
-      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:

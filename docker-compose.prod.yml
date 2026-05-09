@@ -1,0 +1,211 @@
+services:
+  # Infrastructure (internal only)
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: andexevents-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-andexevents}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-andexevents}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-andexevents} -d ${POSTGRES_DB:-andexevents}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - andexevents-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: andexevents-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - andexevents-network
+
+  # NOTE: Redis removed from prod by default.
+  # Add it back only if you actually implement caching/rate limiting storage.
+
+  # Gateway (public)
+  traefik:
+    image: traefik:latest
+    container_name: andexevents-traefik
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=INFO"
+      # Dashboard is intentionally disabled in prod.
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - andexevents-network
+
+  # Java services (internal only, reachable via Traefik)
+  users-service:
+    build:
+      context: ./services-java
+      dockerfile: users-service/Dockerfile
+    container_name: andexevents-users-service
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-andexevents}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-andexevents}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_JWKS_URL: ${FIREBASE_JWKS_URL:-}
+      FLYWAY_ENABLED: ${FLYWAY_ENABLED:-true}
+      APP_AUTH_DEFAULTREQUIREAUTH: "true"
+      APP_CORS_ALLOWEDORIGINPATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:-}
+    networks:
+      - andexevents-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.users.rule=PathPrefix(`/api/users`)"
+      - "traefik.http.services.users.loadbalancer.server.port=8081"
+
+  events-service:
+    build:
+      context: ./services-java
+      dockerfile: events-service/Dockerfile
+    container_name: andexevents-events-service
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-andexevents}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-andexevents}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_JWKS_URL: ${FIREBASE_JWKS_URL:-}
+      FLYWAY_ENABLED: ${FLYWAY_ENABLED:-true}
+      APP_AUTH_DEFAULTREQUIREAUTH: "true"
+      APP_CORS_ALLOWEDORIGINPATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:-}
+    networks:
+      - andexevents-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.events.rule=PathPrefix(`/api/events`)"
+      - "traefik.http.services.events.loadbalancer.server.port=8082"
+
+  auth-service:
+    build:
+      context: ./services-java
+      dockerfile: auth-service/Dockerfile
+    container_name: andexevents-auth-service
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8083
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-andexevents}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-andexevents}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_JWKS_URL: ${FIREBASE_JWKS_URL:-}
+      APP_AUTH_DEFAULTREQUIREAUTH: "true"
+      APP_CORS_ALLOWEDORIGINPATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:-}
+    networks:
+      - andexevents-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/api/auth`)"
+      - "traefik.http.services.auth.loadbalancer.server.port=8083"
+
+  match-service:
+    build:
+      context: .
+      dockerfile: services/match-service/Dockerfile
+    container_name: andexevents-match-service
+    restart: unless-stopped
+    environment:
+      PORT: "8005"
+      ENVIRONMENT: production
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER:-andexevents}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB:-andexevents}
+      DB_SSL_MODE: disable
+      FIREBASE_CREDENTIALS_FILE: /app/firebase-credentials.json
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./secrets/firebase-service-account.json:/app/firebase-credentials.json:ro
+    networks:
+      - andexevents-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.matches.rule=PathPrefix(`/api/matches`)"
+      - "traefik.http.services.matches.loadbalancer.server.port=8005"
+
+  upload-service:
+    build:
+      context: .
+      dockerfile: services/upload-service/Dockerfile
+    container_name: andexevents-upload-service
+    restart: unless-stopped
+    environment:
+      PORT: "8006"
+      ENVIRONMENT: production
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER:-andexevents}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB:-andexevents}
+      DB_SSL_MODE: disable
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+      MINIO_USE_SSL: "0"
+      FIREBASE_CREDENTIALS_FILE: /app/firebase-credentials.json
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      UPLOADS_PUBLIC_BASE_URL: ${UPLOADS_PUBLIC_BASE_URL:-http://localhost}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./secrets/firebase-service-account.json:/app/firebase-credentials.json:ro
+    networks:
+      - andexevents-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.upload.rule=PathPrefix(`/api/upload`) || PathPrefix(`/uploads`)"
+      - "traefik.http.services.upload.loadbalancer.server.port=8006"
+
+volumes:
+  postgres_data:
+  minio_data:
+
+networks:
+  andexevents-network:
+    driver: bridge
+

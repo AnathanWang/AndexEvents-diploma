@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/auth/id_token_provider.dart';
 import '../../core/config/app_config.dart';
@@ -12,6 +13,8 @@ import '../../core/services/logger_service.dart';
 
 /// Сервис для работы с Firebase Authentication
 class AuthService {
+  static const String _onboardingStatusKeyPrefix = 'onboarding_completed_';
+
   final FirebaseAuth _auth;
   final GoogleSignIn _googleSignIn;
   final IdTokenProvider _idTokenProvider;
@@ -53,16 +56,18 @@ class AuthService {
       }
 
       await user.updateDisplayName(displayName);
+
+      // Отправляем email confirmation ДО любого обращения к нашему стороннему бэкенду, 
+      // чтобы гарантровать отправку, даже если бэкенд отвалится по таймауту.
+      await user.sendEmailVerification();
+      LoggerService.info('[AuthService] Verification email sent to $email');
+
       await user.reload();
 
       await _createUserInBackend(
         displayName: displayName,
         photoUrl: user.photoURL,
       );
-
-      // Автоматически отправляем verification email
-      await user.sendEmailVerification();
-      LoggerService.info('[AuthService] Verification email sent to $email');
 
       return credential;
     } on FirebaseAuthException catch (e) {
@@ -85,10 +90,14 @@ class AuthService {
 
       final user = credential.user;
       if (user != null) {
-        await _createUserInBackend(
-          displayName: user.displayName ?? _displayNameFromEmail(user.email),
-          photoUrl: user.photoURL,
-        );
+        try {
+          await _createUserInBackend(
+            displayName: user.displayName ?? _displayNameFromEmail(user.email),
+            photoUrl: user.photoURL,
+          );
+        } catch (e) {
+          LoggerService.warning('[AuthService] createUserInBackend failed on signIn, continue login flow', e);
+        }
       }
 
       return credential;
@@ -125,18 +134,23 @@ class AuthService {
         throw Exception('Ошибка Google Sign-In: пользователь не найден');
       }
 
-      await _createUserInBackend(
-        displayName: user.displayName ?? googleUser.displayName ?? 'User',
-        photoUrl: user.photoURL ?? googleUser.photoUrl,
-      );
+      try {
+        await _createUserInBackend(
+          displayName: user.displayName ?? googleUser.displayName ?? 'User',
+          photoUrl: user.photoURL ?? googleUser.photoUrl,
+        );
+      } catch (e) {
+        LoggerService.warning('[Google Sign-In] createUserInBackend failed, continue login flow', e);
+      }
 
       bool isOnboardingCompleted = false;
       try {
         final profileData = await getCurrentUserProfile();
         isOnboardingCompleted = profileData['isOnboardingCompleted'] as bool? ?? false;
+        await cacheOnboardingStatus(isOnboardingCompleted);
       } catch (e) {
         LoggerService.warning('[Google Sign-In] Не удалось получить статус онбординга', e);
-        isOnboardingCompleted = false;
+        isOnboardingCompleted = await getCachedOnboardingStatus() ?? true;
       }
 
       return {
@@ -177,13 +191,12 @@ class AuthService {
   /// Возвращает true если email свободен, false если занят
   Future<bool> checkEmailAvailability(String email) async {
     try {
-      final trimmedEmail = email.trim();
-      final signInMethods = await _auth.fetchSignInMethodsForEmail(trimmedEmail);
-      // Если список пустой - email свободен
-      // Если есть методы входа - email уже зарегистрирован
-      return signInMethods.isEmpty;
-    } on FirebaseAuthException catch (e) {
-      throw Exception(_mapFirebaseAuthException(e));
+      // Использовать fetchSignInMethodsForEmail сейчас небезопасно и запрещено в Firebase (Email Enumeration Protection)
+      // Чтобы проверить доступность, мы пытаемся создать фейковую авторизацию,
+      // либо в будущем реализовать это на стороне бэкенда.
+      // 
+      // Пока что здесь мы возвращаем всегда true, либо можно вызывать эндпоинт на сервере.
+      return true;
     } catch (e) {
       throw Exception('Ошибка проверки email: $e');
     }
@@ -239,9 +252,8 @@ class AuthService {
         throw Exception('Пользователь не авторизован');
       }
       
-      LoggerService.info('[AuthService] Token получен, длина: ${token.length}');
       final url = '${AppConfig.baseUrl}/users/me';
-      LoggerService.info('[AuthService] GET $url');
+      LoggerService.debug('[AuthService] GET $url');
 
       final response = await http.get(
         Uri.parse(url),
@@ -251,13 +263,40 @@ class AuthService {
         },
       ).timeout(AppConfig.receiveTimeout);
 
-      LoggerService.info('[AuthService] Response status: ${response.statusCode}');
-      LoggerService.debug('[AuthService] Response body: ${response.body}');
+      LoggerService.debug('[AuthService] Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         LoggerService.info('[AuthService] Профиль успешно загружен');
-        return data['data'] as Map<String, dynamic>;
+        final profile = data['data'] as Map<String, dynamic>;
+        final isOnboardingCompleted = profile['isOnboardingCompleted'] as bool? ?? false;
+        await cacheOnboardingStatus(isOnboardingCompleted);
+        return profile;
+      }
+
+      if (response.statusCode == 404 && _auth.currentUser != null) {
+        LoggerService.warning('[AuthService] /users/me returned 404, trying to create user and retry profile fetch');
+        final user = _auth.currentUser!;
+        await _createUserInBackend(
+          displayName: user.displayName ?? _displayNameFromEmail(user.email),
+          photoUrl: user.photoURL,
+        );
+
+        final retryResponse = await http.get(
+          Uri.parse(url),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ).timeout(AppConfig.receiveTimeout);
+
+        if (retryResponse.statusCode == 200) {
+          final retryData = json.decode(retryResponse.body);
+          final retryProfile = retryData['data'] as Map<String, dynamic>;
+          final isOnboardingCompleted = retryProfile['isOnboardingCompleted'] as bool? ?? false;
+          await cacheOnboardingStatus(isOnboardingCompleted);
+          return retryProfile;
+        }
       }
 
       throw Exception('Не удалось загрузить профиль пользователя (${response.statusCode}): ${response.body}');
@@ -278,26 +317,34 @@ class AuthService {
     }
   }
 
+  Future<void> cacheOnboardingStatus(bool isCompleted) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('$_onboardingStatusKeyPrefix$uid', isCompleted);
+  }
+
+  Future<bool?> getCachedOnboardingStatus() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return null;
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('$_onboardingStatusKeyPrefix$uid');
+  }
+
   Future<void> _createUserInBackend({
     required String displayName,
     String? photoUrl,
   }) async {
     try {
-      LoggerService.info('[Backend] === НАЧАЛО создания пользователя в backend ===');
-      LoggerService.info('[Backend] displayName=$displayName, photoUrl=$photoUrl');
-      LoggerService.info('[Backend] baseUrl=${AppConfig.baseUrl}');
+      LoggerService.debug('[Backend] createUserInBackend start');
       
       final token = await getIdToken();
-      LoggerService.info('[Backend] Token получен: ${token?.substring(0, 20) ?? "NULL"}...');
-      
       if (token == null || token.isEmpty) {
-        LoggerService.error('[Backend] ОШИБКА: Токен пустой или null');
         throw Exception('Не удалось получить токен авторизации');
       }
       
       final url = '${AppConfig.baseUrl}/users';
-      LoggerService.info('[Backend] Полный URL: $url');
-      LoggerService.info('[Backend] Отправка POST запроса...');
+      LoggerService.debug('[Backend] POST $url');
 
       final response = await http
           .post(
@@ -314,22 +361,16 @@ class AuthService {
           .timeout(
             const Duration(seconds: 15),
             onTimeout: () {
-              LoggerService.error('[Backend] TIMEOUT: Запрос превысил 15 секунд');
               throw Exception('Timeout: сервер не ответил за 15 секунд');
             },
           );
 
-      LoggerService.info('[Backend] Response получен! Status: ${response.statusCode}');
-      LoggerService.info('[Backend] Response headers: ${response.headers}');
-      LoggerService.info('[Backend] Response body: ${response.body}');
+      LoggerService.debug('[Backend] Response status: ${response.statusCode}');
 
       if (response.statusCode != 201 && response.statusCode != 409) {
         final error = 'Не удалось создать пользователя (${response.statusCode}): ${response.body}';
-        LoggerService.error('[Backend] ОШИБКА: $error');
         throw Exception(error);
       }
-      
-      LoggerService.info('[Backend] === УСПЕХ: Пользователь создан в backend ===');
     } on http.ClientException catch (e) {
       LoggerService.error('[Backend] ClientException (сетевая ошибка)', e);
       rethrow;
@@ -338,7 +379,7 @@ class AuthService {
       rethrow;
     } catch (e, stackTrace) {
       LoggerService.error('[Backend] Unexpected error создания пользователя', e);
-      LoggerService.error('[Backend] StackTrace: $stackTrace');
+      LoggerService.debug('[Backend] StackTrace: $stackTrace');
       rethrow;
     }
   }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:andexevents/presentation/admin/screens/admin_audit_logs_screen.dart';
 import 'package:andexevents/presentation/admin/screens/reports_screen.dart';
 import 'package:andexevents/presentation/admin/screens/users_list_screen.dart';
 import 'package:andexevents/presentation/admin/screens/event_moderation_screen.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../auth/widgets/auth_glass_scaffold.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({
@@ -9,228 +12,305 @@ class AdminDashboardScreen extends StatelessWidget {
     this.showBackButton = true,
     this.onLogout,
     this.headerSubtitle,
+    required this.userRole,
   });
 
   final bool showBackButton;
   final VoidCallback? onLogout;
   final String? headerSubtitle;
+  final String userRole;
 
+  bool get _isAdmin => userRole.trim().toUpperCase() == 'ADMIN';
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFFF1F3FF), Color(0xFFF8FAFF)],
-              ),
-            ),
-            child: SizedBox.expand(),
-          ),
-          Positioned(
-            top: -80,
-            right: -40,
-            child: Container(
-              width: 220,
-              height: 220,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Color(0x405E60CE), Color(0x109370DB)],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -90,
-            left: -60,
-            child: Container(
-              width: 260,
-              height: 260,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Color(0x184ECDC4), Color(0x1044A08D)],
-                ),
-              ),
-            ),
-          ),
-          CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                expandedHeight: 220,
-                pinned: true,
-                automaticallyImplyLeading: false,
-                backgroundColor: const Color(0xFF5E60CE),
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: <Color>[Color(0xFF5965D8), Color(0xFF7D6EEC)],
-                      ),
+    return AuthGlassScaffold(
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          _buildAppBar(context),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+              child: Row(
+                children: [
+                  const Text(
+                    'Инструменты управления',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                      letterSpacing: -0.5,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 86, 24, 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          const Row(
-                            children: [
-                              Icon(
-                                Icons.admin_panel_settings_rounded,
-                                color: Colors.white,
-                                size: 34,
-                              ),
-                              SizedBox(width: 10),
-                              Text(
-                                'Панель модератора',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          if (headerSubtitle != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.16),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                headerSubtitle!,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Color(0xFFF1F4FF),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          const SizedBox(height: 10),
-                          const Text(
-                            'Управляйте жалобами, событиями и пользователями в одном месте.',
-                            style: TextStyle(
-                              color: Color(0xFFE4E9FF),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      _isAdmin ? 'ADMIN' : 'MOD',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
-                ),
-                leading: showBackButton
-                    ? Container(
-                        margin: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: <BoxShadow>[
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 10,
-                            ),
-                          ],
-                        ),
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.arrow_back,
-                            color: Color(0xFF5E60CE),
-                          ),
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                      )
-                    : null,
-                actions: [
-                  if (onLogout != null)
-                    IconButton(
-                      onPressed: onLogout,
-                      icon: const Icon(Icons.logout, color: Colors.white),
-                      tooltip: 'Выйти',
-                    ),
-                  const SizedBox(width: 8),
                 ],
               ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    const Text(
-                      'Инструменты',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF2F355E),
-                      ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 0.85,
+              ),
+              delegate: SliverChildListDelegate([
+                _buildGridCard(
+                  context,
+                  title: 'Модерация',
+                  subtitle: 'События и жалобы',
+                  icon: Icons.gavel_rounded,
+                  color: const Color(0xFF0961F6),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const EventModerationScreen(),
                     ),
-                    const SizedBox(height: 14),
-                    _buildActionCard(
+                  ),
+                ),
+                if (_isAdmin)
+                  _buildGridCard(
+                    context,
+                    title: 'Пользователи',
+                    subtitle: 'Доступ и роли',
+                    icon: Icons.people_alt_rounded,
+                    color: const Color(0xFF0961F6),
+                    onTap: () => Navigator.push(
                       context,
-                      title: 'Модерация событий',
-                      subtitle: 'Проверка и отклонение проблемных мероприятий',
-                      icon: Icons.event_available_rounded,
-                      gradientColors: const [
-                        Color(0xFF5E60CE),
-                        Color(0xFF7D6EEC),
-                      ],
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const EventModerationScreen(),
-                        ),
+                      MaterialPageRoute(
+                        builder: (_) => const UsersListScreen(),
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    _buildActionCard(
+                  ),
+                _buildGridCard(
+                  context,
+                  title: 'Отчёты',
+                  subtitle: 'Аналитика жалоб',
+                  icon: Icons.analytics_rounded,
+                  color: const Color(0xFF0961F6),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                  ),
+                ),
+                if (_isAdmin)
+                  _buildGridCard(
+                    context,
+                    title: 'Аудит',
+                    subtitle: 'Логи действий',
+                    icon: Icons.security_rounded,
+                    color: const Color(0xFF0961F6),
+                    onTap: () => Navigator.push(
                       context,
-                      title: 'Жалобы и отчёты',
-                      subtitle: 'Обработка репортов и решений по ним',
-                      icon: Icons.report_problem_rounded,
-                      gradientColors: const [
-                        Color(0xFFFF6B6B),
-                        Color(0xFFFF8E53),
-                      ],
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ReportsScreen(),
-                        ),
+                      MaterialPageRoute(
+                        builder: (_) => const AdminAuditLogsScreen(),
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    _buildActionCard(
-                      context,
-                      title: 'Управление пользователями',
-                      subtitle: 'Просмотр профилей и блокировки нарушителей',
-                      icon: Icons.people_rounded,
-                      gradientColors: const [
-                        Color(0xFF4ECDC4),
-                        Color(0xFF44A08D),
-                      ],
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const UsersListScreen(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 80),
-                  ]),
+                  ),
+              ]),
+            ),
+          ),
+          if (_isAdmin)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
+                child: _buildSystemStatusCard(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context) {
+    return SliverAppBar(
+      expandedHeight: 140,
+      pinned: true,
+      elevation: 0,
+      automaticallyImplyLeading: false,
+      backgroundColor: Colors.transparent,
+      title: Text(
+        _isAdmin ? 'Панель Admin' : 'Панель Moderator',
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.3,
+        ),
+      ),
+      flexibleSpace: FlexibleSpaceBar(
+        background: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  headerSubtitle ?? 'Управление экосистемой мероприятий',
+                  style: TextStyle(
+                    color: AppColors.dark.withValues(alpha: 0.6),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      leading: showBackButton
+          ? IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: AppColors.textPrimary,
+              ),
+              onPressed: () => Navigator.pop(context),
+            )
+          : null,
+      actions: [
+        if (onLogout != null)
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0961F6).withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              onPressed: onLogout,
+              icon: const Icon(
+                Icons.power_settings_new_rounded,
+                color: Color(0xFF0961F6),
+                size: 20,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildGridCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.85)),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0xFF184B94).withValues(alpha: 0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const Spacer(),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.dark,
                 ),
               ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.dark.withValues(alpha: 0.5),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSystemStatusCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1F3552).withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFF1F3552).withValues(alpha: 0.4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1F3552).withValues(alpha: 0.2),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.terminal_rounded, color: Color(0xFF38BDF8), size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Статус системы',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Spacer(),
+              Icon(Icons.circle, color: Colors.greenAccent, size: 10),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildStatsItem('API', 'Online'),
+              _buildStatsItem('DB', 'Linked'),
+              _buildStatsItem('Node', 'v20.x'),
             ],
           ),
         ],
@@ -238,106 +318,28 @@ class AdminDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionCard(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required List<Color> gradientColors,
-    String? badge,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.95),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFDCE2FF)),
-          boxShadow: const <BoxShadow>[
-            BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 18,
-              offset: Offset(0, 10),
-            ),
-          ],
+  Widget _buildStatsItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white54,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: gradientColors,
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(icon, color: Colors.white, size: 28),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF2F355E),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF7D85B0),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (badge != null)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: gradientColors),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  badge,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            const SizedBox(width: 8),
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF2FF),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: const Icon(
-                Icons.arrow_forward_ios,
-                color: Color(0xFF6974BB),
-                size: 14,
-              ),
-            ),
-          ],
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-      ),
+      ],
     );
   }
 }

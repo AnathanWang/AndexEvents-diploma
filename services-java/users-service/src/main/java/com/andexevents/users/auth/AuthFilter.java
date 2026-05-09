@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -28,6 +29,8 @@ public class AuthFilter extends OncePerRequestFilter {
     private final UserLookupRepository userLookupRepository;
     private final ObjectMapper objectMapper;
     private final RequestMatcher required;
+    private final RequestMatcher publicMatcher;
+    private final boolean defaultRequireAuth;
 
     public AuthFilter(
             AuthConfigProperties props,
@@ -38,18 +41,39 @@ public class AuthFilter extends OncePerRequestFilter {
         this.jwtVerifier = jwtVerifier;
         this.userLookupRepository = userLookupRepository;
         this.objectMapper = objectMapper;
+        this.defaultRequireAuth = props.isDefaultRequireAuth();
 
-        List<RequestMatcher> matchers = props.getRequiredPaths().stream()
+        List<RequestMatcher> requiredMatchers = props.getRequiredPaths().stream()
                 .map(p -> new AntPathRequestMatcher(p.getPattern(), p.getMethod()))
                 .map(m -> (RequestMatcher) m)
                 .toList();
 
-        this.required = matchers.isEmpty() ? request -> false : new OrRequestMatcher(matchers);
+        this.required = requiredMatchers.isEmpty() ? request -> false : new OrRequestMatcher(requiredMatchers);
+
+        List<RequestMatcher> publicMatchers = new ArrayList<>();
+        // Explicit public paths from config
+        publicMatchers.addAll(props.getPublicPaths().stream()
+                .map(p -> new AntPathRequestMatcher(p.getPattern(), p.getMethod()))
+                .map(m -> (RequestMatcher) m)
+                .toList());
+        // Always allow basic service introspection
+        publicMatchers.add(new AntPathRequestMatcher("/health", null));
+        publicMatchers.add(new AntPathRequestMatcher("/actuator/**", null));
+        publicMatchers.add(new AntPathRequestMatcher("/swagger-ui/**", null));
+        publicMatchers.add(new AntPathRequestMatcher("/v3/api-docs/**", null));
+
+        this.publicMatcher = publicMatchers.isEmpty() ? request -> false : new OrRequestMatcher(publicMatchers);
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !required.matches(request);
+        // In dev mode (defaultRequireAuth=false) preserve old behavior:
+        // only filter requests that are explicitly listed as required.
+        if (!defaultRequireAuth) {
+            return !required.matches(request);
+        }
+        // In prod mode (defaultRequireAuth=true) filter everything except explicitly public routes.
+        return publicMatcher.matches(request);
     }
 
     @Override
@@ -58,15 +82,26 @@ public class AuthFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
+        boolean requireAuth = defaultRequireAuth || required.matches(request);
+        boolean isPublic = publicMatcher.matches(request);
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            writeUnauthorized(response, "Unauthorized: No token provided");
+            if (requireAuth && !isPublic) {
+                writeUnauthorized(response, "Unauthorized: No token provided");
+                return;
+            }
+            filterChain.doFilter(request, response);
             return;
         }
 
         String token = authHeader.substring("Bearer ".length()).trim();
         if (token.isBlank()) {
-            writeUnauthorized(response, "Unauthorized: Invalid token format");
+            if (requireAuth && !isPublic) {
+                writeUnauthorized(response, "Unauthorized: Invalid token format");
+                return;
+            }
+            filterChain.doFilter(request, response);
             return;
         }
 
@@ -76,18 +111,38 @@ public class AuthFilter extends OncePerRequestFilter {
             String email = decoded.getClaim("email").asString();
 
             if (uid == null || uid.isBlank()) {
-                writeUnauthorized(response, "Unauthorized: Invalid token");
+                if (requireAuth && !isPublic) {
+                    writeUnauthorized(response, "Unauthorized: Invalid token");
+                    return;
+                }
+                filterChain.doFilter(request, response);
                 return;
             }
 
-            String userId = userLookupRepository.findUserIdByFirebaseUid(uid).orElse(null);
-            if (userId == null && email != null && !email.isBlank()) {
-                userId = userLookupRepository.findUserIdByEmail(email).orElse(null);
+            String userId = null;
+
+            if (email != null && !email.isBlank()) {
+                // Prefer exact uid+email match first, then email fallback.
+                // This avoids binding to a stale uid row when identity data was migrated.
+                userId = userLookupRepository.findUserIdByFirebaseUidAndEmail(uid, email).orElse(null);
+                if (userId == null) {
+                    userId = userLookupRepository.findUserIdByEmail(email).orElse(null);
+                }
             }
-            request.setAttribute(ATTR, new AuthContext(uid, email, userId));
+
+            if (userId == null) {
+                userId = userLookupRepository.findUserIdByFirebaseUid(uid).orElse(null);
+            }
+            AuthContext auth = new AuthContext(uid, email, userId);
+            request.setAttribute(ATTR, auth);
             filterChain.doFilter(request, response);
         } catch (JWTVerificationException ex) {
-            writeUnauthorized(response, "Unauthorized: Invalid token");
+            if (requireAuth && !isPublic) {
+                writeUnauthorized(response, "Unauthorized: Invalid token");
+                return;
+            }
+            // Public endpoints: ignore invalid token.
+            filterChain.doFilter(request, response);
         }
     }
 

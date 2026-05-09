@@ -237,11 +237,11 @@
 
 **После успешного деплоя:**
 1. ✅ Отметьте версию как stable в Git
-2. 📝 Обновите [CURRENT_STATUS.md](CURRENT_STATUS.md)
+2. 📝 Обновите статус в [ROADMAP.md](ROADMAP.md) (или актуальный документ проекта)
 3. 🎉 Объявите релиз команде
 4. 📊 Установите monitoring alerts для новой версии
 
 **Документы:**
 - [Production Deployment Guide](docs/production-deployment.md)
-- [Secrets Management](secrets/README.md)
+- Секреты локально: каталог `secrets/` (см. [docs/setup.md](docs/setup.md) → Secrets)
 - [Architecture](docs/architecture.md)

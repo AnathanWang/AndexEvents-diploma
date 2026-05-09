@@ -22,6 +22,10 @@ class ProfileUpdateRequested extends ProfileEvent {
   final String? bio;
   final List<String>? interests;
   final Map<String, String>? socialLinks;
+  final bool? showVisitedEvents;
+  final bool? showInMatches;
+  final bool? incognitoMode;
+  final bool? hideOnlineStatus;
 
   const ProfileUpdateRequested({
     this.displayName,
@@ -31,6 +35,10 @@ class ProfileUpdateRequested extends ProfileEvent {
     this.bio,
     this.interests,
     this.socialLinks,
+    this.showVisitedEvents,
+    this.showInMatches,
+    this.incognitoMode,
+    this.hideOnlineStatus,
   });
 
   @override
@@ -42,6 +50,10 @@ class ProfileUpdateRequested extends ProfileEvent {
     bio,
     interests,
     socialLinks,
+    showVisitedEvents,
+    showInMatches,
+    incognitoMode,
+    hideOnlineStatus,
   ];
 }
 

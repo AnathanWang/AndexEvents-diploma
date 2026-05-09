@@ -61,7 +61,8 @@ func main() {
 	}
 
 	matchRepo := repository.NewMatchRepository(pool)
-	matchService := service.NewMatchService(matchRepo)
+	pushNotifier := service.NewFCMPushNotifier(firebaseClient)
+	matchService := service.NewMatchService(matchRepo, pushNotifier)
 	matchHandler := handler.NewMatchHandler(matchService)
 
 	if cfg.Environment == "production" {

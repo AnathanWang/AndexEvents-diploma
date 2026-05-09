@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import '../../core/config/app_config.dart';
 import '../../core/auth/id_token_provider.dart';
 import '../../core/services/logger_service.dart';
+import '../models/admin_audit_log_model.dart';
+import '../models/user_sanction_model.dart';
 import '../models/user_model.dart';
 import 'local_storage_service.dart';
 
@@ -180,6 +182,11 @@ class UserService {
     List<String>? interests,
     Map<String, String>? socialLinks,
     bool? isOnboardingCompleted,
+    bool? showVisitedEvents,
+    bool? showInMatches,
+    bool? incognitoMode,
+    bool? hideOnlineStatus,
+    String? fcmToken,
   }) async {
     try {
       final String? token = await _getIdToken();
@@ -202,8 +209,14 @@ class UserService {
       if (isOnboardingCompleted != null) {
         body['isOnboardingCompleted'] = isOnboardingCompleted;
       }
+      if (showVisitedEvents != null) body['showVisitedEvents'] = showVisitedEvents;
+      if (showInMatches != null) body['showInMatches'] = showInMatches;
+      if (incognitoMode != null) body['incognitoMode'] = incognitoMode;
+      if (hideOnlineStatus != null) body['hideOnlineStatus'] = hideOnlineStatus;
+      if (fcmToken != null) body['fcmToken'] = fcmToken;
 
       final url = '${AppConfig.baseUrl}/users/me';
+      LoggerService.info('[UserService] PUT $url with body: ${json.encode(body)}');
       LoggerService.debug('[UserService] PUT $url');
       LoggerService.debug(
         '[UserService] updateProfile payload keys: ${body.keys.toList()}',
@@ -243,6 +256,11 @@ class UserService {
     } catch (e) {
       throw Exception('Не удалось обновить профиль: $e');
     }
+  }
+
+  Future<void> updateFcmToken(String fcmToken) async {
+    if (fcmToken.trim().isEmpty) return;
+    await updateProfile(fcmToken: fcmToken.trim());
   }
 
   /// Обновить геолокацию пользователя
@@ -409,6 +427,57 @@ class UserService {
     }
   }
 
+  /// Получить полный список пользователей для модерации
+  Future<List<UserModel>> getUsersForModeration() async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await _with429Retry(
+        () => http
+            .get(
+              Uri.parse('${AppConfig.baseUrl}/users'),
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Content-Type': 'application/json',
+              },
+            )
+            .timeout(AppConfig.receiveTimeout),
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final usersList = json['data'] as List<dynamic>?;
+
+        return usersList
+                ?.map((u) => UserModel.fromJson(u as Map<String, dynamic>))
+                .toList() ??
+            [];
+      }
+
+      if (response.statusCode == 401) {
+        throw Exception('Истекла сессия авторизации');
+      }
+
+      if (response.statusCode == 403) {
+        throw Exception('Недостаточно прав для доступа к модерации');
+      }
+
+      throw Exception(
+        'Ошибка получения пользователей модерации: ${response.statusCode}',
+      );
+    } on TimeoutException {
+      throw Exception('Таймаут при загрузке пользователей модерации');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error loading moderation users', e);
+      rethrow;
+    }
+  }
+
   /// Получить пользователя по id
   Future<UserModel> getUserById(String userId) async {
     try {
@@ -447,6 +516,7 @@ class UserService {
   /// Получить взаимные матчи (пользователи, с которыми есть mutual like)
   Future<List<UserModel>> getMutualMatches({
     int limit = 50,
+    String? eventId,
   }) async {
     try {
       final token = await _getIdToken();
@@ -455,7 +525,13 @@ class UserService {
       }
 
       // На бэкенде: GET /api/matches -> отдаёт список пользователей
-      final uri = Uri.parse('${AppConfig.baseUrl}/matches?limit=$limit');
+      final query = <String, String>{'limit': '$limit'};
+      if (eventId != null && eventId.trim().isNotEmpty) {
+        query['eventId'] = eventId.trim();
+      }
+      final uri = Uri.parse(
+        '${AppConfig.baseUrl}/matches',
+      ).replace(queryParameters: query);
       final response = await _with429Retry(
         () => http
             .get(
@@ -498,6 +574,7 @@ class UserService {
   Future<List<UserModel>> getUsersByMatchAction({
     required String action,
     int limit = 50,
+    String? eventId,
   }) async {
     try {
       final token = await _getIdToken();
@@ -505,9 +582,16 @@ class UserService {
         throw Exception('Не удалось получить токен авторизации');
       }
 
+      final query = <String, String>{
+        'action': action,
+        'limit': '$limit',
+      };
+      if (eventId != null && eventId.trim().isNotEmpty) {
+        query['eventId'] = eventId.trim();
+      }
       final uri = Uri.parse(
-        '${AppConfig.baseUrl}/matches/actions?action=$action&limit=$limit',
-      );
+        '${AppConfig.baseUrl}/matches/actions',
+      ).replace(queryParameters: query);
 
       final response = await _with429Retry(
         () => http
@@ -550,6 +634,7 @@ class UserService {
   /// Получить пользователей, которые лайкнули меня, но я еще не ответил
   Future<List<UserModel>> getIncomingLikes({
     int limit = 50,
+    String? eventId,
   }) async {
     try {
       final token = await _getIdToken();
@@ -557,9 +642,13 @@ class UserService {
         throw Exception('Не удалось получить токен авторизации');
       }
 
+      final query = <String, String>{'limit': '$limit'};
+      if (eventId != null && eventId.trim().isNotEmpty) {
+        query['eventId'] = eventId.trim();
+      }
       final uri = Uri.parse(
-        '${AppConfig.baseUrl}/matches/incoming-likes?limit=$limit',
-      );
+        '${AppConfig.baseUrl}/matches/incoming-likes',
+      ).replace(queryParameters: query);
 
       final response = await _with429Retry(
         () => http
@@ -610,12 +699,36 @@ class UserService {
     return '?${queryParts.join('&')}';
   }
 
+  String _extractApiErrorMessage(http.Response response, String fallback) {
+    try {
+      final payload = json.decode(response.body);
+      if (payload is Map<String, dynamic>) {
+        final message = payload['message'];
+        if (message is String && message.trim().isNotEmpty) {
+          return message.trim();
+        }
+        final error = payload['error'];
+        if (error is String && error.trim().isNotEmpty) {
+          return error.trim();
+        }
+      }
+    } catch (_) {
+      // Ignore JSON parse issues and return fallback message.
+    }
+    return fallback;
+  }
+
   /// Отправить лайк на сервер
-  Future<void> sendLike(String targetUserId) async {
+  Future<void> sendLike(String targetUserId, {String? eventId}) async {
     try {
       final token = await _getIdToken();
       if (token == null) {
         throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final body = <String, dynamic>{'targetUserId': targetUserId};
+      if (eventId != null) {
+        body['eventId'] = eventId;
       }
 
       final response = await http
@@ -625,7 +738,7 @@ class UserService {
               'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
             },
-            body: json.encode({'targetUserId': targetUserId}),
+            body: json.encode(body),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -634,8 +747,14 @@ class UserService {
       } else if (response.statusCode == 401) {
         throw Exception('Истекла сессия авторизации');
       } else {
-        LoggerService.error('[UserService] Error sending like: ${response.statusCode}');
-        throw Exception('Ошибка при отправке лайка');
+        final apiMessage = _extractApiErrorMessage(
+          response,
+          'Ошибка при отправке лайка',
+        );
+        LoggerService.error(
+          '[UserService] Error sending like: ${response.statusCode}, body=${response.body}',
+        );
+        throw Exception('$apiMessage (${response.statusCode})');
       }
     } on TimeoutException {
       throw Exception('Таймаут при отправке лайка');
@@ -648,11 +767,16 @@ class UserService {
   }
 
   /// Отправить дизлайк на сервер
-  Future<void> sendDislike(String targetUserId) async {
+  Future<void> sendDislike(String targetUserId, {String? eventId}) async {
     try {
       final token = await _getIdToken();
       if (token == null) {
         throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final body = <String, dynamic>{'targetUserId': targetUserId};
+      if (eventId != null) {
+        body['eventId'] = eventId;
       }
 
       final response = await http
@@ -662,7 +786,7 @@ class UserService {
               'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
             },
-            body: json.encode({'targetUserId': targetUserId}),
+            body: json.encode(body),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -671,8 +795,14 @@ class UserService {
       } else if (response.statusCode == 401) {
         throw Exception('Истекла сессия авторизации');
       } else {
-        LoggerService.error('[UserService] Error sending dislike: ${response.statusCode}');
-        throw Exception('Ошибка при отправке дизлайка');
+        final apiMessage = _extractApiErrorMessage(
+          response,
+          'Ошибка при отправке дизлайка',
+        );
+        LoggerService.error(
+          '[UserService] Error sending dislike: ${response.statusCode}, body=${response.body}',
+        );
+        throw Exception('$apiMessage (${response.statusCode})');
       }
     } on TimeoutException {
       throw Exception('Таймаут при отправке дизлайка');
@@ -685,11 +815,16 @@ class UserService {
   }
 
   /// Отправить супер-лайк на сервер
-  Future<void> sendSuperLike(String targetUserId) async {
+  Future<void> sendSuperLike(String targetUserId, {String? eventId}) async {
     try {
       final token = await _getIdToken();
       if (token == null) {
         throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final body = <String, dynamic>{'targetUserId': targetUserId};
+      if (eventId != null) {
+        body['eventId'] = eventId;
       }
 
       final response = await http
@@ -699,7 +834,7 @@ class UserService {
               'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
             },
-            body: json.encode({'targetUserId': targetUserId}),
+            body: json.encode(body),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -708,8 +843,14 @@ class UserService {
       } else if (response.statusCode == 401) {
         throw Exception('Истекла сессия авторизации');
       } else {
-        LoggerService.error('[UserService] Error sending super like: ${response.statusCode}');
-        throw Exception('Ошибка при отправке супер-лайка');
+        final apiMessage = _extractApiErrorMessage(
+          response,
+          'Ошибка при отправке супер-лайка',
+        );
+        LoggerService.error(
+          '[UserService] Error sending super like: ${response.statusCode}, body=${response.body}',
+        );
+        throw Exception('$apiMessage (${response.statusCode})');
       }
     } on TimeoutException {
       throw Exception('Таймаут при отправке супер-лайка');
@@ -755,6 +896,279 @@ class UserService {
       throw Exception('Не удалось подключиться к API: ${e.message}');
     } catch (e) {
       LoggerService.error('[UserService] Error blocking user', e);
+      rethrow;
+    }
+  }
+
+  Future<void> updateUserRole({
+    required String targetUserId,
+    required String role,
+  }) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .put(
+            Uri.parse('${AppConfig.baseUrl}/users/$targetUserId/role'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: json.encode({'role': role}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        LoggerService.info('[UserService] User role updated: $targetUserId -> $role');
+        return;
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final message = data['message'] ?? 'Ошибка смены роли';
+
+      if (response.statusCode == 401) {
+        throw Exception('Истекла сессия авторизации');
+      }
+
+      if (response.statusCode == 403) {
+        throw Exception('Недостаточно прав для смены роли');
+      }
+
+      throw Exception('$message (${response.statusCode})');
+    } on TimeoutException {
+      throw Exception('Таймаут при смене роли пользователя');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error updating user role', e);
+      rethrow;
+    }
+  }
+
+  Future<List<AdminAuditLogModel>> getAdminAuditLogs({int limit = 100}) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.baseUrl}/users/admin/audit-logs?limit=$limit'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final rows = data['data'] as List<dynamic>? ?? const <dynamic>[];
+        return rows
+            .map(
+              (row) => AdminAuditLogModel.fromJson(
+                row as Map<String, dynamic>,
+              ),
+            )
+            .toList();
+      }
+
+      if (response.statusCode == 401) {
+        throw Exception('Истекла сессия авторизации');
+      }
+
+      if (response.statusCode == 403) {
+        throw Exception('Недостаточно прав для просмотра журнала');
+      }
+
+      throw Exception('Ошибка загрузки журнала: ${response.statusCode}');
+    } on TimeoutException {
+      throw Exception('Таймаут при загрузке журнала');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error loading admin audit logs', e);
+      rethrow;
+    }
+  }
+
+  Future<List<UserSanctionModel>> getAdminSanctions({
+    String? targetUserId,
+    int limit = 200,
+  }) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final query = <String, String>{'limit': '$limit'};
+      if (targetUserId != null && targetUserId.isNotEmpty) {
+        query['targetUserId'] = targetUserId;
+      }
+
+      final uri = Uri.parse(
+        '${AppConfig.baseUrl}/users/admin/sanctions',
+      ).replace(queryParameters: query);
+
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final rows = data['data'] as List<dynamic>? ?? const <dynamic>[];
+        return rows
+            .map((row) => UserSanctionModel.fromJson(row as Map<String, dynamic>))
+            .toList();
+      }
+
+      if (response.statusCode == 401) {
+        throw Exception('Истекла сессия авторизации');
+      }
+
+      if (response.statusCode == 403) {
+        throw Exception('Недостаточно прав для просмотра санкций');
+      }
+
+      throw Exception('Ошибка загрузки санкций: ${response.statusCode}');
+    } on TimeoutException {
+      throw Exception('Таймаут при загрузке санкций');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error loading sanctions', e);
+      rethrow;
+    }
+  }
+
+  Future<List<UserSanctionModel>> getMySanctions() async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.baseUrl}/users/me/sanctions'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final rows = data['data'] as List<dynamic>? ?? const <dynamic>[];
+        return rows
+            .map((row) => UserSanctionModel.fromJson(row as Map<String, dynamic>))
+            .toList();
+      }
+
+      if (response.statusCode == 401) {
+        throw Exception('Истекла сессия авторизации');
+      }
+
+      throw Exception('Ошибка загрузки моих санкций: ${response.statusCode}');
+    } on TimeoutException {
+      throw Exception('Таймаут при загрузке моих санкций');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error loading my sanctions', e);
+      rethrow;
+    }
+  }
+
+  Future<void> createUserSanction({
+    required String targetUserId,
+    required String type,
+    required String reason,
+    DateTime? expiresAt,
+  }) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('${AppConfig.baseUrl}/users/admin/sanctions'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: json.encode({
+              'targetUserId': targetUserId,
+              'type': type,
+              'reason': reason,
+              'expiresAt': expiresAt?.toUtc().toIso8601String(),
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        LoggerService.info('[UserService] User sanction created: $targetUserId -> $type');
+        return;
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final message = data['message'] ?? 'Ошибка создания санкции';
+      throw Exception('$message (${response.statusCode})');
+    } on TimeoutException {
+      throw Exception('Таймаут при создании санкции');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error creating user sanction', e);
+      rethrow;
+    }
+  }
+
+  Future<void> revokeUserSanction(String sanctionId) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .put(
+            Uri.parse('${AppConfig.baseUrl}/users/admin/sanctions/$sanctionId/revoke'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        LoggerService.info('[UserService] User sanction revoked: $sanctionId');
+        return;
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final message = data['message'] ?? 'Ошибка отзыва санкции';
+      throw Exception('$message (${response.statusCode})');
+    } on TimeoutException {
+      throw Exception('Таймаут при отзыве санкции');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error revoking user sanction', e);
       rethrow;
     }
   }

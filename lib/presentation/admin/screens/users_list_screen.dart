@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/models/report_model.dart';
+import '../../../data/models/user_sanction_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/report_service.dart';
 import '../../../data/services/user_service.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../profile/screens/user_profile_screen.dart';
+import '../users_moderation/moderation_user_card.dart';
+import '../users_moderation/moderation_user_item.dart';
+import '../users_moderation/users_moderation_header.dart';
+import '../widgets/admin_screen_scaffold.dart';
+import '../widgets/admin_state_view.dart';
+import '../widgets/moderation_reports_bottom_sheet.dart';
 
 class UsersListScreen extends StatefulWidget {
   const UsersListScreen({super.key});
@@ -20,8 +28,12 @@ class _UsersListScreenState extends State<UsersListScreen> {
   bool _isLoading = true;
   String? _loadError;
   String _search = '';
+  UserModel? _currentUser;
   final Set<String> _actionInProgress = <String>{};
-  List<_ModerationUserItem> _users = <_ModerationUserItem>[];
+  List<ModerationUserItem> _users = <ModerationUserItem>[];
+
+  bool get _isAdmin =>
+      (_currentUser?.role ?? '').trim().toUpperCase() == 'ADMIN';
 
   @override
   void initState() {
@@ -36,7 +48,21 @@ class _UsersListScreenState extends State<UsersListScreen> {
     });
 
     try {
-      final reports = await _reportService.getReports();
+      final currentUser = await _userService.getCurrentUser();
+      final isAdmin =
+          (currentUser.role ?? '').trim().toUpperCase() == 'ADMIN';
+
+      final activeSanctions = isAdmin
+          ? await _userService.getAdminSanctions(limit: 500)
+          : <UserSanctionModel>[];
+
+      final results = await Future.wait<dynamic>([
+        _userService.getUsersForModeration(),
+        _reportService.getReports(),
+      ]);
+
+      final users = results[0] as List<UserModel>;
+      final reports = results[1] as List<ReportModel>;
 
       final Map<String, List<ReportModel>> reportsByUserId =
           <String, List<ReportModel>>{};
@@ -47,30 +73,39 @@ class _UsersListScreenState extends State<UsersListScreen> {
         reportsByUserId.putIfAbsent(target, () => <ReportModel>[]).add(report);
       }
 
-      final List<Future<_ModerationUserItem?>> tasks = reportsByUserId.entries
-          .map((entry) async {
-            try {
-              final user = await _userService.getUserById(entry.key);
-              final pending = entry.value
-                  .where((r) => r.status.toUpperCase() == 'PENDING')
-                  .length;
-              return _ModerationUserItem(
-                user: user,
-                reports: entry.value,
-                pendingReports: pending,
-              );
-            } catch (_) {
-              return null;
-            }
-          })
-          .toList();
+      final Map<String, UserSanctionModel> activeSanctionByUserId =
+          <String, UserSanctionModel>{};
+      for (final sanction in activeSanctions.where((s) => s.isActive)) {
+        final existing = activeSanctionByUserId[sanction.targetUserId];
+        if (existing == null || sanction.createdAt.isAfter(existing.createdAt)) {
+          activeSanctionByUserId[sanction.targetUserId] = sanction;
+        }
+      }
 
-      final items = await Future.wait(tasks);
-      final resolved = items.whereType<_ModerationUserItem>().toList()
-        ..sort((a, b) => b.pendingReports.compareTo(a.pendingReports));
+      final resolved = users
+          .map((user) {
+            final userReports = reportsByUserId[user.id] ?? <ReportModel>[];
+            final pending = userReports
+                .where((r) => r.status.toUpperCase() == 'PENDING')
+                .length;
+
+            return ModerationUserItem(
+              user: user,
+              reports: userReports,
+              pendingReports: pending,
+              activeSanction: activeSanctionByUserId[user.id],
+            );
+          })
+          .toList()
+        ..sort((a, b) {
+          final byPending = b.pendingReports.compareTo(a.pendingReports);
+          if (byPending != 0) return byPending;
+          return a.user.email.toLowerCase().compareTo(b.user.email.toLowerCase());
+        });
 
       if (!mounted) return;
       setState(() {
+        _currentUser = currentUser;
         _users = resolved;
         _isLoading = false;
         _loadError = null;
@@ -87,6 +122,232 @@ class _UsersListScreenState extends State<UsersListScreen> {
     }
   }
 
+  Future<void> _changeUserRole(ModerationUserItem item, String nextRole) async {
+    final id = item.user.id;
+    final currentRole = (item.user.role ?? 'USER').toUpperCase();
+    if (currentRole == nextRole) return;
+
+    if (_currentUser?.id == id) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Нельзя менять свою собственную роль')),
+      );
+      return;
+    }
+
+    if (_actionInProgress.contains(id)) return;
+
+    setState(() {
+      _actionInProgress.add(id);
+    });
+
+    try {
+      await _userService.updateUserRole(targetUserId: id, role: nextRole);
+      await _loadUsers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Роль изменена на $nextRole')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка смены роли: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _actionInProgress.remove(id);
+        });
+      }
+    }
+  }
+
+  Future<void> _openSanctionDialog(ModerationUserItem item) async {
+    final sanction = item.activeSanction;
+    if (sanction != null && sanction.isActive) {
+      final shouldRevoke = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text('Отозвать санкцию?'),
+          content: Text(
+            'Активная санкция: ${moderationSanctionPillLabel(sanction)}\n\nПричина: ${sanction.reason}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Отозвать'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldRevoke == true) {
+        await _revokeSanction(item, sanction.id);
+      }
+      return;
+    }
+
+    String sanctionType = 'WARNING';
+    final reasonController = TextEditingController();
+    final daysController = TextEditingController();
+
+    final shouldApply = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: const Text('Назначить санкцию'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    initialValue: sanctionType,
+                    items: const [
+                      DropdownMenuItem(value: 'WARNING', child: Text('WARNING')),
+                      DropdownMenuItem(value: 'MUTE', child: Text('MUTE')),
+                      DropdownMenuItem(value: 'EVENT_CREATE_BAN', child: Text('EVENT_CREATE_BAN')),
+                      DropdownMenuItem(value: 'FULL_BAN', child: Text('FULL_BAN')),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setDialogState(() => sanctionType = value);
+                    },
+                    decoration: const InputDecoration(labelText: 'Тип санкции'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: reasonController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Причина',
+                      hintText: 'Опишите нарушение',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: daysController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Срок (дней, пусто = бессрочно)',
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Отмена'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Применить'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (shouldApply == true) {
+      final reason = reasonController.text.trim();
+      if (reason.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Укажите причину санкции')),
+          );
+        }
+        reasonController.dispose();
+        daysController.dispose();
+        return;
+      }
+
+      final days = int.tryParse(daysController.text.trim());
+      final expiresAt = days != null && days > 0
+          ? DateTime.now().toUtc().add(Duration(days: days))
+          : null;
+      await _applySanction(item, sanctionType, reason, expiresAt);
+    }
+
+    reasonController.dispose();
+    daysController.dispose();
+  }
+
+  Future<void> _applySanction(
+    ModerationUserItem item,
+    String type,
+    String reason,
+    DateTime? expiresAt,
+  ) async {
+    final id = item.user.id;
+    if (_actionInProgress.contains(id)) return;
+
+    setState(() {
+      _actionInProgress.add(id);
+    });
+
+    try {
+      await _userService.createUserSanction(
+        targetUserId: id,
+        type: type,
+        reason: reason,
+        expiresAt: expiresAt,
+      );
+
+      await _loadUsers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Санкция применена')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка применения санкции: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _actionInProgress.remove(id);
+        });
+      }
+    }
+  }
+
+  Future<void> _revokeSanction(ModerationUserItem item, String sanctionId) async {
+    final id = item.user.id;
+    if (_actionInProgress.contains(id)) return;
+
+    setState(() {
+      _actionInProgress.add(id);
+    });
+
+    try {
+      await _userService.revokeUserSanction(sanctionId);
+      await _loadUsers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Санкция отозвана')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка отзыва санкции: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _actionInProgress.remove(id);
+        });
+      }
+    }
+  }
+
   String _readableError(Object error, {required String fallback}) {
     if (error is ReportAccessDeniedException) {
       return error.message;
@@ -100,7 +361,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
     return fallback;
   }
 
-  Future<void> _blockUser(_ModerationUserItem item) async {
+  Future<void> _blockUser(ModerationUserItem item) async {
     final id = item.user.id;
     if (_actionInProgress.contains(id)) return;
 
@@ -128,7 +389,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
     }
   }
 
-  Future<void> _resolvePendingReports(_ModerationUserItem item) async {
+  Future<void> _resolvePendingReports(ModerationUserItem item) async {
     final id = item.user.id;
     if (_actionInProgress.contains(id)) return;
 
@@ -171,6 +432,52 @@ class _UsersListScreenState extends State<UsersListScreen> {
     }
   }
 
+  Future<void> _showUserReportsDialog(ModerationUserItem item) async {
+    await ModerationReportsBottomSheet.show(
+      context: context,
+      title: 'Жалобы пользователя',
+      headerIcon: Icons.report_problem_rounded,
+      reports: item.reports,
+      pendingCount: item.pendingReports,
+      emptyMessage: 'По пользователю пока нет жалоб',
+      showReporterLine: false,
+      enableCopyReportIdOnLongPress: false,
+      onDismissPendingReport: (report) => _dismissSingleReport(item, report),
+    );
+  }
+
+  Future<void> _dismissSingleReport(
+    ModerationUserItem item,
+    ReportModel report,
+  ) async {
+    final id = item.user.id;
+    if (_actionInProgress.contains(id)) return;
+
+    setState(() {
+      _actionInProgress.add(id);
+    });
+
+    try {
+      await _reportService.resolveReport(report.id, 'DISMISSED');
+      await _loadUsers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Жалоба отклонена')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка отклонения жалобы: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _actionInProgress.remove(id);
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = _users.where((item) {
@@ -180,251 +487,79 @@ class _UsersListScreenState extends State<UsersListScreen> {
           (item.user.displayName ?? '').toLowerCase().contains(q);
     }).toList();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        title: const Text('Управление пользователями'),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF2F355E),
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: _isLoading ? null : _loadUsers,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
+    return AdminScreenScaffold(
+      title: 'Управление пользователями',
+      actions: [
+        IconButton(
+          onPressed: _isLoading ? null : _loadUsers,
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+      ],
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-            child: TextField(
-              onChanged: (value) => setState(() => _search = value),
-              decoration: InputDecoration(
-                hintText: 'Поиск по email или имени',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFDDE3FF)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFDDE3FF)),
-                ),
-              ),
-            ),
+          UsersModerationHeader(
+            onSearchChanged: (value) => setState(() => _search = value),
+            showReportsShortcut: _isAdmin,
           ),
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const AdminStateView.loading()
                 : _loadError != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.lock_outline,
-                            size: 52,
-                            color: Color(0xFF9E9E9E),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _loadError!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Color(0xFF6B6B6B),
-                              fontSize: 15,
+                    ? AdminStateView.error(
+                        title: 'Не удалось загрузить пользователей',
+                        message: _loadError,
+                        actionLabel: 'Повторить',
+                        onAction: _loadUsers,
+                      )
+                    : filtered.isEmpty
+                        ? const AdminStateView.empty(
+                            title: 'Пользователи не найдены',
+                            message: 'Попробуйте изменить запрос поиска.',
+                            icon: Icons.person_search_rounded,
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _loadUsers,
+                            color: AppColors.primary,
+                            child: ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                              itemCount: filtered.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 12),
+                              itemBuilder: (context, index) {
+                                final item = filtered[index];
+                                final inProgress =
+                                    _actionInProgress.contains(item.user.id);
+
+                                return ModerationUserCard(
+                                  item: item,
+                                  isAdmin: _isAdmin,
+                                  inProgress: inProgress,
+                                  onChangeRole: (role) =>
+                                      _changeUserRole(item, role),
+                                  onProfile: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) =>
+                                            UserProfileScreen.fromUser(
+                                          user: item.user,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  onReports: () =>
+                                      _showUserReportsDialog(item),
+                                  onResolvePending: () =>
+                                      _resolvePendingReports(item),
+                                  onBlock: () => _blockUser(item),
+                                  onSanction: () =>
+                                      _openSanctionDialog(item),
+                                );
+                              },
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          OutlinedButton(
-                            onPressed: _loadUsers,
-                            child: const Text('Повторить'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : filtered.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Пользователи для модерации не найдены',
-                      style: TextStyle(color: Color(0xFF7D85B0)),
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _loadUsers,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final item = filtered[index];
-                        final user = item.user;
-                        final inProgress = _actionInProgress.contains(user.id);
-
-                        return Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFDCE3FF)),
-                          ),
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 22,
-                                    backgroundColor: const Color(0xFFEAF0FF),
-                                    backgroundImage: user.photoUrl != null
-                                        ? NetworkImage(user.photoUrl!)
-                                        : null,
-                                    child: user.photoUrl == null
-                                        ? Text(
-                                            (user.displayName?.isNotEmpty ==
-                                                        true
-                                                    ? user.displayName!
-                                                    : user.email)[0]
-                                                .toUpperCase(),
-                                            style: const TextStyle(
-                                              color: Color(0xFF5965D8),
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          )
-                                        : null,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          user.displayName?.isNotEmpty == true
-                                              ? user.displayName!
-                                              : user.email,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF2F355E),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          user.email,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            color: Color(0xFF7A82AC),
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: item.pendingReports > 0
-                                          ? const Color(0xFFFFEFE8)
-                                          : const Color(0xFFEAF8F2),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      'Жалоб: ${item.pendingReports}',
-                                      style: TextStyle(
-                                        color: item.pendingReports > 0
-                                            ? const Color(0xFFD16A3A)
-                                            : const Color(0xFF2E9E71),
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton(
-                                      onPressed: inProgress
-                                          ? null
-                                          : () {
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute<void>(
-                                                  builder: (_) =>
-                                                      UserProfileScreen.fromUser(
-                                                        user: user,
-                                                      ),
-                                                ),
-                                              );
-                                            },
-                                      child: const Text('Профиль'),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: inProgress
-                                          ? null
-                                          : () => _resolvePendingReports(item),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFF4ECDC4,
-                                        ),
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      child: const Text('Закрыть жалобы'),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: inProgress
-                                          ? null
-                                          : () => _blockUser(item),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFFFF6B6B,
-                                        ),
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      child: const Text('Блок'),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
           ),
         ],
       ),
     );
   }
-}
-
-class _ModerationUserItem {
-  const _ModerationUserItem({
-    required this.user,
-    required this.reports,
-    required this.pendingReports,
-  });
-
-  final UserModel user;
-  final List<ReportModel> reports;
-  final int pendingReports;
 }

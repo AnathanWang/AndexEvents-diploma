@@ -30,7 +30,8 @@ func (h *MatchHandler) GetMyMutualMatches(c *gin.Context) {
 		return
 	}
 
-	users, err := h.matchService.GetMutualMatches(c.Request.Context(), userID.(string))
+	eventID := c.Query("eventId")
+	users, err := h.matchService.GetMutualMatches(c.Request.Context(), userID.(string), eventID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Success: false,
@@ -56,6 +57,8 @@ func (h *MatchHandler) GetMyActions(c *gin.Context) {
 		return
 	}
 
+	eventID := c.Query("eventId")
+
 	actionRaw := c.Query("action")
 	action := model.MatchAction(actionRaw)
 	if !action.IsValid() {
@@ -79,7 +82,7 @@ func (h *MatchHandler) GetMyActions(c *gin.Context) {
 		}
 	}
 
-	users, err := h.matchService.GetUsersByAction(c.Request.Context(), userID.(string), action, limit)
+	users, err := h.matchService.GetUsersByAction(c.Request.Context(), userID.(string), eventID, action, limit)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidAction) {
 			c.JSON(http.StatusBadRequest, model.ErrorResponse{
@@ -112,6 +115,8 @@ func (h *MatchHandler) GetIncomingLikes(c *gin.Context) {
 		return
 	}
 
+	eventID := c.Query("eventId")
+
 	limit := 50
 	if limitRaw := c.Query("limit"); limitRaw != "" {
 		if parsed, err := strconv.Atoi(limitRaw); err == nil {
@@ -125,7 +130,7 @@ func (h *MatchHandler) GetIncomingLikes(c *gin.Context) {
 		}
 	}
 
-	users, err := h.matchService.GetIncomingLikes(c.Request.Context(), userID.(string), limit)
+	users, err := h.matchService.GetIncomingLikes(c.Request.Context(), userID.(string), eventID, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Success: false,
@@ -199,7 +204,7 @@ func (h *MatchHandler) sendAction(c *gin.Context, action model.MatchAction) {
 		return
 	}
 
-	result, err := h.matchService.CreateOrUpdateMatch(c.Request.Context(), userID.(string), req.TargetUserID, action)
+	result, err := h.matchService.CreateOrUpdateMatch(c.Request.Context(), userID.(string), req.TargetUserID, req.EventID, action)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Success: false,

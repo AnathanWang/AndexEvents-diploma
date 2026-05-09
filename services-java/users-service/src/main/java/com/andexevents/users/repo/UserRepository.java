@@ -1,6 +1,7 @@
 package com.andexevents.users.repo;
 
 import com.andexevents.users.model.UserDto;
+import com.andexevents.users.service.UserService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -40,6 +41,13 @@ public class UserRepository {
                 id
         );
         return rows.stream().findFirst();
+    }
+
+    public List<UserDto> findAllForModeration() {
+        return jdbcTemplate.query(
+                "SELECT * FROM users.\"User\" ORDER BY \"createdAt\" DESC",
+                mapper()
+        );
     }
 
     public Optional<UserDto> findByFirebaseUid(String firebaseUid) {
@@ -138,6 +146,15 @@ public class UserRepository {
             "SELECT u.* FROM users.\"User\" u WHERE u.id <> ? " +
                 "AND u.\"isOnboardingCompleted\" = true " +
                 "AND u.\"isProfileVisible\" = true " +
+                "AND u.\"showInMatches\" = true " +
+                "AND (" +
+                "    u.\"incognitoMode\" = false " +
+                "    OR EXISTS (" +
+                "        SELECT 1 FROM \"Match\" m " +
+                "        WHERE (m.\"userAId\" = u.id AND m.\"userBId\" = ? AND m.\"userAAction\" = 'LIKE') " +
+                "           OR (m.\"userBId\" = u.id AND m.\"userAId\" = ? AND m.\"userBAction\" = 'LIKE')" +
+                "    )" +
+                ") " +
                 "AND u.\"lastLatitude\" BETWEEN ? AND ? " +
                 "AND u.\"lastLongitude\" BETWEEN ? AND ? " +
                 "AND NOT EXISTS (" +
@@ -145,6 +162,8 @@ public class UserRepository {
         );
 
         List<Object> params = new ArrayList<>();
+        params.add(userId);
+        params.add(userId);
         params.add(userId);
         params.add(minLat);
         params.add(maxLat);
@@ -173,6 +192,10 @@ public class UserRepository {
     }
 
     private UserDto mapUser(ResultSet rs) throws SQLException {
+        return mapUser(rs, null, null);
+    }
+
+    private UserDto mapUser(ResultSet rs, Double averageRating, Long eventsCreatedCount) throws SQLException {
         Array interestsArr = rs.getArray("interests");
         List<String> interests = interestsArr == null ? List.of() : Arrays.asList((String[]) interestsArr.getArray());
 
@@ -191,7 +214,7 @@ public class UserRepository {
 
         return new UserDto(
                 rs.getString("id"),
-            rs.getString("firebaseUid"),
+                rs.getString("firebaseUid"),
                 rs.getString("email"),
                 rs.getString("displayName"),
                 rs.getString("photoUrl"),
@@ -211,11 +234,56 @@ public class UserRepository {
                 (Integer) rs.getObject("minAge"),
                 (Integer) rs.getObject("maxAge"),
                 (Integer) rs.getObject("maxDistance"),
+                (Boolean) rs.getObject("showVisitedEvents"),
+                (Boolean) rs.getObject("showInMatches"),
+                (Boolean) rs.getObject("incognitoMode"),
+                (Boolean) rs.getObject("hideOnlineStatus"),
                 rs.getString("fcmToken"),
                 (Boolean) rs.getObject("isOnboardingCompleted"),
                 toInstant(rs.getObject("createdAt")),
-                toInstant(rs.getObject("updatedAt"))
+                toInstant(rs.getObject("updatedAt")),
+                averageRating,
+                eventsCreatedCount
         );
+    }
+
+    /**
+     * Find a user by ID and enrich with organizer rating from events schema.
+     * averageRating/eventsCreatedCount are null if user has fewer than 3 approved events.
+     */
+    public Optional<UserDto> findByIdWithRating(String id) {
+        List<UserDto> rows = jdbcTemplate.query(
+                "SELECT u.*, " +
+                "  COUNT(DISTINCT e.id) AS events_count, " +
+                "  CASE WHEN COUNT(DISTINCT e.id) >= 3 THEN AVG(r.rating) ELSE NULL END AS avg_rating " +
+                "FROM users.\"User\" u " +
+                "LEFT JOIN events.\"Event\" e ON e.\"createdById\" = u.id AND e.status = 'APPROVED' " +
+                "LEFT JOIN events.\"EventRating\" r ON r.\"eventId\" = e.id " +
+                "WHERE u.id = ? " +
+                "GROUP BY u.id",
+                (rs, rn) -> {
+                    long eventsCount = rs.getLong("events_count");
+                    Object val = rs.getObject("avg_rating");
+                    Double avgRating = null;
+                    if (eventsCount >= 3 && val != null) {
+                        if (val instanceof java.math.BigDecimal bd) {
+                            avgRating = bd.doubleValue();
+                        } else if (val instanceof Double d) {
+                            avgRating = d;
+                        } else {
+                            avgRating = rs.getDouble("avg_rating");
+                        }
+                    }
+                    Long eventsCreatedCount = eventsCount > 0 ? eventsCount : null;
+                    try {
+                        return mapUser(rs, avgRating, eventsCreatedCount);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                },
+                id
+        );
+        return rows.stream().findFirst();
     }
 
     public void addPhoto(String userId, String photoUrl) {
@@ -249,6 +317,20 @@ public class UserRepository {
                 blockerId,
                 targetUserId
         );
+    }
+
+    public UserDto updateRole(String userId, String role) {
+        int rowsUpdated = jdbcTemplate.update(
+                "UPDATE users.\"User\" SET \"role\" = CAST(? AS users.\"UserRole\"), \"updatedAt\" = NOW() WHERE id = ?",
+                role,
+                userId
+        );
+
+        if (rowsUpdated == 0) {
+            throw new UserService.NotFoundException("User not found");
+        }
+
+        return findById(userId).orElseThrow();
     }
 
     private Instant toInstant(Object ts) {

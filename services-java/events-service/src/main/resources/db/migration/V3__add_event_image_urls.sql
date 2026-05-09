@@ -1,0 +1,2 @@
+ALTER TABLE events."Event"
+    ADD COLUMN IF NOT EXISTS "imageUrls" TEXT[] DEFAULT ARRAY[]::TEXT[];

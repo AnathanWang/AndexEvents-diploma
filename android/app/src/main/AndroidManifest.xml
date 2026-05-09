@@ -2,11 +2,14 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.READ_CALENDAR"/>
+    <uses-permission android:name="android.permission.WRITE_CALENDAR"/>
 
     <application
         android:label="andexevents"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         <!-- Yandex MapKit API Key
              NOTE: do NOT commit the actual key into the repository.
              Set the key via Gradle manifest placeholder (e.g. in local.properties or CI secrets)
@@ -23,7 +26,7 @@
              YANDEX_MAPKIT_API_KEY=your-real-key-here
         -->
         <meta-data
-            android:name="com.yandex.maps.api_key"
+            android:name="com.yandex.maps.apikey"
             android:value="${YANDEX_MAPKIT_API_KEY}" />
         <activity
             android:name=".MainActivity"

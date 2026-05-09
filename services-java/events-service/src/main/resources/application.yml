@@ -28,6 +28,7 @@ app:
   auth:
     firebaseProjectId: ${FIREBASE_PROJECT_ID:}
     firebaseJwksUrl: ${FIREBASE_JWKS_URL:}
+    defaultRequireAuth: ${APP_AUTH_DEFAULTREQUIREAUTH:false}
     requiredPaths:
       - method: POST
         pattern: /api/events
@@ -39,11 +40,50 @@ app:
         pattern: /api/events/*/participate
       - method: DELETE
         pattern: /api/events/*/participate
+      - method: GET
+        pattern: /api/events/moderation/all
+      - method: GET
+        pattern: /api/events/*/sanctions
+      - method: POST
+        pattern: /api/events/*/sanctions
+      - method: PUT
+        pattern: /api/events/sanctions/*/revoke
+      - method: GET
+        pattern: /api/events/*/participants/manage
+      - method: DELETE
+        pattern: /api/events/*/participants/*
+      - method: POST
+        pattern: /api/events/*/bans
+      - method: DELETE
+        pattern: /api/events/*/bans/*
+      - method: GET
+        pattern: /api/events/*/waitlist
+      - method: PUT
+        pattern: /api/events/*/waitlist/*/approve
+      - method: PUT
+        pattern: /api/events/*/waitlist/*/reject
+      - method: PUT
+        pattern: /api/events/*/checkin/*
+      - method: POST
+        pattern: /api/users/blocks
+      - method: GET
+        pattern: /api/users/blocks
+      - method: DELETE
+        pattern: /api/users/blocks/*
+      - method: POST
+        pattern: /api/events/*/rating
+      - method: GET
+        pattern: /api/events/*/rating/reviews
     optionalPaths:
       - method: GET
         pattern: /api/events
       - method: GET
         pattern: /api/events/*
+      - method: GET
+        pattern: /api/events/*/rating/stats
+
+  cors:
+    allowedOriginPatterns: ${APP_CORS_ALLOWEDORIGINPATTERNS:http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*}
 
 springdoc:
   api-docs:

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/constants/event_messages.dart';
 import '../../../data/services/event_service.dart';
 import 'event_event.dart';
 import 'event_state.dart';
@@ -22,12 +23,60 @@ class EventBloc extends Bloc<EventEvent, EventState> {
     on<EventDeleteRequested>(_onEventDeleteRequested);
   }
 
+  String _extractErrorMessage(
+    Object error, {
+    required String fallback,
+  }) {
+    var message = error.toString();
+
+    // Typical Dart Exception stringification: "Exception: <message>"
+    message = message.replaceFirst('Exception: ', '').trim();
+
+    // EventService wraps server message into "Ошибка ...: <serverMessage>"
+    const knownPrefixes = <String>[
+      'Ошибка участия в событии: ',
+      'Ошибка обновления события: ',
+      'Ошибка отмены участия: ',
+      'Ошибка загрузки события: ',
+      'Ошибка загрузки событий: ',
+      'Ошибка создания события: ',
+      'Ошибка удаления события: ',
+      'Не удалось получить токен авторизации',
+    ];
+
+    for (final prefix in knownPrefixes) {
+      if (message.startsWith(prefix)) {
+        message = message.substring(prefix.length).trim();
+        break;
+      }
+    }
+
+    // If it still looks like a wrapper chain, keep the deepest part.
+    final lastColon = message.lastIndexOf(': ');
+    if (lastColon != -1 && lastColon + 2 < message.length) {
+      final tail = message.substring(lastColon + 2).trim();
+      if (tail.isNotEmpty) message = tail;
+    }
+
+    if (message.isEmpty) return fallback;
+    return message;
+  }
+
   Future<void> _onEventsLoadRequested(
     EventsLoadRequested event,
     Emitter<EventState> emit,
   ) async {
     if (event.page == 1) {
-      emit(const EventsLoading());
+      final cachedEvents = await _eventService.getCachedEvents(category: event.category);
+      if (cachedEvents.isNotEmpty) {
+        emit(EventsLoaded(
+          events: cachedEvents,
+          hasMore: cachedEvents.length >= 20,
+          currentPage: 1,
+        ));
+      } else {
+        emit(const EventsLoading());
+      }
     }
 
     try {
@@ -55,7 +104,14 @@ class EventBloc extends Bloc<EventEvent, EventState> {
         ));
       }
     } catch (e) {
-      emit(EventError('Не удалось загрузить события: $e'));
+      emit(
+        EventError(
+          _extractErrorMessage(
+            e,
+            fallback: 'Не удалось загрузить события',
+          ),
+        ),
+      );
     }
   }
 
@@ -69,7 +125,14 @@ class EventBloc extends Bloc<EventEvent, EventState> {
       final eventModel = await _eventService.getEventById(event.eventId);
       emit(EventDetailLoaded(eventModel));
     } catch (e) {
-      emit(EventError('Не удалось загрузить событие: $e'));
+      emit(
+        EventError(
+          _extractErrorMessage(
+            e,
+            fallback: 'Не удалось загрузить событие',
+          ),
+        ),
+      );
     }
   }
 
@@ -91,6 +154,7 @@ class EventBloc extends Bloc<EventEvent, EventState> {
         endDateTime: event.endDateTime,
         price: event.price,
         imageUrl: event.imageUrl,
+        imageUrls: event.imageUrls,
         isOnline: event.isOnline,
         maxParticipants: event.maxParticipants,
         minAge: event.minAge,
@@ -99,7 +163,14 @@ class EventBloc extends Bloc<EventEvent, EventState> {
 
       emit(EventCreated(eventModel));
     } catch (e) {
-      emit(EventError('Не удалось создать событие: $e'));
+      emit(
+        EventError(
+          _extractErrorMessage(
+            e,
+            fallback: 'Не удалось создать событие',
+          ),
+        ),
+      );
     }
   }
 
@@ -113,7 +184,14 @@ class EventBloc extends Bloc<EventEvent, EventState> {
       final photoUrl = await _eventService.uploadEventPhoto(File(event.photoPath));
       emit(EventPhotoUploaded(photoUrl));
     } catch (e) {
-      emit(EventError('Не удалось загрузить фото: $e'));
+      emit(
+        EventError(
+          _extractErrorMessage(
+            e,
+            fallback: 'Не удалось загрузить фото',
+          ),
+        ),
+      );
     }
   }
 
@@ -121,16 +199,32 @@ class EventBloc extends Bloc<EventEvent, EventState> {
     EventParticipateRequested event,
     Emitter<EventState> emit,
   ) async {
-    emit(const EventParticipationUpdating());
-
     try {
+      final eventModel = await _eventService.getEventById(event.eventId);
+      if (_isEventFinished(eventModel.actualEndDateTime)) {
+        emit(const EventError(EventMessages.eventFinishedParticipationUnavailable));
+        return;
+      }
+
+      emit(const EventParticipationUpdating());
       await _eventService.participateInEvent(event.eventId, event.status);
       emit(const EventParticipationUpdated());
       // Перезагрузим данные события после участия
       add(EventDetailLoadRequested(event.eventId));
     } catch (e) {
-      emit(EventError('Не удалось участвовать в событии: $e'));
+      emit(
+        EventError(
+          _extractErrorMessage(
+            e,
+            fallback: 'Не удалось участвовать в событии',
+          ),
+        ),
+      );
     }
+  }
+
+  bool _isEventFinished(DateTime actualEndDateTime) {
+    return !actualEndDateTime.toUtc().isAfter(DateTime.now().toUtc());
   }
 
   Future<void> _onEventCancelParticipationRequested(
@@ -145,7 +239,14 @@ class EventBloc extends Bloc<EventEvent, EventState> {
       // Перезагрузим данные события после отмены
       add(EventDetailLoadRequested(event.eventId));
     } catch (e) {
-      emit(EventError('Не удалось отменить участие: $e'));
+      emit(
+        EventError(
+          _extractErrorMessage(
+            e,
+            fallback: 'Не удалось отменить участие',
+          ),
+        ),
+      );
     }
   }
 
@@ -159,7 +260,14 @@ class EventBloc extends Bloc<EventEvent, EventState> {
       final participants = await _eventService.getEventParticipants(event.eventId);
       emit(EventParticipantsLoaded(participants));
     } catch (e) {
-      emit(EventError('Не удалось загрузить участников: $e'));
+      emit(
+        EventError(
+          _extractErrorMessage(
+            e,
+            fallback: 'Не удалось загрузить участников',
+          ),
+        ),
+      );
     }
   }
 
@@ -182,6 +290,7 @@ class EventBloc extends Bloc<EventEvent, EventState> {
         endDateTime: event.endDateTime,
         price: event.price,
         imageUrl: event.imageUrl,
+        imageUrls: event.imageUrls,
         isOnline: event.isOnline,
         maxParticipants: event.maxParticipants,
         minAge: event.minAge,
@@ -190,7 +299,14 @@ class EventBloc extends Bloc<EventEvent, EventState> {
 
       emit(EventUpdated(eventModel));
     } catch (e) {
-      emit(EventError('Не удалось обновить событие: $e'));
+      emit(
+        EventError(
+          _extractErrorMessage(
+            e,
+            fallback: 'Не удалось обновить событие',
+          ),
+        ),
+      );
     }
   }
 
@@ -204,7 +320,14 @@ class EventBloc extends Bloc<EventEvent, EventState> {
       await _eventService.deleteEvent(event.eventId);
       emit(const EventDeleted());
     } catch (e) {
-      emit(EventError('Не удалось удалить событие: $e'));
+      emit(
+        EventError(
+          _extractErrorMessage(
+            e,
+            fallback: 'Не удалось удалить событие',
+          ),
+        ),
+      );
     }
   }
 }

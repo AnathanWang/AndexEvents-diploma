@@ -11,7 +11,10 @@ import '../../../data/services/user_service.dart';
 import '../../events/bloc/event_bloc.dart';
 import '../../events/screens/real_event_detail_screen.dart';
 import '../widgets/photo_gallery_sheet.dart';
+import '../../widgets/common/star_rating_widget.dart';
 import '../../../core/services/logger_service.dart';
+import '../../../core/theme/app_colors.dart';
+import 'package:andexevents/presentation/widgets/event_countdown_timer.dart';
 // import '../../../data/services/friend_service.dart'; // Removed FriendService
 
 class UserProfileScreen extends StatefulWidget {
@@ -26,25 +29,21 @@ class UserProfileScreen extends StatefulWidget {
         canViewSensitiveInfo = false;
 
   UserProfileScreen.fromUser({
-    required UserModel user,
-    int? matchPercentage,
-    List<String> commonInterests = const <String>[],
-    bool canViewSensitiveInfo = false,
-    EventService? eventService,
+    required this.user,
+    this.matchPercentage,
+    this.commonInterests = const <String>[],
+    this.canViewSensitiveInfo = false,
+    this.eventService,
     super.key,
-  })  : userName = (user.displayName?.isNotEmpty == true)
+  })  : assert(user != null),
+        userName = (user!.displayName?.isNotEmpty == true)
             ? user.displayName!
             : user.email.split('@').first,
         userInitials = _initialsFrom(
           (user.displayName?.isNotEmpty == true)
               ? user.displayName!
               : user.email.split('@').first,
-        ),
-        user = user,
-        matchPercentage = matchPercentage,
-        commonInterests = commonInterests,
-        canViewSensitiveInfo = canViewSensitiveInfo,
-        eventService = eventService;
+        );
 
   final String userName;
   final String userInitials;
@@ -177,7 +176,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 124,
+          height: 128,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -200,11 +199,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               event.imageUrl!,
                               fit: BoxFit.cover,
                               errorBuilder: (_, _, _) => Container(
-                                color: const Color(0xFF5E60CE),
+                                color: const Color(0xFF75878A),
                               ),
                             ),
                           if ((event.imageUrl ?? '').trim().isEmpty)
-                            Container(color: const Color(0xFF5E60CE)),
+                            Container(color: const Color(0xFF75878A)),
                           Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
@@ -244,6 +243,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                     fontSize: 11.5,
                                   ),
                                 ),
+                                const SizedBox(height: 6),
+                                EventCountdownTimer(expirationTime: event.actualEndDateTime, isMinimal: true),
                               ],
                             ),
                           ),
@@ -261,6 +262,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Widget _buildRecentEventsContent() {
+    if (!(_user?.showVisitedEvents ?? true)) {
+      return const SizedBox.shrink();
+    }
+    
     if (_eventsLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 20),
@@ -285,7 +290,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             'Не удалось загрузить события',
             style: TextStyle(
               fontSize: 14,
-              color: Color(0xFF7C84AF),
+              color: Color(0xFF75878A),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -423,17 +428,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       case 'website':
         return (
           icon: Icons.language,
-          gradient: const <Color>[Color(0xFF5E60CE), Color(0xFF9370DB)],
+          gradient: const <Color>[Color(0xFF75878A), Color(0xFF81D8D0)],
         );
       case 'phone':
         return (
           icon: Icons.phone,
-          gradient: const <Color>[Color(0xFF5E60CE), Color(0xFF9370DB)],
+          gradient: const <Color>[Color(0xFF75878A), Color(0xFF81D8D0)],
         );
       default:
         return (
           icon: Icons.link,
-          gradient: const <Color>[Color(0xFF5E60CE), Color(0xFF9370DB)],
+          gradient: const <Color>[Color(0xFF75878A), Color(0xFF81D8D0)],
         );
     }
   }
@@ -451,7 +456,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           children: <Widget>[
             Icon(
               Icons.lock_outline,
-              color: Color(0xFF7C84AF),
+              color: Color(0xFF75878A),
             ),
             SizedBox(width: 12),
             Expanded(
@@ -459,7 +464,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 'Соцсети доступны после взаимного лайка',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF4A4D6A),
+                  color: Color(0xFF161823),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -480,14 +485,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ),
         child: const Row(
           children: <Widget>[
-            Icon(Icons.info_outline, color: Color(0xFF7C84AF)),
+            Icon(Icons.info_outline, color: Color(0xFF75878A)),
             SizedBox(width: 12),
             Expanded(
               child: Text(
                 'Соцсети не указаны',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF4A4D6A),
+                  color: Color(0xFF161823),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -576,27 +581,30 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final presence = _presenceState();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FF),
+      backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: <Widget>[
           // App Bar
           SliverAppBar(
             expandedHeight: 186,
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
             pinned: true,
             leading: Container(
               margin: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.92),
+                color: Colors.white.withValues(alpha: 0.84),
                 shape: BoxShape.circle,
                 boxShadow: <BoxShadow>[
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 8,
+                    color: const Color(0xFF365892).withValues(alpha: 0.14),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF243252)),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ),
@@ -604,17 +612,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               Container(
                 margin: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.92),
+                  color: Colors.white.withValues(alpha: 0.84),
                   shape: BoxShape.circle,
                   boxShadow: <BoxShadow>[
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 8,
+                      color: const Color(0xFF365892).withValues(alpha: 0.14),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
                 child: PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: Color(0xFF4A4D6A)),
+                  icon: const Icon(Icons.more_vert, color: Color(0xFF243252)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -666,13 +675,38 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: <Color>[
-                            const Color(0xFF4E5CD1).withValues(alpha: 0.94),
-                            const Color(0xFF7A74E8).withValues(alpha: 0.90),
+                            const Color(0xFF5D74FF).withValues(alpha: 0.96),
+                            const Color(0xFF62A9FF).withValues(alpha: 0.92),
+                            const Color(0xFF63C9B5).withValues(alpha: 0.86),
                           ],
                         ),
                       ),
                 child: Stack(
                   children: <Widget>[
+                    Positioned(
+                      top: -46,
+                      right: -28,
+                      child: Container(
+                        width: 180,
+                        height: 180,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.14),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: -58,
+                      left: -16,
+                      child: Container(
+                        width: 160,
+                        height: 160,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFFDCE9FF).withValues(alpha: 0.22),
+                        ),
+                      ),
+                    ),
                     Positioned.fill(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
@@ -740,13 +774,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: const <BoxShadow>[
+                      color: Colors.white.withValues(alpha: 0.88),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0xFFDCE4FF)),
+                      boxShadow: <BoxShadow>[
                         BoxShadow(
-                          color: Color(0x12000000),
-                          blurRadius: 14,
-                          offset: Offset(0, 8),
+                          color: const Color(0xFF365892).withValues(alpha: 0.10),
+                          blurRadius: 22,
+                          offset: const Offset(0, 10),
                         ),
                       ],
                     ),
@@ -760,33 +795,44 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 widget.userName,
                                 style: const TextStyle(
                                   fontSize: 26,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF2F355E),
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF1F3552),
                                 ),
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: presence.color.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  Icon(Icons.circle, color: presence.color, size: 8),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    presence.text,
-                                    style: TextStyle(
-                                      color: presence.color,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                    ),
+                            if (!(_user?.hideOnlineStatus ?? false))
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: presence.color.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: presence.color.withValues(alpha: 0.18),
                                   ),
-                                ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    Icon(
+                                      Icons.circle,
+                                      color: presence.color,
+                                      size: 8,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      presence.text,
+                                      style: TextStyle(
+                                        color: presence.color,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -795,7 +841,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             '${_user!.age} лет',
                             style: const TextStyle(
                               fontSize: 15,
-                              color: Color(0xFF7F88B3),
+                              color: Color(0xFF66739B),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -806,10 +852,39 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               : 'Еще не заполнена биография',
                           style: const TextStyle(
                             fontSize: 15,
-                            color: Color(0xFF444A73),
+                            color: Color(0xFF4B5877),
                             height: 1.45,
                           ),
                         ),
+                        if (_user?.averageRating != null && _user?.eventsCreatedCount != null) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8F9FF),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFE2E6FA)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                StarRatingWidget(
+                                  rating: _user!.averageRating!,
+                                  starSize: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${_user!.averageRating!.toStringAsFixed(1)} (Событий: ${_user!.eventsCreatedCount})',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1F3552),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -822,10 +897,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF6F8FF),
-                      borderRadius: BorderRadius.circular(18),
+                      gradient: const LinearGradient(
+                        colors: <Color>[Color(0xFFE8F1FF), Color(0xFFE7F7F2)],
+                      ),
+                      borderRadius: BorderRadius.circular(22),
                       border: Border.all(
-                        color: const Color(0xFFDEE4FF),
+                        color: const Color(0xFFD8E7FF),
                       ),
                     ),
                     child: Row(
@@ -833,12 +910,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE7ECFF),
-                            borderRadius: BorderRadius.circular(12),
+                            gradient: const LinearGradient(
+                              colors: <Color>[
+                                Color(0xFF5F76FF),
+                                Color(0xFF62A9FF),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
                           ),
                           child: const Icon(
                             Icons.favorite,
-                            color: Color(0xFF5A66D8),
+                            color: Colors.white,
                             size: 22,
                           ),
                         ),
@@ -852,7 +934,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF2F355E),
+                                  color: Color(0xFF243252),
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -860,7 +942,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 widget.commonInterests.join(', '),
                                 style: const TextStyle(
                                   fontSize: 13.5,
-                                  color: Color(0xFF7F88B3),
+                                  color: Color(0xFF66739B),
                                 ),
                               ),
                             ],
@@ -870,18 +952,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                
-                // Недавние события
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: _SectionTitleRow(
-                    title: 'Недавние события',
-                    icon: Icons.schedule_rounded,
+                if (_user?.showVisitedEvents ?? true) ...[
+                  const SizedBox(height: 24),
+                  // Недавние события
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildSectionTitleRow(
+                      title: 'Недавние события',
+                      icon: Icons.schedule_rounded,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                _buildRecentEventsContent(),
+                  const SizedBox(height: 12),
+                  _buildRecentEventsContent(),
+                ],
                 const SizedBox(height: 24),
                 
                 // Соцсети (доступны только после взаимного лайка)
@@ -902,20 +985,22 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FF),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFDFE5FF)),
+        gradient: const LinearGradient(
+          colors: <Color>[Color(0xFFF4F7FF), Color(0xFFEAF4FF)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFDCE4FF)),
       ),
       child: Row(
         children: <Widget>[
-          Icon(icon, size: 16, color: const Color(0xFF5A66D8)),
+          Icon(icon, size: 16, color: const Color(0xFF5F76FF)),
           const SizedBox(width: 8),
           Text(
             title,
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF2F355E),
+              color: Color(0xFF243252),
             ),
           ),
         ],
@@ -928,32 +1013,37 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E6FA)),
+        color: Colors.white.withValues(alpha: 0.76),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFDCE4FF)),
       ),
       child: Text(
         text,
         style: const TextStyle(
           fontSize: 14,
-          color: Color(0xFF7C84AF),
+          color: Color(0xFF66739B),
           fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
 
-  Widget _SectionTitleRow({required String title, required IconData icon}) {
+  Widget _buildSectionTitleRow({
+    required String title,
+    required IconData icon,
+  }) {
     return Row(
       children: <Widget>[
         Container(
-          width: 30,
-          height: 30,
+          width: 34,
+          height: 34,
           decoration: BoxDecoration(
-            color: const Color(0xFFE8EDFF),
-            borderRadius: BorderRadius.circular(9),
+            gradient: const LinearGradient(
+              colors: <Color>[Color(0xFFE8EEFF), Color(0xFFE7F6F2)],
+            ),
+            borderRadius: BorderRadius.circular(11),
           ),
-          child: Icon(icon, size: 17, color: const Color(0xFF5A66D8)),
+          child: Icon(icon, size: 18, color: const Color(0xFF5F76FF)),
         ),
         const SizedBox(width: 9),
         Text(
@@ -961,7 +1051,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF2F355E),
+            color: Color(0xFF243252),
           ),
         ),
       ],
@@ -1032,7 +1122,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       child: Text(
         widget.userInitials,
         style: const TextStyle(
-          color: Color(0xFF5E60CE),
+          color: Color(0xFF75878A),
           fontSize: 36,
           fontWeight: FontWeight.bold,
         ),
@@ -1073,15 +1163,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
                 try {
                   await _userService.blockUser(targetId);
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   CustomNotification.show(
                     context,
                     '${widget.userName} заблокирован',
                     duration: const Duration(seconds: 2),
                   );
+                  if (!context.mounted) return;
                   Navigator.of(context).pop(true);
                 } catch (e) {
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   CustomNotification.show(
                     context,
                     'Не удалось заблокировать: $e',

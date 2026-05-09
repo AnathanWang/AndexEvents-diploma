@@ -27,7 +27,7 @@ void main() {
       final user = UserModel.fromJson(sampleJson);
 
       expect(user.id, 'user-123');
-      expect(user.supabaseUid, 'sb-uid-456');
+      expect(user.firebaseUid, 'sb-uid-456');
       expect(user.email, 'test@example.com');
       expect(user.displayName, 'Test User');
       expect(user.photoUrl, 'https://example.com/photo.jpg');

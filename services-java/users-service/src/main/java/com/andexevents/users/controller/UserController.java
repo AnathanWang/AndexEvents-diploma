@@ -3,23 +3,223 @@ package com.andexevents.users.controller;
 import com.andexevents.users.api.ApiResponse;
 import com.andexevents.users.auth.AuthContext;
 import com.andexevents.users.auth.AuthFilter;
+import com.andexevents.users.model.AdminAuditLogDto;
+import com.andexevents.users.model.UserSanctionDto;
 import com.andexevents.users.model.UserDto;
+import com.andexevents.users.service.AdminAuditLogService;
+import com.andexevents.users.service.UserSanctionService;
 import com.andexevents.users.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
-    private final UserService userService;
+    private static final String UNAUTHORIZED_MESSAGE = "Unauthorized: User ID not found";
 
-    public UserController(UserService userService) {
+    private final UserService userService;
+    private final AdminAuditLogService adminAuditLogService;
+    private final UserSanctionService userSanctionService;
+
+    public UserController(
+            UserService userService,
+            AdminAuditLogService adminAuditLogService,
+            UserSanctionService userSanctionService
+    ) {
         this.userService = userService;
+        this.adminAuditLogService = adminAuditLogService;
+        this.userSanctionService = userSanctionService;
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<UserDto>>> listUsersForModeration(HttpServletRequest request) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(UNAUTHORIZED_MESSAGE));
+        }
+
+        UserDto requester = userService.getById(auth.userId()).orElse(null);
+        if (requester == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: requester profile not found"));
+        }
+
+        if (!userService.canModerate(requester)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: admin access required"));
+        }
+
+        List<UserDto> users = userService.getAllUsersForModeration();
+        return ResponseEntity.ok(ApiResponse.ok(users));
+    }
+
+    @GetMapping("/admin/audit-logs")
+    public ResponseEntity<ApiResponse<List<AdminAuditLogDto>>> getAdminAuditLogs(
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "100") int limit
+    ) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(UNAUTHORIZED_MESSAGE));
+        }
+
+        UserDto requester = userService.getById(auth.userId()).orElse(null);
+        if (requester == null || !userService.canModerate(requester)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: admin access required"));
+        }
+
+        List<AdminAuditLogDto> logs = adminAuditLogService.getRecent(limit);
+        return ResponseEntity.ok(ApiResponse.ok(logs));
+    }
+
+    @GetMapping("/admin/sanctions")
+    public ResponseEntity<ApiResponse<List<UserSanctionDto>>> getAdminSanctions(
+            HttpServletRequest request,
+            @RequestParam(required = false) String targetUserId,
+            @RequestParam(defaultValue = "200") int limit
+    ) {
+        UserDto requester = resolveAdminRequester(request);
+        if (requester == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: admin access required"));
+        }
+
+        if (targetUserId != null && !targetUserId.isBlank()) {
+            try {
+                return ResponseEntity.ok(ApiResponse.ok(userSanctionService.getByTargetUser(targetUserId)));
+            } catch (UserSanctionService.BadRequestException e) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.error(e.getMessage()));
+            }
+        }
+
+        return ResponseEntity.ok(ApiResponse.ok(userSanctionService.getActiveAll(limit)));
+    }
+
+    @PostMapping("/admin/sanctions")
+    public ResponseEntity<ApiResponse<UserSanctionDto>> createSanction(
+            HttpServletRequest request,
+            @Valid @RequestBody CreateSanctionRequest body
+    ) {
+        UserDto requester = resolveAdminRequester(request);
+        if (requester == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: admin access required"));
+        }
+
+        try {
+            Instant expiresAt = null;
+            if (body.expiresAt() != null && !body.expiresAt().isBlank()) {
+                expiresAt = Instant.parse(body.expiresAt());
+            }
+
+            UserSanctionDto sanction = userSanctionService.createSanction(
+                    body.targetUserId(),
+                    requester.id(),
+                    body.type(),
+                    body.reason(),
+                    expiresAt
+            );
+
+            adminAuditLogService.logSanctionCreated(
+                    requester.id(),
+                    sanction.targetUserId(),
+                    sanction.type(),
+                    sanction.reason(),
+                    sanction.expiresAt() == null ? null : sanction.expiresAt().toString()
+            );
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(sanction));
+        } catch (UserSanctionService.BadRequestException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (UserSanctionService.NotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Invalid sanction payload"));
+        }
+    }
+
+    @PutMapping("/admin/sanctions/{sanctionId}/revoke")
+    public ResponseEntity<ApiResponse<Void>> revokeSanction(
+            HttpServletRequest request,
+            @PathVariable String sanctionId
+    ) {
+        UserDto requester = resolveAdminRequester(request);
+        if (requester == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: admin access required"));
+        }
+
+        try {
+            UserSanctionDto sanction = userSanctionService.getById(sanctionId);
+
+            userSanctionService.revoke(sanctionId, requester.id());
+
+            adminAuditLogService.logSanctionRevoked(
+                    requester.id(),
+                sanction.targetUserId(),
+                    sanctionId
+            );
+
+            return ResponseEntity.ok(ApiResponse.okMessage("Sanction revoked"));
+        } catch (UserSanctionService.BadRequestException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (UserSanctionService.NotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/role")
+    public ResponseEntity<ApiResponse<UserDto>> updateUserRole(
+            HttpServletRequest request,
+            @PathVariable String id,
+            @RequestBody UpdateRoleRequest body
+    ) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(UNAUTHORIZED_MESSAGE));
+        }
+
+        UserDto requester = userService.getById(auth.userId()).orElse(null);
+        if (requester == null || !userService.canModerate(requester)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: admin access required"));
+        }
+
+        if (id.equals(requester.id())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Admin cannot change own role"));
+        }
+
+        try {
+            String oldRole = requesterRole(userService.getById(id).orElse(null));
+            UserDto updated = userService.updateUserRole(id, body.role());
+            adminAuditLogService.logRoleChange(requester.id(), updated.id(), oldRole, requesterRole(updated));
+            return ResponseEntity.ok(ApiResponse.ok(updated));
+        } catch (UserService.BadRequestException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (UserService.NotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     @PostMapping
@@ -51,6 +251,23 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ok(user));
     }
 
+    @GetMapping("/me/sanctions")
+    public ResponseEntity<ApiResponse<List<UserSanctionDto>>> mySanctions(HttpServletRequest request) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(UNAUTHORIZED_MESSAGE));
+        }
+
+        try {
+            List<UserSanctionDto> sanctions = userSanctionService.getByTargetUser(auth.userId());
+            return ResponseEntity.ok(ApiResponse.ok(sanctions));
+        } catch (UserSanctionService.BadRequestException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<UserDto>> getById(@PathVariable String id) {
         UserDto user = userService.getById(id).orElse(null);
@@ -69,6 +286,12 @@ public class UserController {
                     .body(ApiResponse.error("Unauthorized: User ID not found"));
         }
 
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
+        }
+
         UserService.UpdateProfileRequest update = new UserService.UpdateProfileRequest(
                 body.displayName(),
                 body.photoUrl(),
@@ -79,6 +302,7 @@ public class UserController {
                 body.gender(),
                 body.interests(),
                 body.socialLinks(),
+            null,
                 true
         );
 
@@ -94,6 +318,12 @@ public class UserController {
                     .body(new ApiResponse<>(false, null, "Unauthorized: User ID not found"));
         }
 
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
+        }
+
         UserDto updated = userService.updateProfile(auth.userId(), body);
         return ResponseEntity.ok(ApiResponse.ok(updated));
     }
@@ -104,6 +334,12 @@ public class UserController {
         if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Unauthorized: User ID not found"));
+        }
+
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
         }
 
         if (body.latitude() < -90 || body.latitude() > 90 || body.longitude() < -180 || body.longitude() > 180) {
@@ -148,6 +384,12 @@ public class UserController {
                     .body(new ApiResponse<>(false, null, "Unauthorized: User ID not found"));
         }
 
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
+        }
+
         UserDto updated = userService.addPhoto(auth.userId(), body.photoUrl());
         return ResponseEntity.ok(ApiResponse.ok(updated));
     }
@@ -158,6 +400,12 @@ public class UserController {
         if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ApiResponse<>(false, null, "Unauthorized: User ID not found"));
+        }
+
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
         }
 
         UserDto updated = userService.removePhoto(auth.userId(), body.photoUrl());
@@ -172,6 +420,12 @@ public class UserController {
                     .body(ApiResponse.error("Unauthorized: User ID not found"));
         }
 
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
+        }
+
         userService.blockUser(auth.userId(), body.targetUserId());
         return ResponseEntity.ok(ApiResponse.okMessage("User blocked"));
     }
@@ -182,6 +436,12 @@ public class UserController {
         if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Unauthorized: User ID not found"));
+        }
+
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
         }
 
         userService.unblockUser(auth.userId(), body.targetUserId());
@@ -212,5 +472,46 @@ public class UserController {
     }
 
     public record BlockRequest(String targetUserId) {
+    }
+
+    public record UpdateRoleRequest(String role) {
+    }
+
+    public record CreateSanctionRequest(
+            @NotBlank(message = "targetUserId is required")
+            String targetUserId,
+            @NotBlank(message = "type is required")
+            String type,
+            @NotBlank(message = "reason is required")
+            String reason,
+            String expiresAt
+    ) {
+    }
+
+    private String requesterRole(UserDto user) {
+        return user == null || user.role() == null ? "UNKNOWN" : user.role();
+    }
+
+    private UserDto resolveAdminRequester(HttpServletRequest request) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return null;
+        }
+
+        UserDto requester = userService.getById(auth.userId()).orElse(null);
+        if (requester == null || !userService.canModerate(requester)) {
+            return null;
+        }
+
+        return requester;
+    }
+
+    private String validateSelfMutationAccess(String userId) {
+        try {
+            userSanctionService.assertCanMutateOwnProfile(userId);
+            return null;
+        } catch (UserSanctionService.ForbiddenException e) {
+            return e.getMessage();
+        }
     }
 }

@@ -43,19 +43,49 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final User? user = _authService.currentUser;
     if (user != null) {
       LoggerService.info('🔵 [AuthBloc] Пользователь найден в Firebase: ${user.email}');
+      
+      try {
+        await user.reload();
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'user-not-found' || e.code == 'user-disabled') {
+          LoggerService.error('🔴 [AuthBloc] Пользователь удален или заблокирован в Firebase. Выполняю автоматический выход.');
+          await _authService.signOut();
+          emit(const AuthUnauthenticated());
+          return;
+        }
+      } catch (_) {
+        // Игнорируем сетевые ошибки, если нет интернета, чтобы пользователь все равно мог зайти в приложение
+        LoggerService.warning('🟡 [AuthBloc] Не удалось выполнить usel.reload(), возможно нет сети.');
+      }
+
+      final cachedOnboarding = await _authService.getCachedOnboardingStatus();
+      if (cachedOnboarding != null) {
+        LoggerService.info('🔵 [AuthBloc] Используем кэш онбординга: $cachedOnboarding');
+        emit(AuthAuthenticated(user: user, isOnboardingCompleted: cachedOnboarding));
+      }
+
       try {
         // Загружаем профиль из бэкенда для проверки onboarding
         LoggerService.info('🔵 [AuthBloc] Загрузка профиля из backend...');
-        final userProfile = await _authService.getCurrentUserProfile();
+        final userProfile = await _authService
+            .getCurrentUserProfile()
+            .timeout(const Duration(seconds: 6));
         LoggerService.info('🔵 [AuthBloc] Профиль получен: $userProfile');
         final bool isOnboardingCompleted = userProfile['isOnboardingCompleted'] ?? false;
         LoggerService.info('🔵 [AuthBloc] isOnboardingCompleted = $isOnboardingCompleted');
+        await _authService.cacheOnboardingStatus(isOnboardingCompleted);
         emit(AuthAuthenticated(user: user, isOnboardingCompleted: isOnboardingCompleted));
       } catch (e) {
-        // Если не удалось загрузить профиль, считаем что onboarding не завершен
-        LoggerService.error('🔴 [AuthBloc] Ошибка загрузки профиля при проверке состояния', e);
-        LoggerService.warning('🟡 [AuthBloc] Устанавливаем isOnboardingCompleted = false');
-        emit(AuthAuthenticated(user: user, isOnboardingCompleted: false));
+        if (cachedOnboarding == null) {
+          final isNewUser = (user.metadata.creationTime != null && 
+                             DateTime.now().difference(user.metadata.creationTime!) < const Duration(hours: 1));
+          final fallbackOnboarding = isNewUser ? false : true;
+          
+          LoggerService.warning('🟡 [AuthBloc] Профиль не загрузился и кэша нет, fallbackOnboarding=$fallbackOnboarding', e);
+          emit(AuthAuthenticated(user: user, isOnboardingCompleted: fallbackOnboarding));
+        } else {
+          LoggerService.warning('🟡 [AuthBloc] Не удалось загрузить профиль на старте, продолжаем с кэшем', e);
+        }
       }
     } else {
       LoggerService.info('🔵 [AuthBloc] Пользователь не найден, показываем Onboarding');
@@ -88,17 +118,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         LoggerService.info('🔵 [AuthBloc] Профиль получен: $userProfile');
         final bool isOnboardingCompleted = userProfile['isOnboardingCompleted'] ?? false;
         LoggerService.info('🔵 [AuthBloc] isOnboardingCompleted = $isOnboardingCompleted');
+        await _authService.cacheOnboardingStatus(isOnboardingCompleted);
         emit(AuthAuthenticated(
           user: user,
           isOnboardingCompleted: isOnboardingCompleted,
         ));
       } catch (e) {
-        // Если не удалось загрузить профиль, считаем что onboarding не завершен
+        final cachedOnboarding = await _authService.getCachedOnboardingStatus();
         LoggerService.error('🔴 [AuthBloc] Ошибка загрузки профиля', e);
-        LoggerService.warning('🟡 [AuthBloc] Устанавливаем isOnboardingCompleted = false');
+        
+        final isNewUser = (user.metadata.creationTime != null && 
+                           DateTime.now().difference(user.metadata.creationTime!) < const Duration(hours: 1));
+        
+        final fallbackOnboarding = cachedOnboarding ?? (isNewUser ? false : true);
+        LoggerService.warning('🟡 [AuthBloc] Используем fallback onboarding=$fallbackOnboarding');
+        
         emit(AuthAuthenticated(
           user: user,
-          isOnboardingCompleted: false,
+          isOnboardingCompleted: fallbackOnboarding,
         ));
       }
     } catch (e) {
@@ -129,7 +166,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         throw Exception('Ошибка регистрации: пользователь не создан');
       }
 
-      // После регистрации пользователь должен пройти онбординг
+      // После регистрации пользователь должен пройти онбординг (кэшируем это)
+      await _authService.cacheOnboardingStatus(false);
+
       emit(AuthAuthenticated(
         user: user,
         isOnboardingCompleted: false,
@@ -137,7 +176,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       LoggerService.debug('🔵 [AuthBloc] AuthAuthenticated эмитен');
     } catch (e) {
       LoggerService.error('🔴 [AuthBloc] Register error: $e');
-      emit(AuthFailure(message: e.toString()));
+      // ПРИМЕЧАНИЕ: Если бэкенд упал, Firebase Auth всё равно мог создать пользователя.
+      // Поэтому если мы получили ошибку Backend'а после успешного создания в Firebase, 
+      // лучше залогинить его и перебросить на верификацию, иначе он зависнет с ошибкой.
+      final user = _authService.currentUser;
+      if (user != null) {
+         // Сохраняем, что он не прошел онбординг
+         await _authService.cacheOnboardingStatus(false);
+         emit(AuthAuthenticated(
+           user: user,
+           isOnboardingCompleted: false,
+         ));
+      } else {
+         emit(AuthFailure(message: e.toString()));
+      }
     } finally {
       _handlingAuthAction = false;
     }
@@ -167,6 +219,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         user: user,
         isOnboardingCompleted: isOnboardingCompleted,
       ));
+      await _authService.cacheOnboardingStatus(isOnboardingCompleted);
     } catch (e) {
       LoggerService.error('🔴 [AuthBloc] Google Sign-In ошибка: $e');
       emit(AuthFailure(message: e.toString()));

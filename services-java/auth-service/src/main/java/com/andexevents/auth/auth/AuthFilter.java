@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -27,6 +28,8 @@ public class AuthFilter extends OncePerRequestFilter {
     private final UserLookupRepository userLookupRepository;
     private final ObjectMapper objectMapper;
     private final RequestMatcher required;
+    private final RequestMatcher publicMatcher;
+    private final boolean defaultRequireAuth;
 
     public AuthFilter(
             AuthConfigProperties props,
@@ -37,18 +40,33 @@ public class AuthFilter extends OncePerRequestFilter {
         this.jwtVerifier = jwtVerifier;
         this.userLookupRepository = userLookupRepository;
         this.objectMapper = objectMapper;
+        this.defaultRequireAuth = props.isDefaultRequireAuth();
 
-        List<RequestMatcher> matchers = props.getRequiredPaths().stream()
+        List<RequestMatcher> requiredMatchers = props.getRequiredPaths().stream()
                 .map(p -> new AntPathRequestMatcher(p.getPattern(), p.getMethod()))
                 .map(m -> (RequestMatcher) m)
                 .toList();
 
-        this.required = matchers.isEmpty() ? request -> false : new OrRequestMatcher(matchers);
+        this.required = requiredMatchers.isEmpty() ? request -> false : new OrRequestMatcher(requiredMatchers);
+
+        List<RequestMatcher> publicMatchers = new ArrayList<>();
+        publicMatchers.addAll(props.getPublicPaths().stream()
+                .map(p -> new AntPathRequestMatcher(p.getPattern(), p.getMethod()))
+                .map(m -> (RequestMatcher) m)
+                .toList());
+        publicMatchers.add(new AntPathRequestMatcher("/health", null));
+        publicMatchers.add(new AntPathRequestMatcher("/actuator/**", null));
+        publicMatchers.add(new AntPathRequestMatcher("/swagger-ui/**", null));
+        publicMatchers.add(new AntPathRequestMatcher("/v3/api-docs/**", null));
+        this.publicMatcher = publicMatchers.isEmpty() ? request -> false : new OrRequestMatcher(publicMatchers);
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !required.matches(request);
+        if (!defaultRequireAuth) {
+            return !required.matches(request);
+        }
+        return publicMatcher.matches(request);
     }
 
     @Override
@@ -57,15 +75,26 @@ public class AuthFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
+        boolean isPublic = publicMatcher.matches(request);
+        boolean requireAuth = defaultRequireAuth ? !isPublic : required.matches(request);
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            writeUnauthorized(response, "Unauthorized: No token provided");
+            if (requireAuth) {
+                writeUnauthorized(response, "Unauthorized: No token provided");
+                return;
+            }
+            filterChain.doFilter(request, response);
             return;
         }
 
         String token = authHeader.substring("Bearer ".length()).trim();
         if (token.isBlank()) {
-            writeUnauthorized(response, "Unauthorized: Invalid token format");
+            if (requireAuth) {
+                writeUnauthorized(response, "Unauthorized: Invalid token format");
+                return;
+            }
+            filterChain.doFilter(request, response);
             return;
         }
 
@@ -75,7 +104,11 @@ public class AuthFilter extends OncePerRequestFilter {
             String email = decoded.getClaim("email").asString();
 
             if (uid == null || uid.isBlank()) {
-                writeUnauthorized(response, "Unauthorized: Invalid token");
+                if (requireAuth) {
+                    writeUnauthorized(response, "Unauthorized: Invalid token");
+                    return;
+                }
+                filterChain.doFilter(request, response);
                 return;
             }
 
@@ -83,7 +116,11 @@ public class AuthFilter extends OncePerRequestFilter {
             request.setAttribute(ATTR, new AuthContext(uid, email, userId));
             filterChain.doFilter(request, response);
         } catch (JWTVerificationException ex) {
-            writeUnauthorized(response, "Unauthorized: Invalid token");
+            if (requireAuth) {
+                writeUnauthorized(response, "Unauthorized: Invalid token");
+                return;
+            }
+            filterChain.doFilter(request, response);
         }
     }
 

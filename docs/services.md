@@ -9,8 +9,8 @@ The Andex Events platform comprises 5 microservices:
 | auth-service | Java 21 | Spring Boot 3.3.5 | 8083 | Active |
 | users-service | Java 21 | Spring Boot 3.3.5 | 8081 | Active |
 | events-service | Java 21 | Spring Boot 3.3.5 | 8082 | Active |
-| match-service | Go 1.23 | Chi Router | 8005 | Active |
-| upload-service | Go 1.24 | Chi Router | 8006 | Active |
+| match-service | Go 1.23 | Gin | 8005 | Active |
+| upload-service | Go 1.24 | Gin | 8006 | Active |
 
 Legacy Go implementations of auth, users, and events services have been moved to `legacy/go-services/`.
 
@@ -109,14 +109,15 @@ Event lifecycle management — creation, discovery, participation, and moderatio
 Advanced location-based matching with tracking of seen users.
 
 ### Architecture
-- **Handler** — Chi HTTP handlers
+- **Handler** — Gin HTTP handlers
 - **Repository** — PostgreSQL queries with PostGIS
 - **Service** — Business logic layer
 - **Middleware** — Auth (Firebase JWT) + CORS
 
-### Endpoints
-- `GET /api/matches` — Find nearby users
-- `POST /api/matches/seen` — Mark a user as seen
+### Endpoints (см. также `services/match-service/cmd/main.go`)
+- `GET /api/matches` — взаимные мэтчи и связанные списки
+- `GET /api/matches/actions`, `GET /api/matches/incoming-likes`
+- `POST /api/matches/like`, `POST /api/matches/dislike`, `POST /api/matches/super-like`
 
 ---
 
@@ -132,9 +133,10 @@ File/image upload to MinIO S3-compatible storage.
 - **MinIO client** — S3 operations (put, get, delete)
 - **Migration** — Database migration for upload metadata
 
-### Endpoints
-- `POST /api/uploads` — Upload a file
-- `GET /api/uploads/{id}` — Get upload metadata
+### Endpoints (см. `services/upload-service/cmd/main.go`)
+- `POST /api/upload` — загрузка файла (multipart, Firebase auth)
+- `DELETE /api/upload` — удаление фото (Firebase auth)
+- `GET /uploads/:bucket/:userId/:filename` — публичная выдача файла
 
 ### Storage
 - MinIO S3 bucket for file storage
@@ -170,4 +172,4 @@ File/image upload to MinIO S3-compatible storage.
 | `/api/users` | users-service:8081 |
 | `/api/events` | events-service:8082 |
 | `/api/matches` | match-service:8005 |
-| `/api/uploads` | upload-service:8006 |
+| `/api/upload`, `/uploads` | upload-service:8006 |

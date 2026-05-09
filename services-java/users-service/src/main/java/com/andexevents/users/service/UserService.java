@@ -3,8 +3,10 @@ package com.andexevents.users.service;
 import com.andexevents.users.model.UserDto;
 import com.andexevents.users.repo.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.Locale;
 
 @Service
 public class UserService {
@@ -35,7 +37,48 @@ public class UserService {
     }
 
     public Optional<UserDto> getById(String userId) {
-        return userRepository.findById(userId);
+        return userRepository.findByIdWithRating(userId);
+    }
+
+    public List<UserDto> getAllUsersForModeration() {
+        return userRepository.findAllForModeration();
+    }
+
+    public boolean isAdmin(UserDto user) {
+        return "ADMIN".equals(normalizeRole(user == null ? null : user.role()));
+    }
+
+    public boolean canModerate(UserDto user) {
+        String normalizedRole = normalizeRole(user == null ? null : user.role());
+        return "ADMIN".equals(normalizedRole) || "MODERATOR".equals(normalizedRole);
+    }
+
+    @Transactional
+    public UserDto updateUserRole(String targetUserId, String role) {
+        String normalizedRole = normalizeRole(role);
+        if (!"USER".equals(normalizedRole)
+                && !"MODERATOR".equals(normalizedRole)
+                && !"ADMIN".equals(normalizedRole)) {
+            throw new BadRequestException("Invalid role. Allowed values: USER, MODERATOR, ADMIN");
+        }
+
+        if (targetUserId == null || targetUserId.isBlank()) {
+            throw new BadRequestException("targetUserId is required");
+        }
+
+        if (userRepository.findById(targetUserId).isEmpty()) {
+            throw new NotFoundException("User not found");
+        }
+
+        return userRepository.updateRole(targetUserId, normalizedRole);
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null) {
+            return "";
+        }
+
+        return role.trim().toUpperCase(Locale.ROOT);
     }
 
     public UserDto updateProfile(String userId, UpdateProfileRequest req) {
@@ -50,6 +93,7 @@ public class UserService {
         if (req.gender() != null) updates.put("gender", req.gender());
         if (req.interests() != null) updates.put("interests", req.interests().toArray(new String[0]));
         if (req.socialLinks() != null) updates.put("socialLinks", req.socialLinks());
+        if (req.fcmToken() != null) updates.put("fcmToken", req.fcmToken());
         if (req.isOnboardingCompleted() != null) updates.put("isOnboardingCompleted", req.isOnboardingCompleted());
 
         return userRepository.updateProfile(userId, updates);
@@ -115,6 +159,7 @@ public class UserService {
             String gender,
             List<String> interests,
             Map<String, Object> socialLinks,
+                String fcmToken,
             Boolean isOnboardingCompleted
     ) {
     }
@@ -127,6 +172,12 @@ public class UserService {
 
     public static class BadRequestException extends RuntimeException {
         public BadRequestException(String message) {
+            super(message);
+        }
+    }
+
+    public static class NotFoundException extends RuntimeException {
+        public NotFoundException(String message) {
             super(message);
         }
     }

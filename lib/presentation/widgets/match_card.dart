@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/match_preview.dart';
+import '../../core/theme/app_colors.dart';
 
 class MatchCard extends StatelessWidget {
   const MatchCard({
@@ -30,18 +31,19 @@ class MatchCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onOpenProfile,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
           width: width,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const <BoxShadow>[
+            color: AppColors.surface.withValues(alpha: 0.56),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+            boxShadow: <BoxShadow>[
               BoxShadow(
-                color: Color(0x14000000),
-                blurRadius: 14,
-                offset: Offset(0, 10),
+                color: AppColors.dark.withValues(alpha: 0.12),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -50,7 +52,7 @@ class MatchCard extends StatelessWidget {
             children: <Widget>[
               CircleAvatar(
                 radius: 24,
-                backgroundColor: const Color(0xFF5E60CE).withValues(alpha: 0.14),
+                backgroundColor: AppColors.primary.withValues(alpha: 0.14),
                 backgroundImage: match.avatar != null && match.avatar!.isNotEmpty
                     ? NetworkImage(match.avatar!)
                     : null,
@@ -58,7 +60,7 @@ class MatchCard extends StatelessWidget {
                     ? Text(
                         _initials,
                         style: const TextStyle(
-                          color: Color(0xFF5E60CE),
+                          color: AppColors.primary,
                           fontWeight: FontWeight.w700,
                         ),
                       )
@@ -81,7 +83,9 @@ class MatchCard extends StatelessWidget {
                       match.subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.dark.withValues(alpha: 0.66),
+                      ),
                     ),
                   ],
                 ),
@@ -90,8 +94,8 @@ class MatchCard extends StatelessWidget {
               ElevatedButton(
                 onPressed: onOpenProfile,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5E60CE),
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.accent,
                   minimumSize: const Size(0, 36),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   textStyle: const TextStyle(
@@ -99,7 +103,7 @@ class MatchCard extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: const Text('Профиль'),

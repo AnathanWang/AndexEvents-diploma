@@ -1,3 +1,5 @@
+import '../../../data/models/event_model.dart';
+
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/services/logger_service.dart';
@@ -47,8 +49,34 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           ? fetchedUser.copyWith(coverImageUrl: previousUser.coverImageUrl)
           : fetchedUser;
 
-      final userEvents = await _eventService.getUserEvents(user.id);
-      emit(ProfileLoaded(user, userEvents: userEvents));
+      final results = await Future.wait<List<EventModel>>([
+        _eventService.getUserEvents(user.id),
+        _eventService.getUserParticipatedEvents(user.id),
+      ]);
+
+      final userEvents = results[0];
+      final participated = results[1];
+
+      final going = <EventModel>[];
+      final interested = <EventModel>[];
+      for (final ev in participated) {
+        if (ev.userParticipationStatus == 'GOING') {
+          going.add(ev);
+        } else if (ev.userParticipationStatus == 'INTERESTED') {
+          interested.add(ev);
+        } else {
+          going.add(ev);
+        }
+      }
+
+      emit(
+        ProfileLoaded(
+          user,
+          userEvents: userEvents,
+          goingEvents: going,
+          interestedEvents: interested,
+        ),
+      );
     } catch (e) {
       emit(ProfileError('Не удалось загрузить профиль: $e'));
     }
@@ -62,7 +90,12 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     if (currentState is! ProfileLoaded) return;
 
     emit(
-      ProfileUpdating(currentState.user, userEvents: currentState.userEvents),
+      ProfileUpdating(
+        currentState.user,
+        userEvents: currentState.userEvents,
+        goingEvents: currentState.goingEvents,
+        interestedEvents: currentState.interestedEvents,
+      ),
     );
 
     try {
@@ -74,6 +107,10 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         bio: event.bio,
         interests: event.interests,
         socialLinks: event.socialLinks,
+        showVisitedEvents: event.showVisitedEvents,
+        showInMatches: event.showInMatches,
+        incognitoMode: event.incognitoMode,
+        hideOnlineStatus: event.hideOnlineStatus,
       );
 
       // Перезагружаем профиль
@@ -91,7 +128,28 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           : fetchedUser;
 
       final userEvents = await _eventService.getUserEvents(updatedUser.id);
-      emit(ProfileLoaded(updatedUser, userEvents: userEvents));
+      final res = await Future.wait([
+        _eventService.getUserParticipatedEvents(updatedUser.id),
+      ]);
+      final g = <EventModel>[];
+      final i = <EventModel>[];
+      for (var ev in res[0]) {
+        if (ev.userParticipationStatus == 'GOING') {
+          g.add(ev);
+        } else if (ev.userParticipationStatus == 'INTERESTED') {
+          i.add(ev);
+        } else {
+          g.add(ev);
+        }
+      }
+      emit(
+        ProfileLoaded(
+          updatedUser,
+          userEvents: userEvents,
+          goingEvents: g,
+          interestedEvents: i,
+        ),
+      );
     } catch (e) {
       emit(
         ProfileError(
@@ -110,7 +168,12 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     if (currentState is! ProfileLoaded) return;
 
     emit(
-      ProfileUpdating(currentState.user, userEvents: currentState.userEvents),
+      ProfileUpdating(
+        currentState.user,
+        userEvents: currentState.userEvents,
+        goingEvents: currentState.goingEvents,
+        interestedEvents: currentState.interestedEvents,
+      ),
     );
 
     try {
@@ -121,17 +184,42 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       );
 
       // Обновляем профиль с новым URL фото
-      LoggerService.debug('🔵 [ProfileBloc] Обновляем профиль с photoUrl: $photoUrl');
+      LoggerService.debug(
+        '🔵 [ProfileBloc] Обновляем профиль с photoUrl: $photoUrl',
+      );
       await _userService.updateProfile(photoUrl: photoUrl);
 
       // Перезагружаем профиль
       final updatedUser = await _userService.getCurrentUser();
       final userEvents = await _eventService.getUserEvents(updatedUser.id);
       LoggerService.info('🟢 [ProfileBloc] Фото обновлено успешно');
-      emit(ProfileLoaded(updatedUser, userEvents: userEvents));
+      final res = await Future.wait([
+        _eventService.getUserParticipatedEvents(updatedUser.id),
+      ]);
+      final g = <EventModel>[];
+      final i = <EventModel>[];
+      for (var ev in res[0]) {
+        if (ev.userParticipationStatus == 'GOING') {
+          g.add(ev);
+        } else if (ev.userParticipationStatus == 'INTERESTED') {
+          i.add(ev);
+        } else {
+          g.add(ev);
+        }
+      }
+      emit(
+        ProfileLoaded(
+          updatedUser,
+          userEvents: userEvents,
+          goingEvents: g,
+          interestedEvents: i,
+        ),
+      );
     } catch (e) {
       LoggerService.error('🔴 [ProfileBloc] Ошибка обновления фото: $e');
-      LoggerService.warning('⚠️ [ProfileBloc] Это может быть проблема VPN или симулятора iOS');
+      LoggerService.warning(
+        '⚠️ [ProfileBloc] Это может быть проблема VPN или симулятора iOS',
+      );
 
       // Возвращаемся в ProfileLoaded без ошибки
       emit(
@@ -151,27 +239,58 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     if (currentState is! ProfileLoaded) return;
 
     emit(
-      ProfileUpdating(currentState.user, userEvents: currentState.userEvents),
+      ProfileUpdating(
+        currentState.user,
+        userEvents: currentState.userEvents,
+        goingEvents: currentState.goingEvents,
+        interestedEvents: currentState.interestedEvents,
+      ),
     );
 
     try {
-      LoggerService.debug('🔵 [ProfileBloc] Начинаем загрузку дополнительного фото...');
+      LoggerService.debug(
+        '🔵 [ProfileBloc] Начинаем загрузку дополнительного фото...',
+      );
       final photoUrl = await _userService.uploadAdditionalPhoto(
         File(event.photoPath),
       );
 
-      LoggerService.debug('🔵 [ProfileBloc] Добавляем фото в профиль: $photoUrl');
+      LoggerService.debug(
+        '🔵 [ProfileBloc] Добавляем фото в профиль: $photoUrl',
+      );
       final updatedUser = await _userService.getCurrentUser();
       final userEvents = await _eventService.getUserEvents(updatedUser.id);
-      LoggerService.info('🟢 [ProfileBloc] Дополнительное фото загружено успешно');
-      emit(ProfileLoaded(updatedUser, userEvents: userEvents));
-    } catch (e) {
-      LoggerService.error('🔴 [ProfileBloc] Ошибка загрузки дополнительного фото: $e');
+      LoggerService.info(
+        '🟢 [ProfileBloc] Дополнительное фото загружено успешно',
+      );
+      final res = await Future.wait([
+        _eventService.getUserParticipatedEvents(updatedUser.id),
+      ]);
+      final g = <EventModel>[];
+      final i = <EventModel>[];
+      for (var ev in res[0]) {
+        if (ev.userParticipationStatus == 'GOING') {
+          g.add(ev);
+        } else if (ev.userParticipationStatus == 'INTERESTED') {
+          i.add(ev);
+        } else {
+          g.add(ev);
+        }
+      }
       emit(
-        ProfileError(
-          'Не удалось загрузить фото: $e',
-          user: currentState.user,
+        ProfileLoaded(
+          updatedUser,
+          userEvents: userEvents,
+          goingEvents: g,
+          interestedEvents: i,
         ),
+      );
+    } catch (e) {
+      LoggerService.error(
+        '🔴 [ProfileBloc] Ошибка загрузки дополнительного фото: $e',
+      );
+      emit(
+        ProfileError('Не удалось загрузить фото: $e', user: currentState.user),
       );
     }
   }
@@ -184,7 +303,12 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     if (currentState is! ProfileLoaded) return;
 
     emit(
-      ProfileUpdating(currentState.user, userEvents: currentState.userEvents),
+      ProfileUpdating(
+        currentState.user,
+        userEvents: currentState.userEvents,
+        goingEvents: currentState.goingEvents,
+        interestedEvents: currentState.interestedEvents,
+      ),
     );
 
     try {
@@ -194,14 +318,32 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       final updatedUser = await _userService.getCurrentUser();
       final userEvents = await _eventService.getUserEvents(updatedUser.id);
       LoggerService.info('🟢 [ProfileBloc] Фото удалено успешно');
-      emit(ProfileLoaded(updatedUser, userEvents: userEvents));
+      final res = await Future.wait([
+        _eventService.getUserParticipatedEvents(updatedUser.id),
+      ]);
+      final g = <EventModel>[];
+      final i = <EventModel>[];
+      for (var ev in res[0]) {
+        if (ev.userParticipationStatus == 'GOING') {
+          g.add(ev);
+        } else if (ev.userParticipationStatus == 'INTERESTED') {
+          i.add(ev);
+        } else {
+          g.add(ev);
+        }
+      }
+      emit(
+        ProfileLoaded(
+          updatedUser,
+          userEvents: userEvents,
+          goingEvents: g,
+          interestedEvents: i,
+        ),
+      );
     } catch (e) {
       LoggerService.error('🔴 [ProfileBloc] Ошибка удаления фото: $e');
       emit(
-        ProfileError(
-          'Не удалось удалить фото: $e',
-          user: currentState.user,
-        ),
+        ProfileError('Не удалось удалить фото: $e', user: currentState.user),
       );
     }
   }

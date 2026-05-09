@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/config/app_config.dart';
 import '../../core/auth/id_token_provider.dart';
 import '../../core/services/logger_service.dart';
@@ -16,6 +17,18 @@ class EventService {
 
   EventService() {
     _storageService = LocalStorageService();
+  }
+
+  Future<void> clearEventsCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys().where((k) => k.startsWith('events_cache_')).toList();
+      for (final key in keys) {
+        await prefs.remove(key);
+      }
+    } catch (e) {
+      LoggerService.error('[EventService] Cache clear error', e);
+    }
   }
 
   /// Загрузить фото события в локальное хранилище
@@ -51,6 +64,7 @@ class EventService {
     DateTime? endDateTime,
     required double price,
     String? imageUrl,
+    List<String>? imageUrls,
     required bool isOnline,
     int? maxParticipants,
     int? minAge,
@@ -78,6 +92,7 @@ class EventService {
         body['endDateTime'] = endDateTime.toUtc().toIso8601String();
       }
       if (imageUrl != null) body['imageUrl'] = imageUrl;
+      if (imageUrls != null) body['imageUrls'] = imageUrls;
       if (maxParticipants != null) body['maxParticipants'] = maxParticipants;
       if (minAge != null) body['minAge'] = minAge;
       if (maxAge != null) body['maxAge'] = maxAge;
@@ -149,11 +164,79 @@ class EventService {
       final responseData = json.decode(response.body);
       final List<dynamic> eventsJson = responseData['data']['events'];
 
+      if (page == 1) {
+        try {
+          final String cacheKey = 'events_cache_${category ?? "all"}_page1';
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(cacheKey, json.encode(eventsJson));
+        } catch (cacheError) {
+          LoggerService.error('[EventService] Cache write error', cacheError);
+        }
+      }
+
       return eventsJson.map((json) => EventModel.fromJson(json)).toList();
     } catch (e) {
-      LoggerService.error('[EventService] Ошибка загрузки событий', e);
+      LoggerService.error('[EventService] Ошибка загрузки событий из сети, пробуем кэш', e);
+      if (page == 1) {
+        final cached = await getCachedEvents(category: category);
+        if (cached.isNotEmpty) {
+          LoggerService.debug('[EventService] Возвращаем события из кэша');
+          return cached;
+        }
+      }
       throw Exception('Ошибка загрузки событий: $e');
     }
+  }
+
+  /// Получить список событий для модерации (включая скрытые санкцией HIDE_VISIBILITY).
+  /// Требует роль ADMIN/MODERATOR.
+  Future<List<EventModel>> getEventsForModeration({int limit = 500}) async {
+    try {
+      final String? token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final uri = Uri.parse('${AppConfig.baseUrl}/events/moderation/all')
+          .replace(queryParameters: {'limit': limit.toString()});
+
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(AppConfig.receiveTimeout);
+
+      if (response.statusCode != 200) {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Ошибка загрузки событий');
+      }
+
+      final responseData = json.decode(response.body);
+      final List<dynamic> eventsJson = responseData['data']['events'];
+      return eventsJson.map((json) => EventModel.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Ошибка загрузки событий: $e');
+    }
+  }
+
+  /// Получить события из локального кэша
+  Future<List<EventModel>> getCachedEvents({String? category}) async {
+    try {
+      final String cacheKey = 'events_cache_${category ?? "all"}_page1';
+      final prefs = await SharedPreferences.getInstance();
+      final cachedData = prefs.getString(cacheKey);
+      if (cachedData != null) {
+        final List<dynamic> eventsJson = json.decode(cachedData);
+        return eventsJson.map((json) => EventModel.fromJson(json)).toList();
+      }
+    } catch (e) {
+      LoggerService.error('[EventService] Cache read error', e);
+    }
+    return [];
   }
 
   /// Получить детали события
@@ -332,6 +415,7 @@ class EventService {
     DateTime? endDateTime,
     double? price,
     String? imageUrl,
+    List<String>? imageUrls,
     bool? isOnline,
     int? maxParticipants,
     int? minAge,
@@ -356,6 +440,7 @@ class EventService {
       }
       if (price != null) body['price'] = price;
       if (imageUrl != null) body['imageUrl'] = imageUrl;
+      if (imageUrls != null) body['imageUrls'] = imageUrls;
       if (isOnline != null) body['isOnline'] = isOnline;
       if (maxParticipants != null) body['maxParticipants'] = maxParticipants;
       if (minAge != null) body['minAge'] = minAge;

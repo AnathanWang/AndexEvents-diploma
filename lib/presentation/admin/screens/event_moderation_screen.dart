@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../data/models/event_model.dart';
 import '../../../data/models/report_model.dart';
 import '../../../data/services/event_service.dart';
+import '../../../data/services/event_sanction_service.dart';
 import '../../../data/services/report_service.dart';
+import '../event_moderation/event_moderation_event_card.dart';
+import '../event_moderation/event_moderation_item.dart';
+import '../event_moderation/event_moderation_toolbar.dart';
+import '../event_moderation/event_sanctions_sheet.dart';
+import '../widgets/admin_screen_scaffold.dart';
+import '../widgets/admin_state_view.dart';
+import '../widgets/moderation_reports_bottom_sheet.dart';
 
 class EventModerationScreen extends StatefulWidget {
   const EventModerationScreen({super.key});
@@ -15,11 +24,14 @@ class EventModerationScreen extends StatefulWidget {
 class _EventModerationScreenState extends State<EventModerationScreen> {
   final ReportService _reportService = ReportService();
   final EventService _eventService = EventService();
+  final EventSanctionService _eventSanctionService = EventSanctionService();
 
   bool _isLoading = true;
   String? _loadError;
   final Set<String> _actionInProgress = <String>{};
-  List<_EventModerationItem> _items = <_EventModerationItem>[];
+  List<EventModerationItem> _items = <EventModerationItem>[];
+  String _query = '';
+  bool _pendingOnly = false;
 
   @override
   void initState() {
@@ -34,26 +46,40 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
     });
 
     try {
-      final reports = await _reportService.getReports();
-      final pendingEventReports = reports
-          .where(
-            (r) =>
-                r.status.toUpperCase() == 'PENDING' &&
-                (r.targetEventId?.isNotEmpty ?? false),
+      final results = await Future.wait<dynamic>([
+        _eventService.getEventsForModeration(limit: 500),
+        _reportService.getEventReports(),
+      ]);
+
+      final events = results[0] as List<EventModel>;
+      final reports = results[1] as List<ReportModel>;
+
+      final Map<String, List<ReportModel>> reportsByEventId =
+          <String, List<ReportModel>>{};
+
+      for (final report in reports) {
+        final target = report.targetEventId;
+        if (target == null || target.isEmpty) continue;
+        reportsByEventId.putIfAbsent(target, () => <ReportModel>[]).add(report);
+      }
+
+      for (final reportList in reportsByEventId.values) {
+        reportList.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      }
+
+      final resolved = events
+          .map(
+            (EventModel event) => EventModerationItem(
+              event: event,
+              reports: reportsByEventId[event.id] ?? <ReportModel>[],
+            ),
           )
-          .toList();
-
-      final futures = pendingEventReports.map((report) async {
-        EventModel? event;
-        try {
-          event = await _eventService.getEventById(report.targetEventId!);
-        } catch (_) {
-          event = null;
-        }
-        return _EventModerationItem(report: report, event: event);
-      }).toList();
-
-      final resolved = await Future.wait(futures);
+          .toList()
+        ..sort((a, b) {
+          final byPending = b.pendingReports.compareTo(a.pendingReports);
+          if (byPending != 0) return byPending;
+          return b.event.dateTime.compareTo(a.event.dateTime);
+        });
 
       if (!mounted) return;
       setState(() {
@@ -86,52 +112,34 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
     return fallback;
   }
 
-  Future<void> _resolveReport(ReportModel report, String resolution) async {
-    if (_actionInProgress.contains(report.id)) return;
+  Future<void> _rejectEvent(EventModerationItem item) async {
+    final eventId = item.event.id;
+    final pendingReports = item.reports
+        .where((r) => r.status.toUpperCase() == 'PENDING')
+        .toList();
+
+    if (_actionInProgress.contains(eventId)) return;
     setState(() {
-      _actionInProgress.add(report.id);
+      _actionInProgress.add(eventId);
     });
 
     try {
-      await _reportService.resolveReport(report.id, resolution);
-      await _loadModerationQueue();
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Жалоба обработана: $resolution')));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Ошибка обработки: $e')));
-    } finally {
-      if (mounted) {
-        setState(() {
-          _actionInProgress.remove(report.id);
-        });
+      await _eventService.deleteEvent(eventId);
+
+      for (final report in pendingReports) {
+        await _reportService.resolveReport(report.id, 'RESOLVED');
       }
-    }
-  }
 
-  Future<void> _rejectEvent(_EventModerationItem item) async {
-    final report = item.report;
-    final event = item.event;
-
-    if (_actionInProgress.contains(report.id)) return;
-    setState(() {
-      _actionInProgress.add(report.id);
-    });
-
-    try {
-      if (event != null) {
-        // С backend текущей версии это сработает только если у модератора есть право удаления.
-        await _eventService.deleteEvent(event.id);
-      }
-      await _reportService.resolveReport(report.id, 'RESOLVED');
       await _loadModerationQueue();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Событие отклонено, жалоба закрыта')),
+        SnackBar(
+          content: Text(
+            pendingReports.isEmpty
+                ? 'Событие удалено'
+                : 'Событие удалено, жалоб закрыто: ${pendingReports.length}',
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -141,185 +149,211 @@ class _EventModerationScreenState extends State<EventModerationScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _actionInProgress.remove(report.id);
+          _actionInProgress.remove(eventId);
         });
       }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        title: const Text('Модерация событий'),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF2F355E),
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: _isLoading ? null : _loadModerationQueue,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _loadError != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.lock_outline,
-                      size: 52,
-                      color: Color(0xFF9E9E9E),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _loadError!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFF6B6B6B),
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton(
-                      onPressed: _loadModerationQueue,
-                      child: const Text('Повторить'),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : _items.isEmpty
-          ? const Center(
-              child: Text(
-                'Нет активных жалоб на события',
-                style: TextStyle(color: Color(0xFF7B82AD), fontSize: 16),
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadModerationQueue,
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                itemCount: _items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final item = _items[index];
-                  final report = item.report;
-                  final event = item.event;
-                  final inProgress = _actionInProgress.contains(report.id);
+  Future<void> _dismissPendingReports(EventModerationItem item) async {
+    final eventId = item.event.id;
+    final pendingReports = item.reports
+        .where((r) => r.status.toUpperCase() == 'PENDING')
+        .toList();
 
-                  return Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFDCE3FF)),
-                      boxShadow: const <BoxShadow>[
-                        BoxShadow(
-                          color: Color(0x10000000),
-                          blurRadius: 10,
-                          offset: Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.report_problem_rounded,
-                              color: Color(0xFFFF8E53),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                event?.title ?? 'Событие недоступно',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF2F355E),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Причина: ${report.reason.displayName}',
-                          style: const TextStyle(
-                            color: Color(0xFF6B74A6),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (report.details?.isNotEmpty == true) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            report.details!,
-                            style: const TextStyle(
-                              color: Color(0xFF7E86AE),
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                        if (event != null) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Локация: ${event.location}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Color(0xFF8A92BA)),
-                          ),
-                        ],
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: inProgress
-                                    ? null
-                                    : () => _resolveReport(report, 'DISMISSED'),
-                                child: const Text('Отклонить жалобу'),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: inProgress
-                                    ? null
-                                    : () => _rejectEvent(item),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFFF6B6B),
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: Text(
-                                  event == null
-                                      ? 'Закрыть жалобу'
-                                      : 'Отклонить событие',
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
+    if (pendingReports.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('У события нет активных жалоб')),
+      );
+      return;
+    }
+
+    if (_actionInProgress.contains(eventId)) return;
+
+    setState(() {
+      _actionInProgress.add(eventId);
+    });
+
+    try {
+      for (final report in pendingReports) {
+        await _reportService.resolveReport(report.id, 'DISMISSED');
+      }
+
+      await _loadModerationQueue();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Отклонено жалоб: ${pendingReports.length}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка обработки жалоб: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _actionInProgress.remove(eventId);
+        });
+      }
+    }
+  }
+
+  Future<void> _showEventReportsDialog(EventModerationItem item) async {
+    await ModerationReportsBottomSheet.show(
+      context: context,
+      title: 'Жалобы по событию',
+      headerIcon: Icons.flag_rounded,
+      reports: item.reports,
+      pendingCount: item.pendingReports,
+      emptyMessage: 'По событию пока нет жалоб',
+      onDismissPendingReport: (report) =>
+          _dismissSingleEventReport(item, report),
     );
   }
-}
 
-class _EventModerationItem {
-  const _EventModerationItem({required this.report, required this.event});
+  Future<void> _showEventSanctionsSheet(EventModerationItem item) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (context) {
+        return EventSanctionsSheet(
+          item: item,
+          service: _eventSanctionService,
+          onChanged: _loadModerationQueue,
+        );
+      },
+    );
+  }
 
-  final ReportModel report;
-  final EventModel? event;
+  Future<void> _dismissSingleEventReport(
+    EventModerationItem item,
+    ReportModel report,
+  ) async {
+    final eventId = item.event.id;
+    if (_actionInProgress.contains(eventId)) return;
+
+    setState(() {
+      _actionInProgress.add(eventId);
+    });
+
+    try {
+      await _reportService.resolveReport(report.id, 'DISMISSED');
+      await _loadModerationQueue();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Жалоба отклонена')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка отклонения жалобы: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _actionInProgress.remove(eventId);
+        });
+      }
+    }
+  }
+
+  bool _matchesQuery(EventModerationItem item, String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return true;
+
+    final event = item.event;
+    if (event.title.toLowerCase().contains(q)) return true;
+    if (event.id.toLowerCase().contains(q)) return true;
+    if (event.location.toLowerCase().contains(q)) return true;
+
+    for (final r in item.reports) {
+      if (r.id.toLowerCase().contains(q)) return true;
+      if (r.reporterId.toLowerCase().contains(q)) return true;
+      if ((r.details ?? '').toLowerCase().contains(q)) return true;
+    }
+
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = _items
+        .where((i) => !_pendingOnly || i.pendingReports > 0)
+        .where((i) => _matchesQuery(i, _query))
+        .toList();
+
+    return AdminScreenScaffold(
+      title: 'Модерация событий',
+      actions: [
+        IconButton(
+          onPressed: _isLoading ? null : _loadModerationQueue,
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+      ],
+      body: _isLoading
+          ? const AdminStateView.loading()
+          : _loadError != null
+              ? AdminStateView.error(
+                  title: 'Не удалось загрузить очередь',
+                  message: _loadError,
+                  actionLabel: 'Повторить',
+                  onAction: _loadModerationQueue,
+                )
+              : _items.isEmpty
+                  ? const AdminStateView.empty(
+                      title: 'События не найдены',
+                      message:
+                          'Если появятся жалобы, они будут отображаться здесь.',
+                      icon: Icons.event_busy_rounded,
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _loadModerationQueue,
+                      color: AppColors.primary,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        itemCount: filtered.length + 1,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          if (index == 0) {
+                            return EventModerationToolbar(
+                              onQueryChanged: (v) =>
+                                  setState(() => _query = v),
+                              pendingOnly: _pendingOnly,
+                              onSelectAll: () => setState(
+                                () => _pendingOnly = false,
+                              ),
+                              onSelectPendingOnly: () => setState(
+                                () => _pendingOnly = true,
+                              ),
+                              filteredCount: filtered.length,
+                              totalCount: _items.length,
+                            );
+                          }
+
+                          final item = filtered[index - 1];
+                          final event = item.event;
+                          final inProgress =
+                              _actionInProgress.contains(event.id);
+
+                          return EventModerationEventCard(
+                            item: item,
+                            inProgress: inProgress,
+                            onShowReports: () =>
+                                _showEventReportsDialog(item),
+                            onShowSanctions: () =>
+                                _showEventSanctionsSheet(item),
+                            onRejectEvent: () => _rejectEvent(item),
+                            onDismissPendingReports: () =>
+                                _dismissPendingReports(item),
+                          );
+                        },
+                      ),
+                    ),
+    );
+  }
 }

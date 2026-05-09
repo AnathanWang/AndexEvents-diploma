@@ -6,6 +6,20 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+import java.util.Properties
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+
+val yandexMapKitApiKey: String =
+    (project.findProperty("YANDEX_MAPKIT_API_KEY") as String?)
+        ?: localProperties.getProperty("YANDEX_MAPKIT_API_KEY")
+        ?: System.getenv("YANDEX_MAPKIT_API_KEY")
+        ?: ""
+
 android {
     namespace = "com.anathanwang.andexevents"
     compileSdk = flutter.compileSdkVersion
@@ -36,7 +50,7 @@ android {
         //   YANDEX_MAPKIT_API_KEY=your_real_key_here
         // The placeholder below reads the key from a project property (local.properties or --project-prop)
         // and falls back to an empty string if not provided.
-        manifestPlaceholders["YANDEX_MAPKIT_API_KEY"] = project.findProperty("YANDEX_MAPKIT_API_KEY") ?: ""
+        manifestPlaceholders["YANDEX_MAPKIT_API_KEY"] = yandexMapKitApiKey
     }
 
     buildTypes {
@@ -45,6 +59,10 @@ android {
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
+    }
+
+    dependencies {
+        implementation("com.yandex.android:maps.mobile:4.5.1-full")
     }
 }
 

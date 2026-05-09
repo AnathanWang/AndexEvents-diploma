@@ -1,4 +1,5 @@
 import 'participant_model.dart';
+import '../../core/config/app_config.dart';
 
 /// Модель события
 class EventModel {
@@ -13,6 +14,7 @@ class EventModel {
   final DateTime? endDateTime;
   final double price;
   final String? imageUrl;
+  final List<String> imageUrls;
   final bool isOnline;
   final String status; // PENDING, APPROVED, REJECTED
   final String? rejectionReason;
@@ -26,9 +28,17 @@ class EventModel {
   // Дополнительные поля для UI
   final int participantsCount;
   final bool isParticipating;
+  final String? userParticipationStatus;
   final String? creatorName;
   final String? creatorPhotoUrl;
   final List<ParticipantModel> previewParticipants;
+
+  // Рейтинг события
+  final double averageRating;
+  final int ratingCount;
+  final int? myRating;
+
+  DateTime get actualEndDateTime => endDateTime ?? dateTime.add(const Duration(hours: 3));
 
   const EventModel({
     required this.id,
@@ -42,6 +52,7 @@ class EventModel {
     this.endDateTime,
     required this.price,
     this.imageUrl,
+    this.imageUrls = const [],
     required this.isOnline,
     required this.status,
     this.rejectionReason,
@@ -53,10 +64,39 @@ class EventModel {
     this.updatedAt,
     this.participantsCount = 0,
     this.isParticipating = false,
+    this.userParticipationStatus,
     this.creatorName,
     this.creatorPhotoUrl,
     this.previewParticipants = const [],
+    this.averageRating = 0.0,
+    this.ratingCount = 0,
+    this.myRating,
   });
+
+  static String? _normalizeMediaUrl(String? rawUrl) {
+    if (rawUrl == null || rawUrl.isEmpty) return rawUrl;
+
+    try {
+      final uri = Uri.parse(rawUrl);
+      final host = uri.host.toLowerCase();
+      final isLoopback =
+          host == 'localhost' || host == '127.0.0.1' || host == '0.0.0.0';
+      if (!isLoopback) return rawUrl;
+
+      final apiUri = Uri.parse(AppConfig.baseUrl);
+      if (apiUri.host.isEmpty) return rawUrl;
+
+      return uri
+          .replace(
+            scheme: apiUri.scheme.isEmpty ? 'http' : apiUri.scheme,
+            host: apiUri.host,
+            port: apiUri.hasPort ? apiUri.port : null,
+          )
+          .toString();
+    } catch (_) {
+      return rawUrl;
+    }
+  }
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
     // Извлекаем данные организатора из объекта createdBy
@@ -75,6 +115,20 @@ class EventModel {
             .toList() ??
         [];
 
+    final normalizedImageUrl = _normalizeMediaUrl(json['imageUrl'] as String?);
+    final normalizedImageUrls =
+      (json['imageUrls'] as List<dynamic>?)
+        ?.map((e) => _normalizeMediaUrl(e?.toString()))
+        .whereType<String>()
+        .where((url) => url.trim().isNotEmpty)
+        .toList() ??
+      <String>[];
+
+    if ((normalizedImageUrl ?? '').trim().isNotEmpty &&
+      !normalizedImageUrls.contains(normalizedImageUrl)) {
+      normalizedImageUrls.insert(0, normalizedImageUrl!);
+    }
+
     return EventModel(
       id: json['id'] as String,
       title: json['title'] as String,
@@ -88,7 +142,8 @@ class EventModel {
           ? DateTime.parse(json['endDateTime'] as String)
           : null,
       price: (json['price'] as num).toDouble(),
-      imageUrl: json['imageUrl'] as String?,
+        imageUrl: normalizedImageUrl,
+        imageUrls: normalizedImageUrls,
       isOnline: json['isOnline'] as bool? ?? false,
       status: json['status'] as String,
       rejectionReason: json['rejectionReason'] as String?,
@@ -104,9 +159,22 @@ class EventModel {
           : null,
       participantsCount: participantsCount,
       isParticipating: json['isParticipating'] as bool? ?? false,
+      userParticipationStatus: json['userParticipationStatus'] as String?,
       creatorName: createdBy?['displayName'] as String?,
-      creatorPhotoUrl: createdBy?['photoUrl'] as String?,
+      creatorPhotoUrl: _normalizeMediaUrl(createdBy?['photoUrl'] as String?),
       previewParticipants: previewParticipants,
+      averageRating: (() {
+        final stats = json['ratingStats'] as Map<String, dynamic>?;
+        return (stats?['averageRating'] as num?)?.toDouble() ?? 0.0;
+      })(),
+      ratingCount: (() {
+        final stats = json['ratingStats'] as Map<String, dynamic>?;
+        return (stats?['ratingCount'] as num?)?.toInt() ?? 0;
+      })(),
+      myRating: (() {
+        final stats = json['ratingStats'] as Map<String, dynamic>?;
+        return (stats?['myRating'] as num?)?.toInt();
+      })(),
     );
   }
 
@@ -123,6 +191,7 @@ class EventModel {
       'endDateTime': endDateTime?.toUtc().toIso8601String(),
       'price': price,
       'imageUrl': imageUrl,
+      'imageUrls': imageUrls,
       'isOnline': isOnline,
       'status': status,
       'rejectionReason': rejectionReason,
@@ -147,6 +216,7 @@ class EventModel {
     DateTime? endDateTime,
     double? price,
     String? imageUrl,
+    List<String>? imageUrls,
     bool? isOnline,
     String? status,
     String? rejectionReason,
@@ -158,9 +228,13 @@ class EventModel {
     DateTime? updatedAt,
     int? participantsCount,
     bool? isParticipating,
+    String? userParticipationStatus,
     String? creatorName,
     String? creatorPhotoUrl,
     List<ParticipantModel>? previewParticipants,
+    double? averageRating,
+    int? ratingCount,
+    int? myRating,
   }) {
     return EventModel(
       id: id ?? this.id,
@@ -174,6 +248,7 @@ class EventModel {
       endDateTime: endDateTime ?? this.endDateTime,
       price: price ?? this.price,
       imageUrl: imageUrl ?? this.imageUrl,
+      imageUrls: imageUrls ?? this.imageUrls,
       isOnline: isOnline ?? this.isOnline,
       status: status ?? this.status,
       rejectionReason: rejectionReason ?? this.rejectionReason,
@@ -185,9 +260,13 @@ class EventModel {
       updatedAt: updatedAt ?? this.updatedAt,
       participantsCount: participantsCount ?? this.participantsCount,
       isParticipating: isParticipating ?? this.isParticipating,
+      userParticipationStatus: userParticipationStatus ?? this.userParticipationStatus,
       creatorName: creatorName ?? this.creatorName,
       creatorPhotoUrl: creatorPhotoUrl ?? this.creatorPhotoUrl,
       previewParticipants: previewParticipants ?? this.previewParticipants,
+      averageRating: averageRating ?? this.averageRating,
+      ratingCount: ratingCount ?? this.ratingCount,
+      myRating: myRating ?? this.myRating,
     );
   }
 }

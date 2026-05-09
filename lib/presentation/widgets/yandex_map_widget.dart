@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/services/logger_service.dart';
 import '../../data/models/event_model.dart';
 import './common/custom_notification.dart';
@@ -108,7 +109,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
 
     // Основная форма капли
     final mainPaint = Paint()
-      ..color = const Color(0xFF5E60CE)
+      ..color = const Color(0xFF0961F6)
       ..style = PaintingStyle.fill;
 
     final dropPath = Path()
@@ -130,7 +131,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
 
     // Белая обводка
     final borderPaint = Paint()
-      ..color = Colors.white
+      ..color = AppColors.accent
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
@@ -138,14 +139,14 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
 
     // Отверстие в центре (белое)
     final holePaint = Paint()
-      ..color = Colors.white
+      ..color = AppColors.accent
       ..style = PaintingStyle.fill;
 
     canvas.drawCircle(Offset(centerX, centerY - 8), 13, holePaint);
 
     // Обводка для отверстия (темная)
     final holeStrokePaint = Paint()
-      ..color = const Color(0xFF5E60CE)
+      ..color = const Color(0xFF0961F6)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
@@ -178,9 +179,9 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
       Paint()..color = Colors.transparent,
     );
 
-    // Рисуем фиолетовую точку в центре (гармонирует со стилем)
+    // Рисуем точку текущей геопозиции
     final dotPaint = Paint()
-      ..color = const Color(0xFF7C3AED)
+      ..color = const Color(0xFF0961F6)
       ..style = PaintingStyle.fill;
 
     canvas.drawCircle(const Offset(size / 2, size / 2), size / 4, dotPaint);
@@ -244,16 +245,8 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
     const double userLocationTapRadius =
         0.003; // Меньше радиус для точки пользователя
 
-    // Проверяем нажатие на точку пользователя
-    if (_userLocation != null) {
-      final distance = _calculateDistance(tappedPoint, _userLocation!);
-      if (distance < userLocationTapRadius) {
-        _showUserLocationSnackBar();
-        return;
-      }
-    }
-
-    // Проверяем нажатие на события
+    // 1. Сначала проверяем события, чтобы они имели приоритет при нажатии
+    // (даже если пользователь стоит рядом или на метке)
     for (final event in widget.events) {
       final eventPoint = Point(
         latitude: event.latitude,
@@ -264,6 +257,15 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
 
       if (distance < tapRadius) {
         widget.onEventMarkerTapped?.call(event);
+        return;
+      }
+    }
+
+    // 2. Только если не попали в событие, проверяем нажатие на точку пользователя
+    if (_userLocation != null) {
+      final distance = _calculateDistance(tappedPoint, _userLocation!);
+      if (distance < userLocationTapRadius) {
+        _showUserLocationSnackBar();
         return;
       }
     }

@@ -6,6 +6,9 @@ import com.andexevents.events.auth.AuthFilter;
 import com.andexevents.events.model.EventDtos;
 import com.andexevents.events.repo.EventRepository;
 import com.andexevents.events.service.EventService;
+import com.andexevents.events.service.EventModerationGuardService;
+import com.andexevents.events.service.ModerationAccessService;
+import com.andexevents.events.service.UserSanctionGuardService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,9 +24,17 @@ import java.util.Map;
 @RequestMapping("/api/events")
 public class EventController {
     private final EventService eventService;
+    private final UserSanctionGuardService userSanctionGuardService;
+    private final ModerationAccessService moderationAccessService;
 
-    public EventController(EventService eventService) {
+    public EventController(
+            EventService eventService,
+            UserSanctionGuardService userSanctionGuardService,
+            ModerationAccessService moderationAccessService
+    ) {
         this.eventService = eventService;
+        this.userSanctionGuardService = userSanctionGuardService;
+        this.moderationAccessService = moderationAccessService;
     }
 
     @PostMapping
@@ -32,6 +43,13 @@ public class EventController {
         if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Unauthorized: User ID not found in database"));
+        }
+
+        try {
+            userSanctionGuardService.assertCanCreateEvent(auth.userId());
+        } catch (UserSanctionGuardService.ForbiddenException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(e.getMessage()));
         }
 
         EventRepository.EventCreateParams params = new EventRepository.EventCreateParams(
@@ -45,6 +63,7 @@ public class EventController {
                 body.endDateTime() != null ? Instant.parse(body.endDateTime()) : null,
                 body.price(),
                 body.imageUrl(),
+            body.imageUrls(),
                 body.isOnline(),
                 auth.userId()
         );
@@ -102,6 +121,19 @@ public class EventController {
         return ResponseEntity.ok(ApiResponse.ok(Map.of("events", events)));
     }
 
+    @GetMapping("/moderation/all")
+    public ResponseEntity<ApiResponse<Object>> listAllEventsForModeration(HttpServletRequest request) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
+        }
+        if (!moderationAccessService.canModerate(auth.userId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Недостаточно прав"));
+        }
+        List<EventDtos.EventDto> events = eventService.listAllApprovedForModeration(auth.userId());
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("events", events)));
+    }
+
     @GetMapping("/user/{userId}")
     public ApiResponse<List<EventDtos.EventDto>> getUserEvents(@PathVariable String userId) {
         return ApiResponse.ok(eventService.listUserEvents(userId));
@@ -143,6 +175,7 @@ public class EventController {
                 body.endDateTime() == null ? null : Instant.parse(body.endDateTime()),
                 body.price(),
                 body.imageUrl(),
+            body.imageUrls(),
                 body.isOnline()
         );
 
@@ -165,7 +198,17 @@ public class EventController {
         }
 
         try {
-            boolean deleted = eventService.delete(id, auth.userId());
+            boolean deleted;
+            try {
+                deleted = eventService.delete(id, auth.userId());
+            } catch (EventService.ForbiddenException ex) {
+                // allow moderators/admins to delete events (moderation action)
+                if (!moderationAccessService.canModerate(auth.userId())) {
+                    throw ex;
+                }
+
+                deleted = eventService.deleteAsModerator(id);
+            }
             if (!deleted) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Event not found"));
             }
@@ -194,6 +237,8 @@ public class EventController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
         } catch (EventService.BadRequestException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage()));
+        } catch (EventModerationGuardService.ForbiddenException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(ex.getMessage()));
         }
     }
 
@@ -219,6 +264,69 @@ public class EventController {
         }
     }
 
+    // ── Rating endpoints ───────────────────────────────────────────────────
+
+    @PostMapping("/{id}/rating")
+    public ResponseEntity<ApiResponse<EventDtos.RatingDto>> rateEvent(
+            HttpServletRequest request,
+            @PathVariable String id,
+            @RequestBody RatingRequest body) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
+        }
+        try {
+            EventDtos.RatingDto dto = eventService.rateEvent(id, auth.userId(), body.rating(), body.comment());
+            return ResponseEntity.ok(ApiResponse.ok(dto));
+        } catch (EventService.NotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
+        } catch (EventService.ForbiddenException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(ex.getMessage()));
+        } catch (EventService.BadRequestException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/rating/stats")
+    public ResponseEntity<ApiResponse<EventDtos.EventRatingStatsDto>> getEventRatingStats(
+            HttpServletRequest request,
+            @PathVariable String id) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        String viewerUserId = auth == null ? null : auth.userId();
+        try {
+            EventDtos.EventRatingStatsDto stats = eventService.getEventRatingStats(id, viewerUserId);
+            return ResponseEntity.ok(ApiResponse.ok(stats));
+        } catch (EventService.NotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/rating/reviews")
+    public ResponseEntity<ApiResponse<List<EventDtos.RatingReviewDto>>> getEventRatingReviews(
+            HttpServletRequest request,
+            @PathVariable String id) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        String viewerUserId = auth == null ? null : auth.userId();
+        try {
+            List<EventDtos.RatingReviewDto> reviews = eventService.getEventReviews(id, viewerUserId);
+            return ResponseEntity.ok(ApiResponse.ok(reviews));
+        } catch (EventService.NotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
+        } catch (EventService.ForbiddenException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/user/{userId}/rating")
+    public ResponseEntity<ApiResponse<EventDtos.UserRatingDto>> getUserRating(@PathVariable String userId) {
+        try {
+            EventDtos.UserRatingDto dto = eventService.getUserRating(userId);
+            return ResponseEntity.ok(ApiResponse.ok(dto));
+        } catch (EventService.NotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
+        }
+    }
+
     public record CreateEventRequest(
             @NotBlank String title,
             @NotBlank String description,
@@ -230,6 +338,7 @@ public class EventController {
             String endDateTime,
             Double price,
             String imageUrl,
+            List<String> imageUrls,
             Boolean isOnline
     ) {
     }
@@ -245,10 +354,14 @@ public class EventController {
             String endDateTime,
             Double price,
             String imageUrl,
+            List<String> imageUrls,
             Boolean isOnline
     ) {
     }
 
     public record ParticipateRequest(String status) {
+    }
+
+    public record RatingRequest(int rating, String comment) {
     }
 }

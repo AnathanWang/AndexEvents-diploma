@@ -9,11 +9,12 @@ class SampleData {
 
   static final List<EventPreview> events = <EventPreview>[
     EventPreview(
+      id: 'event_1',
       title: 'Andex Meetup: Networking & Coffee',
       category: 'Комьюнити',
       time: 'Сегодня · 19:00',
       distance: '1,2 км от вас',
-      badgeColor: const Color(0xFF5E60CE),
+      badgeColor: const Color(0xFF75878A),
       attendees: 42,
       date: DateTime.now().add(const Duration(hours: 3)),
       location: 'Кофейня "The Brew", ул. Тверская 12',
@@ -27,6 +28,7 @@ class SampleData {
       ],
     ),
     EventPreview(
+      id: 'event_2',
       title: 'Sunrise Yoga в Парке Горького',
       category: 'Здоровье',
       time: 'Завтра · 07:30',
@@ -39,6 +41,7 @@ class SampleData {
       attendeeNames: const <String>['Ольга', 'Светлана', 'Екатерина'],
     ),
     EventPreview(
+      id: 'event_3',
       title: 'Techno Night by Local DJs',
       category: 'Музыка',
       time: 'Пятница · 22:00',

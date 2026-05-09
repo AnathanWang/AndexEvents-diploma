@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
 import 'package:andexevents/presentation/auth/bloc/auth_bloc.dart';
 import 'package:andexevents/presentation/auth/bloc/auth_event.dart';
 import 'package:andexevents/presentation/auth/bloc/auth_state.dart';

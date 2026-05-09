@@ -7,7 +7,7 @@ void main() {
 
   group('EventPreview', () {
     test('isFree returns true when price is null', () {
-      final preview = EventPreview(
+      final preview = EventPreview(id: "mock-1",
         title: 'Free Event',
         category: 'MUSIC',
         time: '18:00',
@@ -22,7 +22,7 @@ void main() {
     });
 
     test('isFree returns true when price is 0', () {
-      final preview = EventPreview(
+      final preview = EventPreview(id: "mock-1",
         title: 'Free Event',
         category: 'MUSIC',
         time: '18:00',
@@ -37,7 +37,7 @@ void main() {
     });
 
     test('isFree returns false when price is positive', () {
-      final preview = EventPreview(
+      final preview = EventPreview(id: "mock-1",
         title: 'Paid Event',
         category: 'MUSIC',
         time: '18:00',
@@ -52,7 +52,7 @@ void main() {
     });
 
     test('default attendeeNames is empty', () {
-      final preview = EventPreview(
+      final preview = EventPreview(id: "mock-1",
         title: 'Event',
         category: 'SPORTS',
         time: '20:00',
@@ -67,7 +67,7 @@ void main() {
 
     test('all fields are correctly stored', () {
       final date = DateTime(2025, 7, 1);
-      final preview = EventPreview(
+      final preview = EventPreview(id: "mock-1",
         title: 'Concert',
         category: 'MUSIC',
         time: '21:00',

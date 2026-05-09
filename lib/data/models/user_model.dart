@@ -18,9 +18,17 @@ class UserModel {
   final double? lastLatitude;
   final double? lastLongitude;
   final DateTime? lastLocationUpdate;
+  final bool showVisitedEvents;
+  final bool showInMatches;
+  final bool incognitoMode;
+  final bool hideOnlineStatus;
   final bool isOnboardingCompleted;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  // Рейтинг организатора (нулл если менее 3 созданных событий)
+  final double? averageRating;
+  final int? eventsCreatedCount;
 
   const UserModel({
     required this.id,
@@ -39,9 +47,15 @@ class UserModel {
     this.lastLatitude,
     this.lastLongitude,
     this.lastLocationUpdate,
+    this.showVisitedEvents = true,
+    this.showInMatches = true,
+    this.incognitoMode = false,
+    this.hideOnlineStatus = false,
     required this.isOnboardingCompleted,
     this.createdAt,
     this.updatedAt,
+    this.averageRating,
+    this.eventsCreatedCount,
   });
 
   static String? _normalizeMediaUrl(String? rawUrl) {
@@ -97,6 +111,10 @@ class UserModel {
       lastLocationUpdate: json['lastLocationUpdate'] != null
           ? DateTime.parse(json['lastLocationUpdate'] as String)
           : null,
+      showVisitedEvents: json['showVisitedEvents'] as bool? ?? true,
+      showInMatches: json['showInMatches'] as bool? ?? true,
+      incognitoMode: json['incognitoMode'] as bool? ?? false,
+      hideOnlineStatus: json['hideOnlineStatus'] as bool? ?? false,
       isOnboardingCompleted: json['isOnboardingCompleted'] as bool? ?? false,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
@@ -104,6 +122,8 @@ class UserModel {
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'] as String)
           : null,
+      averageRating: (json['averageRating'] as num?)?.toDouble(),
+      eventsCreatedCount: (json['eventsCreatedCount'] as num?)?.toInt(),
     );
   }
 
@@ -125,6 +145,10 @@ class UserModel {
       'lastLatitude': lastLatitude,
       'lastLongitude': lastLongitude,
       'lastLocationUpdate': lastLocationUpdate?.toIso8601String(),
+      'showVisitedEvents': showVisitedEvents,
+      'showInMatches': showInMatches,
+      'incognitoMode': incognitoMode,
+      'hideOnlineStatus': hideOnlineStatus,
       'isOnboardingCompleted': isOnboardingCompleted,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
@@ -148,9 +172,15 @@ class UserModel {
     double? lastLatitude,
     double? lastLongitude,
     DateTime? lastLocationUpdate,
+    bool? showVisitedEvents,
+    bool? showInMatches,
+    bool? incognitoMode,
+    bool? hideOnlineStatus,
     bool? isOnboardingCompleted,
     DateTime? createdAt,
     DateTime? updatedAt,
+    double? averageRating,
+    int? eventsCreatedCount,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -169,10 +199,16 @@ class UserModel {
       lastLatitude: lastLatitude ?? this.lastLatitude,
       lastLongitude: lastLongitude ?? this.lastLongitude,
       lastLocationUpdate: lastLocationUpdate ?? this.lastLocationUpdate,
+      showVisitedEvents: showVisitedEvents ?? this.showVisitedEvents,
+      showInMatches: showInMatches ?? this.showInMatches,
+      incognitoMode: incognitoMode ?? this.incognitoMode,
+      hideOnlineStatus: hideOnlineStatus ?? this.hideOnlineStatus,
       isOnboardingCompleted:
           isOnboardingCompleted ?? this.isOnboardingCompleted,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      averageRating: averageRating ?? this.averageRating,
+      eventsCreatedCount: eventsCreatedCount ?? this.eventsCreatedCount,
     );
   }
 }

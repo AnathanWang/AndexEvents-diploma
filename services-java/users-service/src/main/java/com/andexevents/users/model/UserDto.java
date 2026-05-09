@@ -26,9 +26,16 @@ public record UserDto(
         Integer minAge,
         Integer maxAge,
         Integer maxDistance,
+        Boolean showVisitedEvents,
+        Boolean showInMatches,
+        Boolean incognitoMode,
+        Boolean hideOnlineStatus,
         String fcmToken,
         Boolean isOnboardingCompleted,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        // Organizer rating (null if user has fewer than 3 approved events)
+        Double averageRating,
+        Long eventsCreatedCount
 ) {
 }

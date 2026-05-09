@@ -53,14 +53,14 @@ class EventParticipantsDialog extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F6FA),
+                    color: const Color(0xFFF3F6F6),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     '${participants.length}',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF4A4D6A),
+                      color: Color(0xFF161823),
                     ),
                   ),
                 ),

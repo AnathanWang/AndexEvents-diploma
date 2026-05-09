@@ -25,7 +25,7 @@ class AdminPanelSnippet extends StatelessWidget {
         children: <Widget>[
           Row(
             children: const <Widget>[
-              Icon(Icons.shield_moon_outlined, color: Color(0xFF5E60CE)),
+              Icon(Icons.shield_moon_outlined, color: Color(0xFF75878A)),
               SizedBox(width: 8),
               Text(
                 'Статус модерации',
@@ -80,7 +80,7 @@ class _StatPill extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF5E60CE),
+                color: Color(0xFF75878A),
               ),
             ),
             const SizedBox(height: 4),
@@ -88,7 +88,7 @@ class _StatPill extends StatelessWidget {
               label,
               style: const TextStyle(
                 fontSize: 12,
-                color: Color(0xFF4A4D6A),
+                color: Color(0xFF161823),
               ),
             ),
           ],

@@ -1,14 +1,40 @@
 import 'package:flutter/material.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:share_plus/share_plus.dart';
+import '../../../core/constants/event_messages.dart';
 
 import '../bloc/event_bloc.dart';
 import '../bloc/event_event.dart';
 import '../bloc/event_state.dart';
 import '../../../data/models/event_model.dart';
-import '../widgets/event_participants_dialog.dart';
+import '../../../data/services/external_route_service.dart';
+import '../../matches/screens/event_match_screen.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../auth/widgets/auth_glass_card.dart';
+import '../../auth/widgets/auth_glass_scaffold.dart';
+import '../../widgets/glass_scene_stack.dart';
+import '../../profile/screens/user_profile_screen.dart';
+import '../../../data/services/rating_service.dart';
+import '../../../data/services/user_service.dart';
+import '../../../core/http/api_client.dart';
+import '../../widgets/report_dialog.dart';
+import '../../../data/services/calendar_service.dart';
+import '../../../data/services/event_participants_manage_service.dart';
+import 'real_event_detail/event_manage_participants_sheet.dart';
+import 'real_event_detail/real_event_detail_widgets.dart';
+import 'real_event_detail/event_detail_route_section.dart';
+import 'real_event_detail/event_detail_header_card.dart';
+import 'real_event_detail/event_detail_when_where_section.dart';
+import 'real_event_detail/event_detail_description_section.dart';
+import 'real_event_detail/event_detail_organizer_section.dart';
+import 'real_event_detail/event_reviews_bottom_sheet.dart';
+import 'real_event_detail/event_detail_bottom_bar.dart';
+import 'real_event_detail/event_detail_sliver_app_bar.dart';
+import 'real_event_detail/event_detail_participants_bottom_sheet.dart';
+import 'real_event_detail/event_detail_rating_dialog.dart';
 
 class RealEventDetailScreen extends StatefulWidget {
   final String eventId;
@@ -20,9 +46,22 @@ class RealEventDetailScreen extends StatefulWidget {
 }
 
 class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
-  bool _isFavorite = false;
-  bool _isGoing = false;
-  bool _isParticipationLoading = false;
+  final ValueNotifier<bool> _isFavoriteNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _isGoingNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _isFavoriteLoadingNotifier =
+      ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _isGoingLoadingNotifier =
+      ValueNotifier<bool>(false);
+  int _currentImageIndex = 0;
+  EventModel? _cachedEvent;
+  final ExternalRouteService _routeService = ExternalRouteService();
+  final UserService _userService = UserService();
+  final RatingService _ratingService = RatingService(ApiClient());
+  final CalendarService _calendarService = CalendarService();
+  final EventParticipantsManageService _manageService =
+      EventParticipantsManageService();
+  final ValueNotifier<int?> _myRatingNotifier = ValueNotifier<int?>(null);
+  String? _currentUserId;
 
   @override
   void initState() {
@@ -31,25 +70,131 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<EventBloc>().add(EventDetailLoadRequested(widget.eventId));
     });
+    _loadCurrentUserId();
   }
 
-  void _toggleFavorite() {
-    setState(() {
-      _isFavorite = !_isFavorite;
-    });
-    CustomNotification.show(
-      context,
-      _isFavorite ? 'Добавлено в избранное' : 'Удалено из избранного',
-      duration: const Duration(seconds: 1),
+  Future<void> _loadCurrentUserId() async {
+    try {
+      final user = await _userService.getCurrentUser();
+      if (!mounted) return;
+      setState(() {
+        _currentUserId = user.id;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _currentUserId = null;
+      });
+    }
+  }
+
+  void _openReportDialog(EventModel event) {
+    final reporterId = _currentUserId?.trim();
+    if (reporterId == null || reporterId.isEmpty) {
+      CustomNotification.show(
+        context,
+        'Чтобы отправить жалобу, нужно войти в аккаунт.',
+        isError: true,
+      );
+      return;
+    }
+
+    showDialog<void>(
+      context: context,
+      builder: (_) => ReportDialog(
+        reporterId: reporterId,
+        targetEventId: event.id,
+      ),
     );
   }
 
-  void _toggleGoing(EventModel event) {
-    setState(() {
-      _isParticipationLoading = true;
-    });
+  Future<void> _addToCalendar(EventModel event) async {
+    try {
+      await _calendarService.addEventToCalendar(event);
+      if (!mounted) return;
+      CustomNotification.show(
+        context,
+        'Событие добавлено в календарь',
+        isError: false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().replaceFirst('Exception: ', '').trim();
+      CustomNotification.show(
+        context,
+        msg.isEmpty ? 'Не удалось добавить событие в календарь' : msg,
+        isError: true,
+      );
+    }
+  }
 
-    if (!_isGoing) {
+  Future<void> _shareEvent(EventModel event) async {
+    final text = [
+      event.title.trim(),
+      if (event.location.trim().isNotEmpty) event.location.trim(),
+      '${_formatDate(event.dateTime)} ${_formatTime(event.dateTime)}',
+    ].join('\n');
+
+    try {
+      await SharePlus.instance.share(ShareParams(text: text));
+    } catch (e) {
+      if (!mounted) return;
+      CustomNotification.show(
+        context,
+        'Не удалось поделиться событием',
+        isError: true,
+      );
+    }
+  }
+
+  Future<void> _showManageParticipantsSheet(EventModel event) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => EventManageParticipantsSheet(
+        eventId: event.id,
+        service: _manageService,
+      ),
+    );
+  }
+
+  void _toggleFavorite(EventModel event) {
+    if (_isEventFinished(event)) {
+      CustomNotification.show(
+        context,
+        EventMessages.eventFinishedActionBlocked,
+      );
+      _isFavoriteLoadingNotifier.value = false;
+      return;
+    }
+
+    _isFavoriteLoadingNotifier.value = true;
+
+    if (!_isFavoriteNotifier.value) {
+      context.read<EventBloc>().add(
+        EventParticipateRequested(eventId: event.id, status: 'INTERESTED'),
+      );
+    } else {
+      context.read<EventBloc>().add(
+        EventCancelParticipationRequested(event.id),
+      );
+    }
+  }
+
+  void _toggleGoing(EventModel event) {
+    if (_isEventFinished(event)) {
+      CustomNotification.show(
+        context,
+        EventMessages.eventFinishedActionBlocked,
+      );
+      _isGoingLoadingNotifier.value = false;
+      return;
+    }
+
+    _isGoingLoadingNotifier.value = true;
+
+    if (!_isGoingNotifier.value) {
       context.read<EventBloc>().add(
         EventParticipateRequested(eventId: event.id, status: 'GOING'),
       );
@@ -61,6 +206,41 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   }
 
   @override
+  void dispose() {
+    _isFavoriteNotifier.dispose();
+    _isGoingNotifier.dispose();
+    _isFavoriteLoadingNotifier.dispose();
+    _isGoingLoadingNotifier.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openRoute(EventModel event) async {
+    if (event.isOnline) {
+      CustomNotification.show(
+        context,
+        'Для онлайн-событий маршрут недоступен',
+      );
+      return;
+    }
+
+    final opened = await _routeService.openRouteToDestination(
+      latitude: event.latitude,
+      longitude: event.longitude,
+      label: event.title,
+    );
+
+    if (!opened && mounted) {
+      CustomNotification.show(
+        context,
+        'Не удалось открыть приложение навигации',
+        isError: true,
+      );
+    }
+  }
+
+  // moved to `real_event_detail/real_event_detail_widgets.dart`
+
+  @override
   Widget build(BuildContext context) {
     return BlocConsumer<EventBloc, EventState>(
       listenWhen: (previous, current) {
@@ -69,68 +249,143 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
       },
       listener: (context, state) {
         if (state is EventDetailLoaded) {
-          setState(() {
-            _isGoing = state.event.isParticipating;
-            _isParticipationLoading = false;
-          });
+          if (mounted) {
+            setState(() {
+              _cachedEvent = state.event;
+            });
+          } else {
+            _cachedEvent = state.event;
+          }
+          _isGoingNotifier.value = state.event.isParticipating;
+          _isFavoriteNotifier.value =
+              state.event.userParticipationStatus == 'INTERESTED';
+          _myRatingNotifier.value = state.event.myRating;
+          _isFavoriteLoadingNotifier.value = false;
+          _isGoingLoadingNotifier.value = false;
         } else if (state is EventParticipationUpdating) {
-          setState(() {
-            _isParticipationLoading = true;
-          });
+          // Локальные индикаторы уже включаются при нажатии соответствующей кнопки.
         } else if (state is EventParticipationUpdated) {
-          // Состояние обновлено, ждем новые данные события
-          setState(() {
-            _isParticipationLoading = true;
-          });
+          // Ждем EventDetailLoaded, где индикаторы выключаются точечно.
         } else if (state is EventError) {
-          setState(() {
-            _isParticipationLoading = false;
-          });
+          _isFavoriteLoadingNotifier.value = false;
+          _isGoingLoadingNotifier.value = false;
           CustomNotification.show(context, state.message, isError: true);
         }
       },
       buildWhen: (previous, current) {
-        // Не перестраиваем основной экран при загрузке участников
-        return current is! EventParticipantsLoading &&
-            current is! EventParticipantsLoaded;
+        if (current is EventParticipantsLoading ||
+            current is EventParticipantsLoaded ||
+            current is EventParticipationUpdating ||
+            current is EventParticipationUpdated) {
+          return false;
+        }
+
+        // После первого успешного лоада не перестраиваем весь экран
+        // на detail-reload после нажатий лайк/участвовать.
+        if (_cachedEvent != null &&
+            (current is EventDetailLoading || current is EventDetailLoaded)) {
+          return false;
+        }
+
+        return true;
       },
       builder: (context, state) {
+        if (_cachedEvent != null) {
+          return _buildEventDetail(context, _cachedEvent!);
+        }
+
         if (state is EventDetailLoading) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          return const AuthGlassScaffold(
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
           );
         }
 
         if (state is EventError) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Ошибка')),
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(state.message),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<EventBloc>().add(
-                        EventDetailLoadRequested(widget.eventId),
-                      );
-                    },
-                    child: const Text('Попробовать снова'),
+          return AuthGlassScaffold(
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF273043)),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              title: const Text(
+                'Ошибка',
+                style: TextStyle(
+                  color: Color(0xFF1F3552),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              centerTitle: true,
+            ),
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: AuthGlassCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.error_outline_rounded,
+                        size: 52,
+                        color: AppColors.dark.withValues(alpha: 0.55),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        state.message,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.dark.withValues(alpha: 0.78),
+                          height: 1.35,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            context.read<EventBloc>().add(
+                                  EventDetailLoadRequested(widget.eventId),
+                                );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Попробовать снова',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           );
         }
 
         if (state is EventDetailLoaded) {
+          _cachedEvent = state.event;
           return _buildEventDetail(context, state.event);
         }
 
-        return const Scaffold(body: Center(child: Text('Загрузка...')));
+        return const AuthGlassScaffold(
+          child: Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          ),
+        );
       },
     );
   }
@@ -138,129 +393,34 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   Widget _buildEventDetail(BuildContext context, EventModel event) {
     final categoryColor = _getCategoryColor(event.category);
     final categoryName = _getCategoryName(event.category);
+    final imageGallery = event.imageUrls.isNotEmpty
+        ? event.imageUrls
+        : <String>[
+            if ((event.imageUrl ?? '').trim().isNotEmpty) event.imageUrl!.trim(),
+          ];
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
+      backgroundColor: AppColors.background,
+      body: GlassSceneStack(
+        child: CustomScrollView(
+            slivers: [
           // App Bar с изображением
-          SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            leading: Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF4A4D6A)),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-            actions: [
-              Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: Icon(
-                    _isFavorite ? Icons.favorite : Icons.favorite_outline,
-                    color: _isFavorite ? Colors.red : const Color(0xFF4A4D6A),
-                  ),
-                  onPressed: _toggleFavorite,
-                ),
-              ),
-              Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.share, color: Color(0xFF4A4D6A)),
-                  onPressed: () {},
-                ),
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (event.imageUrl != null)
-                    CachedNetworkImage(
-                      imageUrl: event.imageUrl!,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey.shade300,
-                        child: const Center(child: CircularProgressIndicator()),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              categoryColor.withValues(alpha: 0.7),
-                              categoryColor.withValues(alpha: 0.5),
-                            ],
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.event,
-                          size: 120,
-                          color: Colors.white38,
-                        ),
-                      ),
-                    )
-                  else
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            categoryColor.withValues(alpha: 0.7),
-                            categoryColor.withValues(alpha: 0.5),
-                          ],
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.event,
-                        size: 120,
-                        color: Colors.white38,
-                      ),
-                    ),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.7),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          EventDetailSliverAppBar(
+            event: event,
+            categoryColor: categoryColor,
+            imageGallery: imageGallery,
+            currentImageIndex: _currentImageIndex,
+            onImageIndexChanged: (index) {
+              if (!mounted) return;
+              setState(() {
+                _currentImageIndex = index;
+              });
+            },
+            favoriteAction: _buildFavoriteAction(event),
+            onBack: () => Navigator.of(context).pop(),
+            onReport: () => _openReportDialog(event),
+            onAddToCalendar: () => _addToCalendar(event),
+            onShare: () => _shareEvent(event),
           ),
 
           // Контент
@@ -268,376 +428,67 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Категория и цена
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: categoryColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          categoryName,
-                          style: TextStyle(
-                            color: categoryColor,
-                            fontWeight: FontWeight.w600,
-                          ),
+                EventDetailHeaderCard(
+                  event: event,
+                  categoryName: categoryName,
+                  categoryColor: categoryColor,
+                  showCreatorReviewButton:
+                      _isEventFinished(event) && _isCreator(event),
+                  showManageButton: _isCreator(event),
+                  onOpenReviews: () => _showReviewsBottomSheet(event),
+                  onOpenMatches: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EventMatchScreen(
+                          eventId: event.id,
                         ),
                       ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: event.price == 0
-                              ? Colors.green.withValues(alpha: 0.1)
-                              : Colors.orange.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          event.price == 0
-                              ? 'Бесплатно'
-                              : '${event.price.toStringAsFixed(0)} ₽',
-                          style: TextStyle(
-                            color: event.price == 0
-                                ? Colors.green
-                                : Colors.orange,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Название
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    event.title,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF4A4D6A),
-                    ),
-                  ),
+                    );
+                  },
+                  onOpenManage: () => _showManageParticipantsSheet(event),
                 ),
                 const SizedBox(height: 20),
 
-                // Дата и время
-                _buildInfoRow(
-                  Icons.calendar_today,
-                  _formatDate(event.dateTime),
+                EventDetailWhenWhereSection(
+                  event: event,
+                  dateText: event.endDateTime != null &&
+                          !_isSameCalendarDate(
+                            event.dateTime,
+                            event.endDateTime!,
+                          )
+                      ? '${_formatDate(event.dateTime)} - ${_formatDate(event.endDateTime!)}'
+                      : _formatDate(event.dateTime),
+                  timeText: event.endDateTime != null
+                      ? '${_formatTime(event.dateTime)} - ${_formatTime(event.endDateTime!)}'
+                      : _formatTime(event.dateTime),
+                  onOpenRoute:
+                      event.isOnline ? null : () => _openRoute(event),
+                  onOpenParticipants: () {
+                    context.read<EventBloc>().add(
+                          EventParticipantsLoadRequested(event.id),
+                        );
+                    _showParticipantsDialog(context, event);
+                  },
                 ),
-                const SizedBox(height: 12),
-                _buildInfoRow(Icons.access_time, _formatTime(event.dateTime)),
-                const SizedBox(height: 12),
-                _buildInfoRow(Icons.location_on, event.location, onTap: () {}),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
-                // Участники
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Участники',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF4A4D6A),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          // Avatars
-                          if (event.previewParticipants.isNotEmpty)
-                            SizedBox(
-                              width:
-                                  25.0 *
-                                      (event.previewParticipants.length - 1) +
-                                  40,
-                              height: 40,
-                              child: Stack(
-                                children: List.generate(
-                                  event.previewParticipants.length,
-                                  (index) => Positioned(
-                                    left: index * 25.0,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.white,
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: CircleAvatar(
-                                        radius: 18,
-                                        backgroundColor: Colors.grey[200],
-                                        backgroundImage:
-                                            event
-                                                    .previewParticipants[index]
-                                                    .user
-                                                    .photoUrl !=
-                                                null
-                                            ? CachedNetworkImageProvider(
-                                                event
-                                                    .previewParticipants[index]
-                                                    .user
-                                                    .photoUrl!,
-                                              )
-                                            : null,
-                                        child:
-                                            event
-                                                    .previewParticipants[index]
-                                                    .user
-                                                    .photoUrl ==
-                                                null
-                                            ? Text(
-                                                event
-                                                        .previewParticipants[index]
-                                                        .user
-                                                        .displayName
-                                                        .isNotEmpty
-                                                    ? event
-                                                          .previewParticipants[index]
-                                                          .user
-                                                          .displayName[0]
-                                                          .toUpperCase()
-                                                    : '?',
-                                                style: const TextStyle(
-                                                  color: Color(0xFF4A4D6A),
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              )
-                                            : null,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
+                EventDetailDescriptionSection(event: event),
+                if (event.description.trim().isNotEmpty)
+                  const SizedBox(height: 20),
 
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () {
-                              context.read<EventBloc>().add(
-                                EventParticipantsLoadRequested(event.id),
-                              );
-                              _showParticipantsDialog(context, event);
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5F6FA),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    event.participantsCount == 0
-                                        ? 'Нет участников'
-                                        : '${event.participantsCount} участник${event.participantsCount % 10 == 1 && event.participantsCount != 11 ? '' : 'ов'}',
-                                    style: const TextStyle(
-                                      color: Color(0xFF4A4D6A),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  if (event.participantsCount > 0) ...[
-                                    const SizedBox(width: 4),
-                                    const Icon(
-                                      Icons.chevron_right_rounded,
-                                      size: 16,
-                                      color: Color(0xFF9E9E9E),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          // Matches Button
-                          Container(
-                            decoration: BoxDecoration(
-                              color: categoryColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {},
-                                borderRadius: BorderRadius.circular(20),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  child: Text(
-                                    'Метчи',
-                                    style: TextStyle(
-                                      color: categoryColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                EventDetailOrganizerSection(
+                  event: event,
+                  categoryColor: categoryColor,
+                  onOpenProfile: () => _openOrganizerProfile(event),
                 ),
-                const SizedBox(height: 24),
+                if ((event.creatorName ?? '').trim().isNotEmpty)
+                  const SizedBox(height: 20),
 
-                // Описание
-                if (event.description.isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Описание',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF4A4D6A),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          event.description,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF4A4D6A),
-                            height: 1.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-
-                // Организатор
-                if (event.creatorName != null) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Организатор',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF4A4D6A),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF5F5F5),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            children: [
-                              if (event.creatorPhotoUrl != null)
-                                CachedNetworkImage(
-                                  imageUrl: event.creatorPhotoUrl!,
-                                  imageBuilder: (context, imageProvider) =>
-                                      CircleAvatar(
-                                        radius: 30,
-                                        backgroundImage: imageProvider,
-                                      ),
-                                  placeholder: (context, url) =>
-                                      const CircleAvatar(
-                                        radius: 30,
-                                        child: CircularProgressIndicator(),
-                                      ),
-                                  errorWidget: (context, url, error) =>
-                                      CircleAvatar(
-                                        radius: 30,
-                                        backgroundColor: categoryColor,
-                                        child: Text(
-                                          event.creatorName![0].toUpperCase(),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                )
-                              else
-                                CircleAvatar(
-                                  radius: 30,
-                                  backgroundColor: categoryColor,
-                                  child: Text(
-                                    event.creatorName![0].toUpperCase(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      event.creatorName!,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF4A4D6A),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    const Text(
-                                      'Организатор событий',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Color(0xFF9E9E9E),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              OutlinedButton(
-                                onPressed: () {},
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: categoryColor,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: const Text('Профиль'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                if (!event.isOnline) ...[
+                  EventDetailRouteSection(
+                    event: event,
+                    onOpenRoute: () => _openRoute(event),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -648,94 +499,100 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
           ),
         ],
       ),
+    ),
 
-      // Нижняя панель с кнопкой участия
-      bottomSheet: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: ElevatedButton(
-            onPressed: _isParticipationLoading
-                ? null
-                : () => _toggleGoing(event),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _isParticipationLoading
-                  ? Colors.grey.shade400
-                  : (_isGoing ? Colors.grey : categoryColor),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 0,
-              minimumSize: const Size(double.infinity, 0),
-            ),
-            child: _isParticipationLoading
-                ? SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.white.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  )
-                : Text(
-                    _isGoing ? 'Отменить участие' : 'Участвовать',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+      bottomSheet: EventDetailBottomBar(
+        event: event,
+        isEventFinished: _isEventFinished(event),
+        categoryColor: categoryColor,
+        isGoing: _isGoingNotifier,
+        isGoingLoading: _isGoingLoadingNotifier,
+        myRating: _myRatingNotifier,
+        onToggleGoing: () => _toggleGoing(event),
+        onRate: () => _showRatingDialog(event),
+      ),
+    );
+  }
+
+  Widget _buildFavoriteAction(EventModel event) {
+    return EventDetailFavoriteAction(
+      isFavorite: _isFavoriteNotifier,
+      isLoading: _isFavoriteLoadingNotifier,
+      isDisabled: _isEventFinished(event),
+      onToggle: () => _toggleFavorite(event),
+    );
+  }
+
+  Future<void> _openOrganizerProfile(EventModel event) async {
+    final creatorId = event.createdById?.trim();
+    if (creatorId != null && creatorId.isNotEmpty) {
+      try {
+        final user = await _userService.getUserById(creatorId);
+        if (!mounted) return;
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (context) => UserProfileScreen.fromUser(user: user),
           ),
+        );
+        return;
+      } catch (_) {
+        if (!mounted) return;
+        CustomNotification.show(
+          context,
+          'Не удалось открыть профиль организатора',
+        );
+      }
+    }
+
+    final name = event.creatorName?.trim();
+    if (name == null || name.isEmpty || !mounted) {
+      return;
+    }
+
+    final initials = name
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .map((part) => part[0])
+        .join()
+        .toUpperCase();
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => UserProfileScreen(
+          userName: name,
+          userInitials: initials.isEmpty ? '??' : initials,
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String text, {VoidCallback? onTap}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: InkWell(
-        onTap: onTap,
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF5E60CE).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: const Color(0xFF5E60CE), size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                text,
-                style: const TextStyle(fontSize: 16, color: Color(0xFF4A4D6A)),
-              ),
-            ),
-            if (onTap != null)
-              const Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Color(0xFF9E9E9E),
-              ),
-          ],
-        ),
+  bool _isEventFinished(EventModel event) {
+    return !event.actualEndDateTime.toUtc().isAfter(DateTime.now().toUtc());
+  }
+
+  bool _isCreator(EventModel event) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final creatorId = event.createdById?.trim();
+    if (currentUserId == null || creatorId == null || creatorId.isEmpty) {
+      return _currentUserId != null && _currentUserId == creatorId;
+    }
+    return currentUserId == creatorId || _currentUserId == creatorId;
+  }
+
+  void _showReviewsBottomSheet(EventModel event) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => EventReviewsBottomSheet(
+        event: event,
+        ratingService: _ratingService,
       ),
     );
   }
+
+  // moved to `real_event_detail/real_event_detail_widgets.dart`
 
   String _getCategoryName(String category) {
     switch (category) {
@@ -779,16 +636,20 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
       case 'other':
         return Colors.grey;
       default:
-        return const Color(0xFF5E60CE);
+        return const Color(0xFF75878A);
     }
   }
 
   String _formatDate(DateTime date) {
-    return DateFormat('dd MMMM yyyy, EEEE', 'ru').format(date);
+    return DateFormat('dd.MM.yyyy', 'ru').format(date);
   }
 
   String _formatTime(DateTime date) {
     return DateFormat('HH:mm', 'ru').format(date);
+  }
+
+  bool _isSameCalendarDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   void _showParticipantsDialog(BuildContext context, EventModel event) {
@@ -797,62 +658,30 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => BlocProvider.value(
-        value: eventBloc,
-        child: DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
-          builder: (_, controller) => Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: BlocBuilder<EventBloc, EventState>(
-              builder: (context, state) {
-                if (state is EventParticipantsLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+      builder: (context) => EventDetailParticipantsBottomSheet(
+        event: event,
+        eventBloc: eventBloc,
+      ),
+    );
+  }
 
-                if (state is EventParticipantsLoaded) {
-                  return EventParticipantsDialog(
-                    participants: state.participants,
-                    eventTitle: event.title,
-                    scrollController: controller,
-                  );
-                }
-
-                if (state is EventError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            size: 48,
-                            color: Colors.red,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(state.message),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Закрыть'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-
-                return const SizedBox.shrink();
-              },
-            ),
-          ),
-        ),
+  void _showRatingDialog(EventModel event) {
+    showDialog(
+      context: context,
+      builder: (context) => EventDetailRatingDialog(
+        event: event,
+        ratingService: _ratingService,
+        onRated: (rating) {
+          _myRatingNotifier.value = rating;
+          if (mounted) {
+            context.read<EventBloc>().add(EventDetailLoadRequested(event.id));
+          }
+        },
       ),
     );
   }
 }
+
+// Participant management sheet moved to `real_event_detail/event_manage_participants_sheet.dart`.
+
+// (removed) Participant management bottom sheet implementation.
