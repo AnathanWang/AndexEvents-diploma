@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/event_messages.dart';
+import '../../../data/models/event_model.dart';
 import '../../../data/services/event_service.dart';
 import 'event_event.dart';
 import 'event_state.dart';
@@ -62,19 +63,40 @@ class EventBloc extends Bloc<EventEvent, EventState> {
     return message;
   }
 
+  List<EventModel> _mergeEventsById(
+    List<EventModel> existing,
+    List<EventModel> incoming,
+  ) {
+    final merged = <String, EventModel>{
+      for (final item in existing) item.id: item,
+    };
+    for (final item in incoming) {
+      merged[item.id] = item;
+    }
+    return merged.values.toList();
+  }
+
   Future<void> _onEventsLoadRequested(
     EventsLoadRequested event,
     Emitter<EventState> emit,
   ) async {
-    if (event.page == 1) {
-      final cachedEvents = await _eventService.getCachedEvents(category: event.category);
-      if (cachedEvents.isNotEmpty) {
-        emit(EventsLoaded(
-          events: cachedEvents,
-          hasMore: cachedEvents.length >= 20,
-          currentPage: 1,
-        ));
-      } else {
+    final bool isViewportLoad =
+        event.latitude != null && event.longitude != null;
+
+    if (event.page == 1 && !event.silent) {
+      if (!event.mergeWithExisting && !isViewportLoad) {
+        final cachedEvents =
+            await _eventService.getCachedEvents(category: event.category);
+        if (cachedEvents.isNotEmpty) {
+          emit(EventsLoaded(
+            events: cachedEvents,
+            hasMore: cachedEvents.length >= event.limit,
+            currentPage: 1,
+          ));
+        } else {
+          emit(const EventsLoading());
+        }
+      } else if (!event.mergeWithExisting && state is! EventsLoaded) {
         emit(const EventsLoading());
       }
     }
@@ -86,24 +108,45 @@ class EventBloc extends Bloc<EventEvent, EventState> {
         longitude: event.longitude,
         maxDistance: event.maxDistance,
         page: event.page,
-        limit: 20,
+        limit: event.limit,
+        writeCache: !isViewportLoad,
       );
 
-      if (state is EventsLoaded && event.page > 1) {
+      if (state is EventsLoaded && event.mergeWithExisting) {
+        final currentState = state as EventsLoaded;
+        emit(EventsLoaded(
+          events: _mergeEventsById(currentState.events, events),
+          hasMore: events.length >= event.limit,
+          currentPage: event.page,
+          viewportLatitude: event.latitude ?? currentState.viewportLatitude,
+          viewportLongitude: event.longitude ?? currentState.viewportLongitude,
+          viewportRadiusMeters:
+              event.maxDistance ?? currentState.viewportRadiusMeters,
+        ));
+      } else if (state is EventsLoaded && event.page > 1) {
         final currentState = state as EventsLoaded;
         emit(EventsLoaded(
           events: [...currentState.events, ...events],
-          hasMore: events.length >= 20,
+          hasMore: events.length >= event.limit,
           currentPage: event.page,
+          viewportLatitude: currentState.viewportLatitude,
+          viewportLongitude: currentState.viewportLongitude,
+          viewportRadiusMeters: currentState.viewportRadiusMeters,
         ));
       } else {
         emit(EventsLoaded(
           events: events,
-          hasMore: events.length >= 20,
+          hasMore: events.length >= event.limit,
           currentPage: event.page,
+          viewportLatitude: event.latitude,
+          viewportLongitude: event.longitude,
+          viewportRadiusMeters: event.maxDistance,
         ));
       }
     } catch (e) {
+      if (event.silent && state is EventsLoaded) {
+        return;
+      }
       emit(
         EventError(
           _extractErrorMessage(

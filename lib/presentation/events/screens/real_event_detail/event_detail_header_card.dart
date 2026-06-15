@@ -37,11 +37,13 @@ class EventDetailHeaderCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                _CategoryPill(
-                  text: categoryName,
-                  color: categoryColor,
+                Flexible(
+                  child: _CategoryPill(
+                    text: categoryName,
+                    color: categoryColor,
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 _PricePill(price: event.price),
               ],
             ),
@@ -156,6 +158,8 @@ class _CategoryPill extends StatelessWidget {
       ),
       child: Text(
         text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: color,
           fontWeight: FontWeight.w600,

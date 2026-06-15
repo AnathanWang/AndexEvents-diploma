@@ -15,6 +15,13 @@ class EventsLoadRequested extends EventEvent {
   final double? longitude;
   final int? maxDistance;
   final int page;
+  final int limit;
+
+  /// Добавить к уже загруженным (для карты при перемещении камеры).
+  final bool mergeWithExisting;
+
+  /// Не показывать полноэкранный лоадер (фоновая подгрузка viewport).
+  final bool silent;
 
   const EventsLoadRequested({
     this.category,
@@ -22,10 +29,22 @@ class EventsLoadRequested extends EventEvent {
     this.longitude,
     this.maxDistance,
     this.page = 1,
+    this.limit = 20,
+    this.mergeWithExisting = false,
+    this.silent = false,
   });
 
   @override
-  List<Object?> get props => [category, latitude, longitude, maxDistance, page];
+  List<Object?> get props => [
+    category,
+    latitude,
+    longitude,
+    maxDistance,
+    page,
+    limit,
+    mergeWithExisting,
+    silent,
+  ];
 }
 
 /// Загрузить детали события

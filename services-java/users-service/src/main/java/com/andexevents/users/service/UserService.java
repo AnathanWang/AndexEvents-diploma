@@ -1,7 +1,9 @@
 package com.andexevents.users.service;
 
 import com.andexevents.users.model.UserDto;
+import com.andexevents.users.model.GlobalMatchContext;
 import com.andexevents.users.repo.UserRepository;
+import com.andexevents.users.util.MatchRecommendationScorer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -95,6 +97,20 @@ public class UserService {
         if (req.socialLinks() != null) updates.put("socialLinks", req.socialLinks());
         if (req.fcmToken() != null) updates.put("fcmToken", req.fcmToken());
         if (req.isOnboardingCompleted() != null) updates.put("isOnboardingCompleted", req.isOnboardingCompleted());
+        if (req.showVisitedEvents() != null) updates.put("showVisitedEvents", req.showVisitedEvents());
+        if (req.showInMatches() != null) updates.put("showInMatches", req.showInMatches());
+        if (req.incognitoMode() != null) updates.put("incognitoMode", req.incognitoMode());
+        if (req.hideOnlineStatus() != null) updates.put("hideOnlineStatus", req.hideOnlineStatus());
+        if (Boolean.TRUE.equals(req.clearMinAge())) {
+            updates.put("minAge", null);
+        } else if (req.minAge() != null) {
+            updates.put("minAge", req.minAge());
+        }
+        if (Boolean.TRUE.equals(req.clearMaxAge())) {
+            updates.put("maxAge", null);
+        } else if (req.maxAge() != null) {
+            updates.put("maxAge", req.maxAge());
+        }
 
         return userRepository.updateProfile(userId, updates);
     }
@@ -111,14 +127,29 @@ public class UserService {
         Double userLon = longitude != null ? longitude : current.lastLongitude();
         if (userLat == null || userLon == null) return List.of();
 
-        return userRepository.findMatches(
+        int poolSize = Math.min(Math.max(limit * 4, 40), 80);
+        GlobalMatchContext context = userRepository.findGlobalMatchContext(userId);
+        List<UserDto> candidates = userRepository.findMatches(
                 userId,
                 userLat,
                 userLon,
                 radiusKm,
-                limit,
+                poolSize,
                 current.minAge(),
                 current.maxAge()
+        );
+
+        List<String> candidateIds = candidates.stream().map(UserDto::id).toList();
+        Map<String, Integer> sharedGoingEvents = userRepository.findSharedGoingEventCounts(userId, candidateIds);
+
+        return MatchRecommendationScorer.rank(
+                candidates,
+                current,
+                context.incomingLikeUserIds(),
+                sharedGoingEvents,
+                userLat,
+                userLon,
+                limit
         );
     }
 
@@ -159,8 +190,16 @@ public class UserService {
             String gender,
             List<String> interests,
             Map<String, Object> socialLinks,
-                String fcmToken,
-            Boolean isOnboardingCompleted
+            String fcmToken,
+            Boolean isOnboardingCompleted,
+            Boolean showVisitedEvents,
+            Boolean showInMatches,
+            Boolean incognitoMode,
+            Boolean hideOnlineStatus,
+            Integer minAge,
+            Integer maxAge,
+            Boolean clearMinAge,
+            Boolean clearMaxAge
     ) {
     }
 

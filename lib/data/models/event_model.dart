@@ -1,5 +1,5 @@
 import 'participant_model.dart';
-import '../../core/config/app_config.dart';
+import '../../core/utils/media_url_utils.dart';
 
 /// Модель события
 class EventModel {
@@ -73,30 +73,8 @@ class EventModel {
     this.myRating,
   });
 
-  static String? _normalizeMediaUrl(String? rawUrl) {
-    if (rawUrl == null || rawUrl.isEmpty) return rawUrl;
-
-    try {
-      final uri = Uri.parse(rawUrl);
-      final host = uri.host.toLowerCase();
-      final isLoopback =
-          host == 'localhost' || host == '127.0.0.1' || host == '0.0.0.0';
-      if (!isLoopback) return rawUrl;
-
-      final apiUri = Uri.parse(AppConfig.baseUrl);
-      if (apiUri.host.isEmpty) return rawUrl;
-
-      return uri
-          .replace(
-            scheme: apiUri.scheme.isEmpty ? 'http' : apiUri.scheme,
-            host: apiUri.host,
-            port: apiUri.hasPort ? apiUri.port : null,
-          )
-          .toString();
-    } catch (_) {
-      return rawUrl;
-    }
-  }
+  static String? _normalizeMediaUrl(String? rawUrl) =>
+      MediaUrlUtils.normalize(rawUrl);
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
     // Извлекаем данные организатора из объекта createdBy

@@ -12,6 +12,22 @@ CREATE TABLE IF NOT EXISTS events."Event" (
     "status" events."EventStatus" NOT NULL DEFAULT 'PENDING'
 );
 
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ParticipantStatus' AND typnamespace = 'events'::regnamespace) THEN
+        CREATE TYPE events."ParticipantStatus" AS ENUM ('INTERESTED', 'GOING');
+    END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS events."Participant" (
+    "id" TEXT PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "eventId" TEXT NOT NULL REFERENCES events."Event"(id) ON DELETE CASCADE,
+    "status" events."ParticipantStatus" NOT NULL DEFAULT 'INTERESTED',
+    "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE ("userId", "eventId")
+);
+
 CREATE TABLE IF NOT EXISTS events."EventRating" (
     "id" TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     "eventId" TEXT NOT NULL REFERENCES events."Event"(id) ON DELETE CASCADE,

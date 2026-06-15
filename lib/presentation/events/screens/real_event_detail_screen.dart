@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/event_messages.dart';
 
@@ -572,12 +571,9 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   }
 
   bool _isCreator(EventModel event) {
-    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     final creatorId = event.createdById?.trim();
-    if (currentUserId == null || creatorId == null || creatorId.isEmpty) {
-      return _currentUserId != null && _currentUserId == creatorId;
-    }
-    return currentUserId == creatorId || _currentUserId == creatorId;
+    if (creatorId == null || creatorId.isEmpty) return false;
+    return _currentUserId != null && _currentUserId == creatorId;
   }
 
   void _showReviewsBottomSheet(EventModel event) {

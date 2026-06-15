@@ -8,6 +8,7 @@ import '../models/match_preview.dart';
 import '../events/screens/create_event_screen.dart';
 import '../events/bloc/event_bloc.dart';
 import '../events/bloc/event_event.dart';
+import '../events/bloc/event_state.dart';
 import '../profile/bloc/profile_bloc.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/services/user_service.dart';
@@ -36,7 +37,9 @@ class _HomeShellState extends State<HomeShell> {
   late final EventBloc _mapEventBloc;
   late final EventBloc _feedEventBloc;
   late final ProfileBloc _profileBloc;
-  late final List<Widget> _tabs;
+  late final Widget _feedTab;
+  late final Widget _matchesTab;
+  late final Widget _profileTab;
   bool _isCreateEventBlocked = false;
   String? _createEventBlockReason;
   bool _isFullBanActive = false;
@@ -47,18 +50,12 @@ class _HomeShellState extends State<HomeShell> {
     _mapEventBloc = EventBloc();
     _feedEventBloc = EventBloc();
     _profileBloc = ProfileBloc(userService: UserService());
-    _tabs = <Widget>[
-      BlocProvider<EventBloc>.value(
-        value: _mapEventBloc,
-        child: const MapExploreScreen(),
-      ),
-      BlocProvider<EventBloc>.value(
-        value: _feedEventBloc,
-        child: const EventsFeedScreen(),
-      ),
-      MatchesScreen(matches: _matches),
-      ProfileScreen(events: _events, matches: _matches),
-    ];
+    _feedTab = BlocProvider<EventBloc>.value(
+      value: _feedEventBloc,
+      child: const EventsFeedScreen(),
+    );
+    _matchesTab = MatchesScreen(matches: _matches);
+    _profileTab = ProfileScreen(events: _events, matches: _matches);
     _loadMutualMatches();
     _refreshCreateEventAccess();
   }
@@ -121,13 +118,29 @@ class _HomeShellState extends State<HomeShell> {
     HapticFeedback.selectionClick();
     setState(() => _index = index);
 
-    // Ensure public feeds are fresh when user returns to them.
-    if (index == 0) {
-      _mapEventBloc.add(const EventsLoadRequested());
-    }
-    if (index == 1) {
+    // Map reloads via its own viewport logic when mounted.
+    if (index == 1 && _feedEventBloc.state is! EventsLoaded) {
       _feedEventBloc.add(const EventsLoadRequested());
     }
+  }
+
+  Widget _buildActiveTab() {
+    if (_index == 0) {
+      return BlocProvider<EventBloc>.value(
+        value: _mapEventBloc,
+        child: const MapExploreScreen(),
+      );
+    }
+
+    final int stackIndex = _index - 1;
+    return IndexedStack(
+      index: stackIndex,
+      children: <Widget>[
+        _feedTab,
+        _matchesTab,
+        _profileTab,
+      ],
+    );
   }
 
   Future<void> _openCreateEventScreen() async {
@@ -224,10 +237,7 @@ class _HomeShellState extends State<HomeShell> {
           child: Stack(
             children: <Widget>[
               Positioned.fill(
-                child: IndexedStack(
-                  index: _index,
-                  children: _tabs,
-                ),
+                child: _buildActiveTab(),
               ),
               Positioned(
                 left: horizontalInset,

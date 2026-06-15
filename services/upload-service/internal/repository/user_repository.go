@@ -18,7 +18,11 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 // Current schema uses `supabaseUid` column; during Firebase migration we store Firebase UID there.
 func (r *UserRepository) GetDBUserIDByFirebaseUID(ctx context.Context, firebaseUID string) (string, error) {
 	var userID string
-	err := r.pool.QueryRow(ctx, `SELECT id FROM users."User" WHERE "supabaseUid" = $1`, firebaseUID).Scan(&userID)
+	err := r.pool.QueryRow(
+		ctx,
+		`SELECT id FROM users."User" WHERE "supabaseUid" = $1 OR "firebaseUid" = $1`,
+		firebaseUID,
+	).Scan(&userID)
 	if err != nil {
 		return "", err
 	}

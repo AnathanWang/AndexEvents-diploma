@@ -296,14 +296,22 @@ public class UserController {
                 body.displayName(),
                 body.photoUrl(),
                 null,
-            null,
+                null,
                 body.bio(),
                 body.age(),
                 body.gender(),
                 body.interests(),
                 body.socialLinks(),
-            null,
-                true
+                null,
+                true,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
         );
 
         UserDto updated = userService.updateProfile(auth.userId(), update);

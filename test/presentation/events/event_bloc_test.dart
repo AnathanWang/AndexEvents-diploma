@@ -49,6 +49,8 @@ void main() {
 
   setUp(() {
     mockEventService = MockEventService();
+    when(() => mockEventService.getCachedEvents(category: any(named: 'category')))
+        .thenAnswer((_) async => <EventModel>[]);
   });
 
   group('EventBloc', () {
@@ -68,6 +70,7 @@ void main() {
               maxDistance: any(named: 'maxDistance'),
               page: any(named: 'page'),
               limit: any(named: 'limit'),
+              writeCache: any(named: 'writeCache'),
             )).thenAnswer((_) async => [sampleEvent]);
         return EventBloc(eventService: mockEventService);
       },
@@ -91,6 +94,7 @@ void main() {
               maxDistance: any(named: 'maxDistance'),
               page: any(named: 'page'),
               limit: any(named: 'limit'),
+              writeCache: any(named: 'writeCache'),
             )).thenThrow(Exception('network error'));
         return EventBloc(eventService: mockEventService);
       },
@@ -254,6 +258,7 @@ void main() {
               maxDistance: any(named: 'maxDistance'),
               page: any(named: 'page'),
               limit: any(named: 'limit'),
+              writeCache: any(named: 'writeCache'),
             )).thenAnswer((_) async => [sampleEvent]);
         return EventBloc(eventService: mockEventService);
       },

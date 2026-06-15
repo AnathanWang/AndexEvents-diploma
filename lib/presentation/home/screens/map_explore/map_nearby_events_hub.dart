@@ -1,11 +1,8 @@
-import 'dart:ui';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -13,7 +10,6 @@ import '../../../../data/models/event_model.dart';
 import '../../../events/bloc/event_bloc.dart';
 import '../../../events/bloc/event_event.dart';
 import '../../../events/screens/real_event_detail_screen.dart';
-import '../../../widgets/event_countdown_timer.dart';
 
 class MapNearbyEventsHub extends StatelessWidget {
   const MapNearbyEventsHub({
@@ -22,7 +18,6 @@ class MapNearbyEventsHub extends StatelessWidget {
     required this.searchQuery,
     required this.hubHeight,
     required this.activeIndexListenable,
-    required this.onFocusEvent,
     required this.onHideHub,
   });
 
@@ -30,31 +25,28 @@ class MapNearbyEventsHub extends StatelessWidget {
   final String searchQuery;
   final double hubHeight;
   final ValueNotifier<int> activeIndexListenable;
-  final ValueChanged<EventModel> onFocusEvent;
   final VoidCallback onHideHub;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(30),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-        child: Container(
-          height: hubHeight,
-          decoration: BoxDecoration(
-            color: AppColors.surface.withValues(alpha: 0.56),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.dark.withValues(alpha: 0.16),
-                blurRadius: 22,
-                offset: const Offset(0, -8),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
+      child: Container(
+        height: hubHeight,
+        decoration: BoxDecoration(
+          color: AppColors.surface.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.dark.withValues(alpha: 0.16),
+              blurRadius: 22,
+              offset: const Offset(0, -8),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 child: Row(
@@ -124,7 +116,6 @@ class MapNearbyEventsHub extends StatelessWidget {
                         physics: const BouncingScrollPhysics(),
                         onPageChanged: (index) {
                           activeIndexListenable.value = index;
-                          onFocusEvent(events[index]);
                         },
                         itemBuilder: (context, index) {
                           return Padding(
@@ -151,8 +142,7 @@ class MapNearbyEventsHub extends StatelessWidget {
                   ),
                 ),
               if (events.length <= 1) const SizedBox(height: 8),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -368,9 +358,9 @@ class MapNearbyEventCard extends StatelessWidget {
           ),
           boxShadow: <BoxShadow>[
             BoxShadow(
-              color: AppColors.dark.withValues(alpha: 0.15),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              color: AppColors.dark.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -387,14 +377,10 @@ class MapNearbyEventCard extends StatelessWidget {
                   width: 104,
                   height: 112,
                   fit: BoxFit.cover,
-                  placeholder: (context, url) => Shimmer.fromColors(
-                    baseColor: AppColors.accent.withValues(alpha: 0.65),
-                    highlightColor: AppColors.surface.withValues(alpha: 0.8),
-                    child: Container(
-                      width: 104,
-                      height: 112,
-                      color: AppColors.accent.withValues(alpha: 0.75),
-                    ),
+                  placeholder: (context, url) => Container(
+                    width: 104,
+                    height: 112,
+                    color: AppColors.accent.withValues(alpha: 0.35),
                   ),
                   errorWidget: (context, url, error) {
                     return Container(
@@ -541,15 +527,6 @@ class MapNearbyEventCard extends StatelessWidget {
                           color: AppColors.primary,
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 6),
-                    EventCountdownTimer(
-                      expirationTime: event.actualEndDateTime,
-                      isMinimal: true,
-                      textStyle: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
                     ),
                   ],
                 ),

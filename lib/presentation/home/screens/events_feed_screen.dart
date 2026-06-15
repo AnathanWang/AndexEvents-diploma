@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -46,11 +48,12 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
   ];
   Map<String, dynamic> _currentFilters = {
     'category': 'all',
-    'date': 'week',
+    'date': 'all',
     'sort': 'nearest',
     'price': 'all',
     'format': 'all',
   };
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -61,6 +64,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -113,19 +117,24 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
     final now = DateTime.now();
 
     bool matchesDate(EventModel event) {
-      final value = (_currentFilters['date'] ?? 'week') as String;
-      final local = event.dateTime.toLocal();
+      final value = (_currentFilters['date'] ?? 'all') as String;
       if (value == 'all') return true;
+
+      final start = event.dateTime.toLocal();
+      final end = event.actualEndDateTime.toLocal();
+
       if (value == 'today') {
-        return local.year == now.year && local.month == now.month && local.day == now.day;
+        final todayStart = DateTime(now.year, now.month, now.day);
+        final todayEnd = todayStart.add(const Duration(days: 1));
+        return end.isAfter(todayStart) && start.isBefore(todayEnd);
       }
       if (value == 'week') {
-        final end = now.add(const Duration(days: 7));
-        return local.isAfter(now.subtract(const Duration(minutes: 1))) && local.isBefore(end);
+        final windowEnd = now.add(const Duration(days: 7));
+        return end.isAfter(now) && start.isBefore(windowEnd);
       }
       if (value == 'month') {
-        final end = DateTime(now.year, now.month + 1, now.day);
-        return local.isAfter(now.subtract(const Duration(minutes: 1))) && local.isBefore(end);
+        final windowEnd = DateTime(now.year, now.month + 1, now.day);
+        return end.isAfter(now) && start.isBefore(windowEnd);
       }
       return true;
     }
@@ -272,9 +281,22 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
         .replaceAll(RegExp(r'[^a-zа-я0-9]'), '');
   }
 
+  List<EventModel> get _popularCarouselEvents {
+    final now = DateTime.now();
+    final upcoming = _allEvents
+        .where((event) => event.actualEndDateTime.toLocal().isAfter(now))
+        .toList()
+      ..sort((a, b) => b.participantsCount.compareTo(a.participantsCount));
+    return upcoming;
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<EventBloc, EventState>(
+      buildWhen: (previous, current) =>
+          current is EventsLoading ||
+          current is EventsLoaded ||
+          current is EventError,
       builder: (context, state) {
         if (state is EventsLoading) {
           return const FeedLoadingSkeleton();
@@ -311,32 +333,33 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                   ],
                 ),
               ),
-              child: ListView(
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: MediaQuery.of(context).padding.top + 8,
-                  bottom: 12,
-                ),
-                children: <Widget>[
-                  FeedHeaderCard(
-                    filteredCount: _filteredEvents.length,
-                    searchController: _searchController,
-                    selectedCity: _selectedCity,
-                    onOpenSearch: () {
-                      Navigator.push(
-                        context,
-                        PageRouteBuilder(
-                          pageBuilder:
-                              (context, animation, secondaryAnimation) =>
-                                  BlocProvider(
-                                    create: (context) => EventBloc(),
-                                    child: SearchScreen(
-                                      initialQuery: _searchController.text,
-                                    ),
-                                  ),
-                          transitionsBuilder:
-                              (context, animation, secondaryAnimation, child) {
+              child: CustomScrollView(
+                slivers: <Widget>[
+                  SliverPadding(
+                    padding: EdgeInsets.only(
+                      left: 16,
+                      right: 16,
+                      top: MediaQuery.of(context).padding.top + 8,
+                    ),
+                    sliver: SliverToBoxAdapter(
+                      child: FeedHeaderCard(
+                        filteredCount: _filteredEvents.length,
+                        searchController: _searchController,
+                        selectedCity: _selectedCity,
+                        onOpenSearch: () {
+                          Navigator.push(
+                            context,
+                            PageRouteBuilder(
+                              pageBuilder:
+                                  (context, animation, secondaryAnimation) =>
+                                      BlocProvider(
+                                        create: (context) => EventBloc(),
+                                        child: SearchScreen(
+                                          initialQuery: _searchController.text,
+                                        ),
+                                      ),
+                              transitionsBuilder:
+                                  (context, animation, secondaryAnimation, child) {
                                 const begin = Offset(0.0, 1.0);
                                 const end = Offset.zero;
                                 final curve = Curves.easeOutCubic;
@@ -352,56 +375,69 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                                   child: child,
                                 );
                               },
-                          transitionDuration:
-                              const Duration(milliseconds: 280),
-                        ),
-                      );
-                    },
-                    onQueryChanged: (query) {
-                      setState(() {
-                        _filterEvents(_allEvents, query);
-                      });
-                    },
-                    onClearQuery: () {
-                      _searchController.clear();
-                      setState(() {
-                        _filterEvents(_allEvents, '');
-                      });
-                    },
-                    onPickCity: _showCityBottomSheet,
-                    filters: _currentFilters,
-                    onFiltersChanged: _handleFiltersChanged,
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Carousel section
-                  if (state.events.isNotEmpty) ...[
-                    const FeedSectionTitle(
-                      title: 'Популярные события',
-                      icon: Icons.local_fire_department_rounded,
+                              transitionDuration:
+                                  const Duration(milliseconds: 280),
+                            ),
+                          );
+                        },
+                        onQueryChanged: (query) {
+                          _searchDebounce?.cancel();
+                          _searchDebounce = Timer(
+                            const Duration(milliseconds: 250),
+                            () {
+                              if (!mounted) return;
+                              setState(() {
+                                _filterEvents(_allEvents, query);
+                              });
+                            },
+                          );
+                        },
+                        onClearQuery: () {
+                          _searchController.clear();
+                          setState(() {
+                            _filterEvents(_allEvents, '');
+                          });
+                        },
+                        onPickCity: _showCityBottomSheet,
+                        filters: _currentFilters,
+                        onFiltersChanged: _handleFiltersChanged,
+                      ),
                     ),
-                    const SizedBox(height: 10),
-                    EventCarousel(
-                      events: state.events,
-                      onEventSelected: (event) {
-                        Navigator.push(
-                          context,
-                          PageRouteBuilder(
-                            pageBuilder:
-                                (context, animation, secondaryAnimation) =>
-                                    BlocProvider(
-                                      create: (context) => EventBloc(),
-                                      child: RealEventDetailScreen(
-                                        eventId: event.id,
-                                      ),
-                                    ),
-                            transitionsBuilder:
-                                (
-                                  context,
-                                  animation,
-                                  secondaryAnimation,
-                                  child,
-                                ) {
+                  ),
+                  if (_popularCarouselEvents.isNotEmpty) ...[
+                    const SliverPadding(
+                      padding: EdgeInsets.fromLTRB(16, 14, 16, 0),
+                      sliver: SliverToBoxAdapter(
+                        child: FeedSectionTitle(
+                          title: 'Популярные события',
+                          icon: Icons.local_fire_department_rounded,
+                        ),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                      sliver: SliverToBoxAdapter(
+                        child: EventCarousel(
+                          events: _popularCarouselEvents,
+                          onEventSelected: (event) {
+                            Navigator.push(
+                              context,
+                              PageRouteBuilder(
+                                pageBuilder:
+                                    (context, animation, secondaryAnimation) =>
+                                        BlocProvider(
+                                          create: (context) => EventBloc(),
+                                          child: RealEventDetailScreen(
+                                            eventId: event.id,
+                                          ),
+                                        ),
+                                transitionsBuilder:
+                                    (
+                                      context,
+                                      animation,
+                                      secondaryAnimation,
+                                      child,
+                                    ) {
                                   const begin = Offset(0.0, 1.0);
                                   const end = Offset.zero;
                                   final curve = Curves.easeOutCubic;
@@ -418,66 +454,57 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                                     child: child,
                                   );
                                 },
-                            transitionDuration: const Duration(
-                              milliseconds: 280,
-                            ),
-                          ),
-                        );
-                      },
+                                transitionDuration: const Duration(
+                                  milliseconds: 280,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 16),
                   ],
-
-                  // Regular events list
-                  const FeedSectionTitle(
-                    title: 'Все события',
-                    icon: Icons.view_list_rounded,
+                  const SliverPadding(
+                    padding: EdgeInsets.fromLTRB(16, 16, 16, 10),
+                    sliver: SliverToBoxAdapter(
+                      child: FeedSectionTitle(
+                        title: 'Все события',
+                        icon: Icons.view_list_rounded,
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 10),
-
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 260),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    child: _filteredEvents.isEmpty
-                        ? KeyedSubtree(
-                            key: const ValueKey<String>('feed-empty'),
-                            child: FeedEmptyState(
-                              hasSearchQuery: _searchController.text.isNotEmpty,
-                            ),
-                          )
-                        : KeyedSubtree(
-                            key: ValueKey<String>(
-                              'feed-list-${_filteredEvents.length}-$_selectedCity',
-                            ),
-                            child: Column(
-                              children: _filteredEvents
-                                  .asMap()
-                                  .entries
-                                  .map((entry) {
-                                    final index = entry.key;
-                                    final event = entry.value;
-
-                                    return _buildAnimatedFeedListItem(
-                                      index: index,
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(bottom: 12),
-                                        child: FeedEventCard(
-                                          event: event,
-                                          categoryName: _getCategoryName(
-                                            event.category,
-                                          ),
-                                          categoryColor: _getCategoryColor(
-                                            event.category,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  })
-                                  .toList(),
-                            ),
-                          ),
-                  ),
+                  if (_filteredEvents.isEmpty)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      sliver: SliverToBoxAdapter(
+                        child: FeedEmptyState(
+                          hasSearchQuery: _searchController.text.isNotEmpty,
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final event = _filteredEvents[index];
+                            return RepaintBoundary(
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: FeedEventCard(
+                                  key: ValueKey<String>(event.id),
+                                  event: event,
+                                  categoryName: _getCategoryName(event.category),
+                                  categoryColor: _getCategoryColor(event.category),
+                                ),
+                              ),
+                            );
+                          },
+                          childCount: _filteredEvents.length,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -485,34 +512,6 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
         }
 
         return const Center(child: Text('Загрузка событий...'));
-      },
-    );
-  }
-
-  Widget _buildAnimatedFeedListItem({
-    required int index,
-    required Widget child,
-  }) {
-    final int clampedIndex = index.clamp(0, 7);
-    final int durationMs = 220 + (clampedIndex * 45);
-
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: Duration(milliseconds: durationMs),
-      curve: Curves.easeOutCubic,
-      child: child,
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, (1 - value) * 18),
-            child: Transform.scale(
-              scale: 0.98 + (0.02 * value),
-              alignment: Alignment.topCenter,
-              child: child,
-            ),
-          ),
-        );
       },
     );
   }

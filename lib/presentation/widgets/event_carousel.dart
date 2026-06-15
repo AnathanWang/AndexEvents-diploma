@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 
-import '../../data/models/event_model.dart';
 import '../../core/theme/app_colors.dart';
-import 'package:andexevents/presentation/widgets/event_countdown_timer.dart';
+import '../../core/utils/performance_utils.dart';
+import '../../data/models/event_model.dart';
+import 'event_countdown_timer.dart';
 
 class EventCarousel extends StatefulWidget {
   final List<EventModel> events;
@@ -139,9 +140,10 @@ class _EventCarouselState extends State<EventCarousel> {
                 child: CachedNetworkImage(
                   imageUrl: event.imageUrl!,
                   fit: BoxFit.cover,
+                  memCacheWidth: imageMemCachePx(280, context),
+                  memCacheHeight: imageMemCachePx(180, context),
                   placeholder: (context, url) => Container(
                     color: AppColors.surface.withValues(alpha: 0.84),
-                    child: const Center(child: CircularProgressIndicator()),
                   ),
                   errorWidget: (context, url, error) {
                     return Container(
@@ -283,7 +285,11 @@ class _EventCarouselState extends State<EventCarousel> {
                         ],
                       ),
                       const SizedBox(height: 6),
-                      EventCountdownTimer(expirationTime: event.actualEndDateTime, isMinimal: true),
+                      EventCountdownTimer(
+                        expirationTime: event.actualEndDateTime,
+                        isMinimal: true,
+                        liveUpdates: false,
+                      ),
                     ],
                   ),
                 ],

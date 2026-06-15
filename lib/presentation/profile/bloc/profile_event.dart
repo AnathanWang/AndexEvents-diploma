@@ -26,6 +26,10 @@ class ProfileUpdateRequested extends ProfileEvent {
   final bool? showInMatches;
   final bool? incognitoMode;
   final bool? hideOnlineStatus;
+  final int? minAge;
+  final int? maxAge;
+  final bool? clearMinAge;
+  final bool? clearMaxAge;
 
   const ProfileUpdateRequested({
     this.displayName,
@@ -39,6 +43,10 @@ class ProfileUpdateRequested extends ProfileEvent {
     this.showInMatches,
     this.incognitoMode,
     this.hideOnlineStatus,
+    this.minAge,
+    this.maxAge,
+    this.clearMinAge,
+    this.clearMaxAge,
   });
 
   @override
@@ -54,6 +62,10 @@ class ProfileUpdateRequested extends ProfileEvent {
     showInMatches,
     incognitoMode,
     hideOnlineStatus,
+    minAge,
+    maxAge,
+    clearMinAge,
+    clearMaxAge,
   ];
 }
 

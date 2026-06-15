@@ -1,13 +1,14 @@
-import 'dart:typed_data';
+import 'dart:async';
 import 'dart:ui' as ui;
-import 'dart:math';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'package:geolocator/geolocator.dart';
-import '../../core/theme/app_colors.dart';
+import 'package:yandex_mapkit/yandex_mapkit.dart';
+
 import '../../core/services/logger_service.dart';
+import '../../core/theme/app_colors.dart';
 import '../../data/models/event_model.dart';
-import './common/custom_notification.dart';
 
 class YandexMapWidget extends StatefulWidget {
   final List<EventModel> events;
@@ -15,6 +16,11 @@ class YandexMapWidget extends StatefulWidget {
   final void Function(YandexMapController)? onMapCreated;
   final void Function(Point)? onUserLocationUpdated;
   final void Function(EventModel)? onEventMarkerTapped;
+  final void Function(
+    CameraPosition cameraPosition,
+    CameraUpdateReason reason,
+    bool finished,
+  )? onCameraPositionChanged;
 
   const YandexMapWidget({
     super.key,
@@ -23,6 +29,7 @@ class YandexMapWidget extends StatefulWidget {
     this.onMapCreated,
     this.onUserLocationUpdated,
     this.onEventMarkerTapped,
+    this.onCameraPositionChanged,
   });
 
   @override
@@ -30,12 +37,19 @@ class YandexMapWidget extends StatefulWidget {
 }
 
 class _YandexMapWidgetState extends State<YandexMapWidget> {
-  YandexMapController? _mapController;
-  final Map<String, Uint8List> _markerIcons = {}; // Маркеры по категориям
-  Uint8List? _userMarkerIcon;
-  Point? _userLocation;
+  static const int _maxMarkers = 15;
+  static const double _markerScale = 0.68;
+  static const MapObjectId _eventsClusterId =
+      MapObjectId('events_cluster_collection');
 
-  // Киров по умолчанию
+  YandexMapController? _mapController;
+  BitmapDescriptor? _eventMarkerDescriptor;
+  Point? _userLocation;
+  List<MapObject> _cachedMapObjects = const [];
+  List<String> _cachedEventIds = const [];
+  bool _initialCameraApplied = false;
+  bool _userLayerEnabled = false;
+
   final Point _initialTarget = const Point(
     latitude: 58.603591,
     longitude: 49.668023,
@@ -61,96 +75,148 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
         await Geolocator.requestPermission();
       }
 
-      final position = await Geolocator.getCurrentPosition();
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
 
-      if (mounted) {
-        setState(() {
-          _userLocation = Point(
-            latitude: position.latitude,
-            longitude: position.longitude,
-          );
-        });
+      if (!mounted) return;
 
-        widget.onUserLocationUpdated?.call(_userLocation!);
-      }
-
-      if (_mapController != null && mounted) {
-        _mapController?.moveCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(target: _userLocation!, zoom: 12),
-          ),
-        );
-      }
+      _userLocation = Point(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+      widget.onUserLocationUpdated?.call(_userLocation!);
+      _refreshMapObjectsIfNeeded(force: true);
+      _applyInitialCamera();
     } catch (e) {
       LoggerService.error('Error getting user location: $e');
     }
   }
 
+  Future<void> _enableUserLayer(YandexMapController controller) async {
+    if (_userLayerEnabled) return;
+    try {
+      await controller.toggleUserLayer(
+        visible: true,
+        headingEnabled: false,
+        autoZoomEnabled: false,
+      );
+      _userLayerEnabled = true;
+
+      final userCamera = await controller.getUserCameraPosition();
+      if (userCamera != null && mounted) {
+        _userLocation = userCamera.target;
+        widget.onUserLocationUpdated?.call(_userLocation!);
+      }
+    } catch (e) {
+      LoggerService.error('Error enabling user layer: $e');
+    }
+  }
+
+  void _applyInitialCamera() {
+    if (_initialCameraApplied || _mapController == null) return;
+    _initialCameraApplied = true;
+
+    final target = _userLocation ??
+        (widget.events.isNotEmpty
+            ? Point(
+                latitude: widget.events.first.latitude,
+                longitude: widget.events.first.longitude,
+              )
+            : _initialTarget);
+
+    _mapController?.moveCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: target, zoom: 13),
+      ),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant YandexMapWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _refreshMapObjectsIfNeeded(force: false);
+  }
+
+  List<String> _eventIds(List<EventModel> events) {
+    return events.map((event) => event.id).toList(growable: false);
+  }
+
+  void _refreshMapObjectsIfNeeded({required bool force}) {
+    if (_eventMarkerDescriptor == null) return;
+
+    final nextIds = _eventIds(widget.events);
+    if (!force &&
+        _listEquals(_cachedEventIds, nextIds) &&
+        _cachedMapObjects.isNotEmpty) {
+      return;
+    }
+
+    _cachedEventIds = nextIds;
+    _cachedMapObjects = _buildMarkers();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  bool _listEquals(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
   Future<void> _initMarkerIcons() async {
     final eventIcon = await _createMarkerIcon();
-    final userIcon = await _loadUserMarkerIcon();
 
-    if (mounted) {
-      setState(() {
-        _markerIcons['event'] = eventIcon;
-        _userMarkerIcon = userIcon;
-      });
-    }
+    if (!mounted) return;
+
+    setState(() {
+      _eventMarkerDescriptor = BitmapDescriptor.fromBytes(eventIcon);
+    });
+    _refreshMapObjectsIfNeeded(force: true);
   }
 
   Future<Uint8List> _createMarkerIcon() async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
 
-    const width = 90.0;
-    const height = 115.0;
+    const width = 52.0;
+    const height = 66.0;
     const centerX = width / 2;
     const centerY = height / 2;
 
-    // Основная форма капли
     final mainPaint = Paint()
       ..color = const Color(0xFF0961F6)
       ..style = PaintingStyle.fill;
 
     final dropPath = Path()
-      // Верхняя закругленная часть
-      ..moveTo(centerX - 26, 18)
-      ..quadraticBezierTo(centerX - 32, 6, centerX, 6)
-      ..quadraticBezierTo(centerX + 32, 6, centerX + 26, 18)
-      // Правая сторона
-      ..quadraticBezierTo(centerX + 38, 30, centerX + 36, 48)
-      ..quadraticBezierTo(centerX + 32, 68, centerX + 12, 88)
-      // Острие внизу
-      ..quadraticBezierTo(centerX, 108, centerX - 12, 88)
-      // Левая сторона
-      ..quadraticBezierTo(centerX - 32, 68, centerX - 36, 48)
-      ..quadraticBezierTo(centerX - 38, 30, centerX - 26, 18)
+      ..moveTo(centerX - 18, 12)
+      ..quadraticBezierTo(centerX - 22, 4, centerX, 4)
+      ..quadraticBezierTo(centerX + 22, 4, centerX + 18, 12)
+      ..quadraticBezierTo(centerX + 26, 20, centerX + 24, 34)
+      ..quadraticBezierTo(centerX + 22, 48, centerX + 8, 62)
+      ..quadraticBezierTo(centerX, 76, centerX - 8, 62)
+      ..quadraticBezierTo(centerX - 22, 48, centerX - 24, 34)
+      ..quadraticBezierTo(centerX - 26, 20, centerX - 18, 12)
       ..close();
 
     canvas.drawPath(dropPath, mainPaint);
 
-    // Белая обводка
     final borderPaint = Paint()
       ..color = AppColors.accent
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
+      ..strokeWidth = 1.5;
     canvas.drawPath(dropPath, borderPaint);
 
-    // Отверстие в центре (белое)
     final holePaint = Paint()
       ..color = AppColors.accent
       ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(Offset(centerX, centerY - 8), 13, holePaint);
-
-    // Обводка для отверстия (темная)
-    final holeStrokePaint = Paint()
-      ..color = const Color(0xFF0961F6)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    canvas.drawCircle(Offset(centerX, centerY - 8), 13, holeStrokePaint);
+    canvas.drawCircle(Offset(centerX, centerY - 6), 9, holePaint);
 
     final picture = recorder.endRecording();
     final image = await picture.toImage(width.toInt(), height.toInt());
@@ -158,138 +224,71 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
     return byteData!.buffer.asUint8List();
   }
 
-  Future<Uint8List> _loadUserMarkerIcon() async {
-    try {
-      LoggerService.debug('🔄 Рисуем точку...');
-      return await _createDotIcon();
-    } catch (e) {
-      LoggerService.error('❌ Error drawing dot: $e');
-      return await _createDotIcon();
-    }
-  }
-
-  Future<Uint8List> _createDotIcon() async {
-    const size = 50.0;
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-
-    // Прозрачный фон
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size, size),
-      Paint()..color = Colors.transparent,
-    );
-
-    // Рисуем точку текущей геопозиции
-    final dotPaint = Paint()
-      ..color = const Color(0xFF0961F6)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(const Offset(size / 2, size / 2), size / 4, dotPaint);
-
-    final picture = recorder.endRecording();
-    final image = await picture.toImage(size.toInt(), size.toInt());
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-
-    LoggerService.debug('✅ Точка успешно нарисована');
-    return byteData!.buffer.asUint8List();
-  }
-
   List<MapObject> _buildMarkers() {
-    if (_markerIcons.isEmpty) return [];
+    final eventDescriptor = _eventMarkerDescriptor;
+    if (eventDescriptor == null) return [];
 
-    final markers = <MapObject>[];
+    final eventsForMarkers = widget.events.length > _maxMarkers
+        ? widget.events.take(_maxMarkers).toList()
+        : widget.events;
 
-    // Добавляем маркеры событий
-    markers.addAll(
-      widget.events.map((event) {
-        final icon = _markerIcons['event'] ?? _markerIcons.values.first;
-
-        return PlacemarkMapObject(
+    final placemarks = <PlacemarkMapObject>[];
+    for (final event in eventsForMarkers) {
+      placemarks.add(
+        PlacemarkMapObject(
           mapId: MapObjectId('event_${event.id}'),
           point: Point(latitude: event.latitude, longitude: event.longitude),
+          consumeTapEvents: true,
+          onTap: (_, __) => widget.onEventMarkerTapped?.call(event),
           icon: PlacemarkIcon.single(
             PlacemarkIconStyle(
-              image: BitmapDescriptor.fromBytes(icon),
-              scale: 1.0,
+              image: eventDescriptor,
+              scale: _markerScale,
             ),
           ),
           opacity: 1.0,
           zIndex: 0,
-        );
-      }),
-    );
-
-    // Маркер пользователя добавляем последним, чтобы он был поверх других
-    if (_userLocation != null && _userMarkerIcon != null) {
-      markers.add(
-        PlacemarkMapObject(
-          mapId: const MapObjectId('user_location'),
-          point: _userLocation!,
-          icon: PlacemarkIcon.single(
-            PlacemarkIconStyle(
-              image: BitmapDescriptor.fromBytes(_userMarkerIcon!),
-              scale: 1.0,
-            ),
-          ),
-          opacity: 1.0,
-          zIndex: 100,
         ),
       );
     }
 
-    return markers;
-  }
-
-  void _handleMapTap(Point tappedPoint) {
-    const double tapRadius = 0.01;
-    const double userLocationTapRadius =
-        0.003; // Меньше радиус для точки пользователя
-
-    // 1. Сначала проверяем события, чтобы они имели приоритет при нажатии
-    // (даже если пользователь стоит рядом или на метке)
-    for (final event in widget.events) {
-      final eventPoint = Point(
-        latitude: event.latitude,
-        longitude: event.longitude,
-      );
-
-      final distance = _calculateDistance(tappedPoint, eventPoint);
-
-      if (distance < tapRadius) {
-        widget.onEventMarkerTapped?.call(event);
-        return;
-      }
+    if (placemarks.isEmpty) {
+      return const [];
     }
 
-    // 2. Только если не попали в событие, проверяем нажатие на точку пользователя
-    if (_userLocation != null) {
-      final distance = _calculateDistance(tappedPoint, _userLocation!);
-      if (distance < userLocationTapRadius) {
-        _showUserLocationSnackBar();
-        return;
-      }
-    }
-  }
-
-  void _showUserLocationSnackBar() {
-    final context = this.context;
-    if (context.mounted) {
-      CustomNotification.success(
-        context,
-        'Вы здесь',
-        duration: const Duration(seconds: 2),
-      );
-    }
-  }
-
-  double _calculateDistance(Point p1, Point p2) {
-    final dLat = (p2.latitude - p1.latitude).abs();
-    final dLon = (p2.longitude - p1.longitude).abs();
-    return sqrt(dLat * dLat + dLon * dLon);
+    return [
+      ClusterizedPlacemarkCollection(
+        mapId: _eventsClusterId,
+        radius: 42,
+        minZoom: 13,
+        placemarks: placemarks,
+        onClusterTap: (self, cluster) {
+          final controller = _mapController;
+          if (controller == null) return;
+          unawaited(
+            controller.moveCamera(
+              CameraUpdate.newCameraPosition(
+                CameraPosition(
+                  target: cluster.appearance.point,
+                  zoom: 15,
+                ),
+              ),
+              animation: const MapAnimation(
+                type: MapAnimationType.smooth,
+                duration: 0.35,
+              ),
+            ),
+          );
+        },
+      ),
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool liteGestures =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
     return ClipRRect(
       borderRadius: widget.isInteractive
           ? BorderRadius.zero
@@ -297,50 +296,22 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
       child: Stack(
         children: <Widget>[
           YandexMap(
+            key: const ValueKey('yandex_explore_map'),
             onMapCreated: (YandexMapController controller) {
               _mapController = controller;
-
               widget.onMapCreated?.call(controller);
-
-              if (_userLocation != null) {
-                _mapController?.moveCamera(
-                  CameraUpdate.newCameraPosition(
-                    CameraPosition(target: _userLocation!, zoom: 12),
-                  ),
-                );
-              } else if (widget.events.isNotEmpty) {
-                final firstEvent = widget.events.first;
-                _mapController?.moveCamera(
-                  CameraUpdate.newCameraPosition(
-                    CameraPosition(
-                      target: Point(
-                        latitude: firstEvent.latitude,
-                        longitude: firstEvent.longitude,
-                      ),
-                      zoom: 12,
-                    ),
-                  ),
-                );
-              } else {
-                _mapController?.moveCamera(
-                  CameraUpdate.newCameraPosition(
-                    CameraPosition(target: _initialTarget, zoom: 12),
-                  ),
-                );
-              }
+              unawaited(_enableUserLayer(controller));
+              _applyInitialCamera();
             },
-            mapObjects: _buildMarkers(),
+            mapObjects: _cachedMapObjects,
             nightModeEnabled: false,
-            rotateGesturesEnabled: widget.isInteractive,
+            rotateGesturesEnabled: widget.isInteractive && !liteGestures,
             scrollGesturesEnabled: widget.isInteractive,
-            tiltGesturesEnabled: widget.isInteractive,
+            tiltGesturesEnabled: false,
             zoomGesturesEnabled: widget.isInteractive,
             fastTapEnabled: widget.isInteractive,
-            onMapTap: (point) {
-              _handleMapTap(point);
-            },
+            onCameraPositionChanged: widget.onCameraPositionChanged,
           ),
-
           if (!widget.isInteractive)
             Container(
               decoration: BoxDecoration(
@@ -354,24 +325,18 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
                 ),
               ),
             ),
-
           if (!widget.isInteractive)
             Positioned(
               bottom: 16,
               left: 16,
               right: 16,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  Text(
-                    '${widget.events.length} ${_getEventWord(widget.events.length)}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+              child: Text(
+                '${widget.events.length} ${_getEventWord(widget.events.length)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
         ],

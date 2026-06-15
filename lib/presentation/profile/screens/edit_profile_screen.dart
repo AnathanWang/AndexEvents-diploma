@@ -44,6 +44,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _showInMatches = true;
   bool _incognitoMode = false;
   bool _hideOnlineStatus = false;
+  int? _minMatchAge;
+  int? _maxMatchAge;
 
   final List<String> _allInterests = <String>[
     'Спорт',
@@ -90,6 +92,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _showInMatches = user.showInMatches;
       _incognitoMode = user.incognitoMode;
       _hideOnlineStatus = user.hideOnlineStatus;
+      _minMatchAge = user.minAge;
+      _maxMatchAge = user.maxAge;
     }
   }
 
@@ -564,6 +568,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             showInMatches: _showInMatches,
             incognitoMode: _incognitoMode,
             hideOnlineStatus: _hideOnlineStatus,
+            minAge: _minMatchAge,
+            maxAge: _maxMatchAge,
+            clearMinAge:
+                _minMatchAge == null && _currentUser?.minAge != null,
+            clearMaxAge:
+                _maxMatchAge == null && _currentUser?.maxAge != null,
           ),
         );
       } catch (e) {
@@ -678,13 +688,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _openPrivacySettings() async {
-    final result = await Navigator.of(context).push<Map<String, bool>>(
-      MaterialPageRoute<Map<String, bool>>(
+    final result = await Navigator.of(context).push<Map<String, Object?>>(
+      MaterialPageRoute<Map<String, Object?>>(
         builder: (context) => PrivacySettingsScreen(
           showVisitedEvents: _showVisitedEvents,
           showInMatches: _showInMatches,
           incognitoMode: _incognitoMode,
           hideOnlineStatus: _hideOnlineStatus,
+          minAge: _minMatchAge,
+          maxAge: _maxMatchAge,
         ),
       ),
     );
@@ -693,13 +705,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     setState(() {
       _showVisitedEvents =
-          result['showVisitedEvents'] ?? _showVisitedEvents;
+          result['showVisitedEvents'] as bool? ?? _showVisitedEvents;
       _showInMatches =
-          result['showInMatches'] ?? _showInMatches;
+          result['showInMatches'] as bool? ?? _showInMatches;
       _incognitoMode =
-          result['incognitoMode'] ?? _incognitoMode;
+          result['incognitoMode'] as bool? ?? _incognitoMode;
       _hideOnlineStatus =
-          result['hideOnlineStatus'] ?? _hideOnlineStatus;
+          result['hideOnlineStatus'] as bool? ?? _hideOnlineStatus;
+      _minMatchAge = result['minAge'] as int?;
+      _maxMatchAge = result['maxAge'] as int?;
     });
   }
 
@@ -831,19 +845,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 Align(
                                   alignment: Alignment.bottomRight,
                                   child: Padding(
-                                    padding: const EdgeInsets.all(10),
-                                    child: OutlinedButton.icon(
-                                      onPressed: _pickCoverImage,
-                                      icon: const Icon(
-                                        Icons.wallpaper_outlined,
-                                        size: 16,
-                                      ),
-                                      label: const Text('Фон'),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: Colors.white,
-                                        side: const BorderSide(color: Colors.white),
-                                        backgroundColor:
-                                            Colors.black.withValues(alpha: 0.28),
+                                    padding: const EdgeInsets.all(8),
+                                    child: Material(
+                                      color: Colors.black.withValues(alpha: 0.28),
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: InkWell(
+                                        onTap: _pickCoverImage,
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: const Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 7,
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.wallpaper_outlined,
+                                                size: 16,
+                                                color: Colors.white,
+                                              ),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                'Фон',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -968,45 +1001,63 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          OutlinedButton.icon(
-                            onPressed: _pickImage,
-                            icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                            label: const Text('Аватар'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF5F76FF),
-                              side: BorderSide(
-                                color: const Color(0xFFBFD3FF),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: <Widget>[
+                            OutlinedButton.icon(
+                              onPressed: _pickImage,
+                              icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                              label: const Text('Аватар'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF5F76FF),
+                                side: const BorderSide(
+                                  color: Color(0xFFBFD3FF),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          OutlinedButton.icon(
-                            onPressed: _pickAdditionalPhotos,
-                            icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
-                            label: const Text('Фото'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF5F76FF),
-                              side: BorderSide(
-                                color: const Color(0xFFBFD3FF),
+                            OutlinedButton.icon(
+                              onPressed: _pickAdditionalPhotos,
+                              icon: const Icon(
+                                Icons.add_photo_alternate_outlined,
+                                size: 18,
+                              ),
+                              label: const Text('Фото'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF5F76FF),
+                                side: const BorderSide(
+                                  color: Color(0xFFBFD3FF),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          OutlinedButton.icon(
-                            onPressed: _pickCoverImage,
-                            icon: const Icon(Icons.wallpaper_outlined, size: 18),
-                            label: const Text('Фон'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF5F76FF),
-                              side: BorderSide(
-                                color: const Color(0xFFBFD3FF),
+                            OutlinedButton.icon(
+                              onPressed: _pickCoverImage,
+                              icon: const Icon(Icons.wallpaper_outlined, size: 18),
+                              label: const Text('Фон'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF5F76FF),
+                                side: const BorderSide(
+                                  color: Color(0xFFBFD3FF),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 20),
                       _buildAdditionalPhotosSection(user),

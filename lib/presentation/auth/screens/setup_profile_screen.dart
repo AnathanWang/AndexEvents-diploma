@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:async';
 import '../../../data/services/user_service.dart';
+import '../../../data/services/auth_service.dart';
 import 'setup_interests_screen.dart';
 import '../../widgets/common/custom_dropdown.dart';
 import '../bloc/auth_bloc.dart';
@@ -27,6 +28,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _ageController = TextEditingController();
   final _userService = UserService();
+  final _authService = AuthService();
   String? _selectedGender;
   File? _profileImage;
   bool _isLoading = false;
@@ -69,30 +71,19 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
       setState(() => _isLoading = true);
 
       try {
+        await _authService.ensureUserInBackend();
+
         String? photoUrl;
 
-        // Загружаем фото если выбрано
         if (_profileImage != null) {
-          try {
-            photoUrl = await _userService.uploadProfilePhoto(_profileImage!)
-                .timeout(
-              const Duration(seconds: 30),
-              onTimeout: () {
-                throw TimeoutException('Загрузка фото заняла слишком много времени');
-              },
-            );
-          } catch (photoError) {
-            // Не прерываем процесс, продолжаем без фото
-            if (!mounted) return;
-            CustomNotification.show(
-              context,
-              'Не удалось загрузить фото, продолжаем без него',
-              isError: true,
-            );
-          }
+          photoUrl = await _userService.uploadProfilePhoto(_profileImage!).timeout(
+            const Duration(seconds: 60),
+            onTimeout: () {
+              throw TimeoutException('Загрузка фото заняла слишком много времени');
+            },
+          );
         }
 
-        // Отправляем данные профиля на backend
         await _userService.updateProfile(
           photoUrl: photoUrl,
           age: int.tryParse(_ageController.text),
@@ -170,6 +161,8 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
     setState(() => _isLoading = true);
 
     try {
+      await _authService.ensureUserInBackend();
+
       await _userService.updateProfile(
         age: int.tryParse(_ageController.text),
         gender: _selectedGender,

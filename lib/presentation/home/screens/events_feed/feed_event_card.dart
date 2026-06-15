@@ -2,10 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:shimmer/shimmer.dart';
-
-import '../../../../core/services/logger_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/performance_utils.dart';
 import '../../../../data/models/event_model.dart';
 import '../../../events/bloc/event_bloc.dart';
 import '../../../events/bloc/event_event.dart';
@@ -61,8 +59,8 @@ class FeedEventCard extends StatelessWidget {
             },
             transitionDuration: const Duration(milliseconds: 280),
           ),
-        ).then((_) {
-          if (context.mounted) {
+        ).then((changed) {
+          if (context.mounted && changed == true) {
             context.read<EventBloc>().add(const EventsLoadRequested());
           }
         });
@@ -102,15 +100,15 @@ class FeedEventCard extends StatelessWidget {
                       CachedNetworkImage(
                         imageUrl: event.imageUrl!,
                         fit: BoxFit.cover,
-                        placeholder: (context, url) => Shimmer.fromColors(
-                          baseColor: Colors.grey.shade200,
-                          highlightColor: Colors.grey.shade50,
-                          child: Container(color: AppColors.surface),
+                        memCacheWidth: imageMemCachePx(
+                          MediaQuery.sizeOf(context).width,
+                          context,
+                        ),
+                        memCacheHeight: imageMemCachePx(158, context),
+                        placeholder: (context, url) => Container(
+                          color: AppColors.surface.withValues(alpha: 0.5),
                         ),
                         errorWidget: (context, url, error) {
-                          LoggerService.error(
-                            'Error loading feed event image: $url, error: $error',
-                          );
                           return Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
@@ -310,18 +308,17 @@ class FeedEventCard extends StatelessWidget {
                         if (event.creatorPhotoUrl != null)
                           CachedNetworkImage(
                             imageUrl: event.creatorPhotoUrl!,
+                            memCacheWidth: imageMemCachePx(26, context),
+                            memCacheHeight: imageMemCachePx(26, context),
                             imageBuilder: (context, imageProvider) =>
                                 CircleAvatar(
                               radius: 13,
                               backgroundImage: imageProvider,
                             ),
-                            placeholder: (context, url) => Shimmer.fromColors(
-                              baseColor: Colors.grey.shade200,
-                              highlightColor: Colors.grey.shade50,
-                              child: const CircleAvatar(
-                                radius: 13,
-                                backgroundColor: AppColors.surface,
-                              ),
+                            placeholder: (context, url) => CircleAvatar(
+                              radius: 13,
+                              backgroundColor:
+                                  AppColors.accent.withValues(alpha: 0.35),
                             ),
                             errorWidget: (context, url, error) => CircleAvatar(
                               radius: 13,
@@ -370,7 +367,8 @@ class FeedEventCard extends StatelessWidget {
                   const SizedBox(height: 10),
                   EventCountdownTimer(
                     expirationTime: event.actualEndDateTime,
-                    isMinimal: false,
+                    isMinimal: true,
+                    liveUpdates: false,
                   ),
                 ],
               ),

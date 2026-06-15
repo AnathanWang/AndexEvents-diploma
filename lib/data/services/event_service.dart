@@ -126,6 +126,7 @@ class EventService {
     int? maxDistance,
     int page = 1,
     int limit = 20,
+    bool writeCache = true,
   }) async {
     try {
       final String? token = await _getIdToken();
@@ -164,7 +165,7 @@ class EventService {
       final responseData = json.decode(response.body);
       final List<dynamic> eventsJson = responseData['data']['events'];
 
-      if (page == 1) {
+      if (page == 1 && writeCache) {
         try {
           final String cacheKey = 'events_cache_${category ?? "all"}_page1';
           final prefs = await SharedPreferences.getInstance();

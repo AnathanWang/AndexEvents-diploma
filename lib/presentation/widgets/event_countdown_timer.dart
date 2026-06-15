@@ -1,12 +1,13 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/performance_utils.dart';
 
 class EventCountdownTimer extends StatefulWidget {
   final DateTime expirationTime;
   final VoidCallback? onExpired;
   final TextStyle? textStyle;
   final bool isMinimal;
+  final bool liveUpdates;
 
   const EventCountdownTimer({
     super.key,
@@ -14,6 +15,7 @@ class EventCountdownTimer extends StatefulWidget {
     this.onExpired,
     this.textStyle,
     this.isMinimal = false,
+    this.liveUpdates = true,
   });
 
   @override
@@ -21,7 +23,6 @@ class EventCountdownTimer extends StatefulWidget {
 }
 
 class _EventCountdownTimerState extends State<EventCountdownTimer> {
-  Timer? _timer;
   late Duration _timeLeft;
   bool _expired = false;
 
@@ -29,10 +30,8 @@ class _EventCountdownTimerState extends State<EventCountdownTimer> {
   void initState() {
     super.initState();
     _calculateTimeLeft();
-    if (!_expired) {
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        _calculateTimeLeft();
-      });
+    if (!_expired && widget.liveUpdates) {
+      EventCountdownTicker.instance.addListener(_calculateTimeLeft);
     }
   }
 
@@ -44,7 +43,9 @@ class _EventCountdownTimerState extends State<EventCountdownTimer> {
           _expired = true;
           _timeLeft = Duration.zero;
         });
-        _timer?.cancel();
+        if (widget.liveUpdates) {
+          EventCountdownTicker.instance.removeListener(_calculateTimeLeft);
+        }
         if (widget.onExpired != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             widget.onExpired!();
@@ -60,7 +61,9 @@ class _EventCountdownTimerState extends State<EventCountdownTimer> {
 
   @override
   void dispose() {
-    _timer?.cancel();
+    if (widget.liveUpdates) {
+      EventCountdownTicker.instance.removeListener(_calculateTimeLeft);
+    }
     super.dispose();
   }
 

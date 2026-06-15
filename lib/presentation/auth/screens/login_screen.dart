@@ -36,6 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() {
+    FocusScope.of(context).unfocus();
     LoggerService.debug('DEBUG: _handleLogin called, _isLoading: $_isLoading');
     
     if (_formKey.currentState?.validate() ?? false) {
@@ -92,6 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
 
         if (state is AuthAuthenticated) {
+          FocusManager.instance.primaryFocus?.unfocus();
           // Важно: AndexApp не может автоматически заменить текущий route,
           // если пользователь уже находится на LoginScreen.
           Widget destination;

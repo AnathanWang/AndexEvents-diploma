@@ -1,4 +1,4 @@
-/// Модель участника события
+import '../../core/utils/media_url_utils.dart';
 class ParticipantModel {
   final String id;
   final String userId;
@@ -49,7 +49,7 @@ class UserInfo {
     return UserInfo(
       id: json['id'] as String,
       displayName: json['displayName'] as String? ?? 'Unknown',
-      photoUrl: json['photoUrl'] as String?,
+      photoUrl: MediaUrlUtils.normalize(json['photoUrl'] as String?),
       email: json['email'] as String?,
     );
   }

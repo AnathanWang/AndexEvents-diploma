@@ -23,6 +23,7 @@
 
 ## 🔌 API / интеграции
 
+- **`BACKEND_COMPLETE_REFERENCE.md`** — единый подробный конспект по всему backend (Java + Go + Docker + БД + Traefik + секреты)
 - `api-reference.md` — справочник по API (если разделы устарели, сверяйтесь с кодом сервисов)
 - `flutter-backend-integration-plan.md` — заметки по интеграции клиента с backend
 

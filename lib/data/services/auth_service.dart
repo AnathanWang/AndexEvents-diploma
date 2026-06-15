@@ -244,6 +244,15 @@ class AuthService {
   }
 
   /// Получить текущий профиль пользователя из бэкенда
+  /// Ensures the Firebase user has a corresponding record in the backend.
+  Future<void> ensureUserInBackend() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('Пользователь не авторизован');
+    }
+    await getCurrentUserProfile();
+  }
+
   Future<Map<String, dynamic>> getCurrentUserProfile() async {
     try {
       LoggerService.info('[AuthService] Получение токена...');

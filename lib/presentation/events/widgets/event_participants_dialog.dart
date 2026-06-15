@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../../data/models/participant_model.dart';
+import '../../widgets/common/network_avatar.dart';
 
 /// Dialog для отображения списка участников события
 class EventParticipantsDialog extends StatelessWidget {
@@ -105,25 +105,11 @@ class _ParticipantTile extends StatelessWidget {
     return Row(
       children: [
         // Аватар
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.grey[200]!, width: 1),
-            image: participant.user.photoUrl != null
-                ? DecorationImage(
-                    image: CachedNetworkImageProvider(
-                      participant.user.photoUrl!,
-                    ),
-                    fit: BoxFit.cover,
-                  )
-                : null,
-            color: Colors.grey[100],
-          ),
-          child: participant.user.photoUrl == null
-              ? Icon(Icons.person, color: Colors.grey[400], size: 30)
-              : null,
+        NetworkAvatar(
+          url: participant.user.photoUrl,
+          label: participant.user.displayName,
+          size: 50,
+          fontSize: 18,
         ),
         const SizedBox(width: 16),
         // Информация о пользователе

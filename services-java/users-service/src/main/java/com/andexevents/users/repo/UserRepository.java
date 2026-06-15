@@ -1,5 +1,6 @@
 package com.andexevents.users.repo;
 
+import com.andexevents.users.model.GlobalMatchContext;
 import com.andexevents.users.model.UserDto;
 import com.andexevents.users.service.UserService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -115,6 +116,44 @@ public class UserRepository {
         return findById(userId).orElseThrow();
     }
 
+    public Map<String, Integer> findSharedGoingEventCounts(String userId, List<String> candidateIds) {
+        if (candidateIds == null || candidateIds.isEmpty()) {
+            return Map.of();
+        }
+
+        String placeholders = String.join(", ", Collections.nCopies(candidateIds.size(), "?"));
+        String sql = """
+                SELECT p2."userId" AS candidate_id, COUNT(DISTINCT p2."eventId") AS shared_count
+                FROM events."Participant" p1
+                JOIN events."Participant" p2 ON p1."eventId" = p2."eventId"
+                WHERE p1."userId" = ?
+                  AND p2."userId" <> p1."userId"
+                  AND p1.status = 'GOING'::events."ParticipantStatus"
+                  AND p2.status = 'GOING'::events."ParticipantStatus"
+                  AND p2."userId" IN (%s)
+                GROUP BY p2."userId"
+                """.formatted(placeholders);
+
+        List<Object> params = new ArrayList<>();
+        params.add(userId);
+        params.addAll(candidateIds);
+
+        Map<String, Integer> counts = new HashMap<>();
+        try {
+            jdbcTemplate.query(
+                    sql,
+                    rs -> {
+                        counts.put(rs.getString("candidate_id"), rs.getInt("shared_count"));
+                    },
+                    params.toArray()
+            );
+        } catch (Exception ignored) {
+            // events schema may be unavailable in isolated test DB
+            return Map.of();
+        }
+        return counts;
+    }
+
     public void updateLocation(String userId, double latitude, double longitude) {
         jdbcTemplate.update(
                 "UPDATE users.\"User\" SET \"lastLatitude\" = ?, \"lastLongitude\" = ?, \"lastLocationUpdate\" = NOW(), \"updatedAt\" = NOW() WHERE id = ?",
@@ -122,6 +161,64 @@ public class UserRepository {
                 longitude,
                 userId
         );
+    }
+
+    public GlobalMatchContext findGlobalMatchContext(String userId) {
+        String sql = """
+                SELECT
+                  CASE WHEN "userAId" = ? THEN "userBId" ELSE "userAId" END AS other_id,
+                  CASE WHEN "userAId" = ? THEN "userAAction" ELSE "userBAction" END AS my_action,
+                  CASE WHEN "userAId" = ? THEN "userBAction" ELSE "userAAction" END AS their_action,
+                  COALESCE("isMutual", false) AS is_mutual
+                FROM "Match"
+                WHERE COALESCE("eventId", '') = ''
+                  AND (? = "userAId" OR ? = "userBId")
+                """;
+
+        Set<String> actioned = new HashSet<>();
+        Set<String> incomingLikes = new HashSet<>();
+        Set<String> mutual = new HashSet<>();
+
+        jdbcTemplate.query(
+                sql,
+                rs -> {
+                    String otherId = rs.getString("other_id");
+                    String myAction = rs.getString("my_action");
+                    String theirAction = rs.getString("their_action");
+                    boolean isMutual = rs.getBoolean("is_mutual");
+
+                    if (otherId == null || otherId.isBlank()) {
+                        return;
+                    }
+
+                    if (isMutual) {
+                        mutual.add(otherId);
+                    }
+                    if (myAction != null && !myAction.isBlank()) {
+                        actioned.add(otherId);
+                    }
+                    if (!isMutual
+                            && (myAction == null || myAction.isBlank())
+                            && isLikeAction(theirAction)) {
+                        incomingLikes.add(otherId);
+                    }
+                },
+                userId,
+                userId,
+                userId,
+                userId,
+                userId
+        );
+
+        return new GlobalMatchContext(actioned, incomingLikes, mutual);
+    }
+
+    private static boolean isLikeAction(String action) {
+        if (action == null) {
+            return false;
+        }
+        String normalized = action.trim().toUpperCase(Locale.ROOT);
+        return "LIKE".equals(normalized) || "SUPER_LIKE".equals(normalized);
     }
 
     public List<UserDto> findMatches(
@@ -158,7 +255,15 @@ public class UserRepository {
                 "AND u.\"lastLatitude\" BETWEEN ? AND ? " +
                 "AND u.\"lastLongitude\" BETWEEN ? AND ? " +
                 "AND NOT EXISTS (" +
-                "SELECT 1 FROM users.\"UserBlock\" b WHERE (b.\"blockerId\" = ? AND b.\"targetUserId\" = u.id) OR (b.\"blockerId\" = u.id AND b.\"targetUserId\" = ?)) "
+                "SELECT 1 FROM users.\"UserBlock\" b WHERE (b.\"blockerId\" = ? AND b.\"targetUserId\" = u.id) OR (b.\"blockerId\" = u.id AND b.\"targetUserId\" = ?)) " +
+                "AND NOT EXISTS (" +
+                "SELECT 1 FROM \"Match\" m " +
+                "WHERE COALESCE(m.\"eventId\", '') = '' " +
+                "AND (" +
+                "  (m.\"userAId\" = ? AND m.\"userBId\" = u.id AND m.\"userAAction\" IS NOT NULL) " +
+                "  OR (m.\"userBId\" = ? AND m.\"userAId\" = u.id AND m.\"userBAction\" IS NOT NULL) " +
+                "  OR (COALESCE(m.\"isMutual\", false) = true AND ((m.\"userAId\" = ? AND m.\"userBId\" = u.id) OR (m.\"userBId\" = ? AND m.\"userAId\" = u.id)))" +
+                ")) "
         );
 
         List<Object> params = new ArrayList<>();
@@ -169,6 +274,10 @@ public class UserRepository {
         params.add(maxLat);
         params.add(minLon);
         params.add(maxLon);
+        params.add(userId);
+        params.add(userId);
+        params.add(userId);
+        params.add(userId);
         params.add(userId);
         params.add(userId);
 

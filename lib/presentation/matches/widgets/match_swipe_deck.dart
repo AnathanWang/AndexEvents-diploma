@@ -1,9 +1,11 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/media_url_utils.dart';
+import '../../../core/utils/performance_utils.dart';
 import '../../models/match_preview.dart';
 
 enum MatchSwipeAction { like, dislike, later, info }
@@ -15,7 +17,6 @@ class MatchSwipeDeck extends StatefulWidget {
     required this.onOpenProfile,
     required this.onSwipe,
     required this.onDeckEmpty,
-    this.showHintInitially = true,
     this.topPadding,
     this.bottomReserve,
   });
@@ -25,7 +26,6 @@ class MatchSwipeDeck extends StatefulWidget {
   final void Function(MatchSwipeAction action, MatchPreview match) onSwipe;
   final VoidCallback onDeckEmpty;
 
-  final bool showHintInitially;
   final double? topPadding;
   final double? bottomReserve;
 
@@ -33,15 +33,32 @@ class MatchSwipeDeck extends StatefulWidget {
   State<MatchSwipeDeck> createState() => _MatchSwipeDeckState();
 }
 
-class _MatchSwipeDeckState extends State<MatchSwipeDeck> {
+class _MatchSwipeDeckState extends State<MatchSwipeDeck>
+    with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
-
-  Offset _dragPosition = Offset.zero;
-  bool _isDragging = false;
-  double _dragDistance = 0;
+  final ValueNotifier<Offset> _dragPosition = ValueNotifier(Offset.zero);
   bool _isAnimating = false;
+  late final AnimationController _motionController;
+  Animation<Offset>? _motionAnimation;
 
-  late bool _showHint = widget.showHintInitially;
+  @override
+  void initState() {
+    super.initState();
+    _motionController = AnimationController(vsync: this);
+    _motionController.addListener(() {
+      final animation = _motionAnimation;
+      if (animation != null) {
+        _dragPosition.value = animation.value;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _motionController.dispose();
+    _dragPosition.dispose();
+    super.dispose();
+  }
 
   @override
   void didUpdateWidget(covariant MatchSwipeDeck oldWidget) {
@@ -54,15 +71,12 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck> {
 
   void _onPanStart(DragStartDetails details) {
     if (_isAnimating) return;
-    setState(() => _isDragging = true);
+    _motionController.stop();
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
     if (_isAnimating) return;
-    setState(() {
-      _dragPosition += details.delta;
-      _dragDistance = _dragPosition.distance;
-    });
+    _dragPosition.value = _dragPosition.value + details.delta;
   }
 
   void _onPanEnd(DragEndDetails details) {
@@ -72,141 +86,98 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final match = widget.matches[_currentIndex];
+    final drag = _dragPosition.value;
 
-    if (_dragPosition.dy > screenHeight * 0.25) {
-      widget.onOpenProfile(match);
-      _resetDrag();
-      return;
-    }
-
-    if (_dragPosition.dy < -screenHeight * 0.25) {
+    if (drag.dy < -screenHeight * 0.25) {
       widget.onSwipe(MatchSwipeAction.later, match);
       _animateCardOut(const Offset(0, -1000));
       return;
     }
 
-    if (_dragPosition.dx < -screenWidth * 0.4) {
+    if (drag.dx < -screenWidth * 0.4) {
       widget.onSwipe(MatchSwipeAction.dislike, match);
       _animateCardOut(const Offset(-1000, 0));
       return;
     }
 
-    if (_dragPosition.dx > screenWidth * 0.4) {
+    if (drag.dx > screenWidth * 0.4) {
       widget.onSwipe(MatchSwipeAction.like, match);
       _animateCardOut(const Offset(1000, 0));
       return;
     }
 
-    _resetDragWithAnimation();
+    _animateDragTo(Offset.zero, duration: const Duration(milliseconds: 280));
   }
 
   void _resetDrag() {
-    setState(() {
-      _dragPosition = Offset.zero;
-      _isDragging = false;
-      _dragDistance = 0;
-    });
+    _motionController.stop();
+    _dragPosition.value = Offset.zero;
   }
 
-  void _resetDragWithAnimation() {
-    final startPosition = _dragPosition;
-    final animationDuration = const Duration(milliseconds: 300);
-    final startTime = DateTime.now();
-
-    void animateReset() {
-      if (!mounted) return;
-      final elapsed = DateTime.now().difference(startTime);
-      final progress =
-          (elapsed.inMilliseconds / animationDuration.inMilliseconds).clamp(0.0, 1.0);
-      final easeProgress = 1 - (1 - progress) * (1 - progress) * (1 - progress);
-
-      setState(() {
-        _dragPosition = Offset(
-          startPosition.dx * (1 - easeProgress),
-          startPosition.dy * (1 - easeProgress),
-        );
-        _dragDistance = _dragPosition.distance;
-      });
-
-      if (progress < 1.0) {
-        Future.delayed(const Duration(milliseconds: 16), animateReset);
-      } else {
-        _resetDrag();
-      }
-    }
-
-    animateReset();
+  Future<void> _animateDragTo(
+    Offset target, {
+    required Duration duration,
+    VoidCallback? onComplete,
+  }) async {
+    _isAnimating = true;
+    _motionController.duration = duration;
+    _motionAnimation = Tween<Offset>(
+      begin: _dragPosition.value,
+      end: target,
+    ).animate(CurvedAnimation(
+      parent: _motionController,
+      curve: Curves.easeOutCubic,
+    ));
+    await _motionController.forward(from: 0);
+    _isAnimating = false;
+    onComplete?.call();
   }
 
   void _animateCardOut(Offset targetPosition) {
     _isAnimating = true;
-    final startPosition = _dragPosition;
-    final animationDuration = const Duration(milliseconds: 400);
-    final startTime = DateTime.now();
-
-    void animateOut() {
-      if (!mounted) {
-        _isAnimating = false;
-        return;
-      }
-
-      final elapsed = DateTime.now().difference(startTime);
-      final progress =
-          (elapsed.inMilliseconds / animationDuration.inMilliseconds).clamp(0.0, 1.0);
-      final easeProgress = progress * progress * progress;
-
-      setState(() {
-        _dragPosition = Offset(
-          startPosition.dx + (targetPosition.dx - startPosition.dx) * easeProgress,
-          startPosition.dy + (targetPosition.dy - startPosition.dy) * easeProgress,
-        );
-      });
-
-      if (progress < 1.0) {
-        Future.delayed(const Duration(milliseconds: 16), animateOut);
-      } else {
-        _nextCard();
-        _isAnimating = false;
-      }
-    }
-
-    animateOut();
+    _motionController.duration = const Duration(milliseconds: 380);
+    _motionAnimation = Tween<Offset>(
+      begin: _dragPosition.value,
+      end: targetPosition,
+    ).animate(CurvedAnimation(
+      parent: _motionController,
+      curve: Curves.easeInCubic,
+    ));
+    _motionController.forward(from: 0).then((_) {
+      if (!mounted) return;
+      _isAnimating = false;
+      _nextCard();
+    });
   }
 
   void _nextCard() {
     if (!mounted) return;
-    setState(() {
-      if (_currentIndex < widget.matches.length - 1) {
-        _currentIndex++;
-      } else {
-        _currentIndex = 0;
-        _resetDrag();
-        widget.onDeckEmpty();
-        return;
-      }
-      _resetDrag();
-    });
+    if (_currentIndex < widget.matches.length - 1) {
+      setState(() => _currentIndex++);
+    } else {
+      setState(() => _currentIndex = 0);
+      widget.onDeckEmpty();
+    }
+    _resetDrag();
   }
 
-  double get _rotation {
-    if (_dragPosition.dx == 0) return 0;
+  double _rotationFor(Offset drag, double screenWidth) {
+    if (drag.dx == 0) return 0;
     const maxRotation = 0.1;
-    return (_dragPosition.dx / MediaQuery.of(context).size.width) * maxRotation;
+    return (drag.dx / screenWidth) * maxRotation;
   }
 
-  Color _indicatorColor() {
-    if (_dragPosition.dx > 50) return Colors.green;
-    if (_dragPosition.dx < -50) return Colors.red;
-    if (_dragPosition.dy < -50) return Colors.blue;
-    if (_dragPosition.dy > 50) return Colors.purple;
+  Color _indicatorColor(Offset drag) {
+    if (drag.dx > 50) return Colors.green;
+    if (drag.dx < -50) return Colors.red;
+    if (drag.dy < -50) return Colors.blue;
     return Colors.transparent;
   }
 
-  String _indicatorText() {
-    if (_dragPosition.dx > 50) return 'НРАВИТСЯ';
-    if (_dragPosition.dx < -50) return 'НЕ НРАВИТСЯ';
-    if (_dragPosition.dy < -50) return 'ЕЩЁ ПОДУМАЮ';
-    if (_dragPosition.dy > 50) return 'INFO';
+  String _indicatorText(Offset drag) {
+    if (drag.dx > 50) return 'НРАВИТСЯ';
+    if (drag.dx < -50) return 'НЕ НРАВИТСЯ';
+    if (drag.dy < -50) return 'ЕЩЁ ПОДУМАЮ';
     return '';
   }
 
@@ -219,6 +190,7 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck> {
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final bottomNavReserve = widget.bottomReserve ?? (kBottomNavigationBarHeight + 10);
     final top = widget.topPadding ?? (MediaQuery.of(context).padding.top + 22);
+    final screenWidth = MediaQuery.sizeOf(context).width;
 
     final current = widget.matches[_currentIndex];
 
@@ -226,100 +198,66 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck> {
       children: [
         if (_currentIndex < widget.matches.length - 1)
           Positioned.fill(
-            child: Transform.scale(
-              scale: 0.965,
-              child: Opacity(
-                opacity: 0.55,
-                child: _MatchCard(
-                  match: widget.matches[_currentIndex + 1],
-                  top: top,
-                  bottom: bottomInset + bottomNavReserve + 22,
-                ),
-              ),
-            ),
-          ),
-        Positioned.fill(
-          child: Transform.translate(
-            offset: _dragPosition,
-            child: Transform.rotate(
-              angle: _rotation,
-              child: GestureDetector(
-                onPanStart: _onPanStart,
-                onPanUpdate: _onPanUpdate,
-                onPanEnd: _onPanEnd,
-                child: _MatchCard(
-                  match: current,
-                  top: top,
-                  bottom: bottomInset + bottomNavReserve + 22,
-                ),
-              ),
-            ),
-          ),
-        ),
-        if (_isDragging && _dragDistance > 30)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: _SwipeIndicator(
-                color: _indicatorColor(),
-                text: _indicatorText(),
-                opacity: math.min(_dragDistance / 100, 1.0),
-                dragPosition: _dragPosition,
-              ),
-            ),
-          ),
-        if (_showHint)
-          Positioned(
-            top: top - 16,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.84),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.12),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.keyboard_arrow_down,
-                          color: AppColors.primary.withValues(alpha: 0.86),
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Свайп вниз для профиля',
-                          style: TextStyle(
-                            color: AppColors.dark.withValues(alpha: 0.72),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () => setState(() => _showHint = false),
-                          child: Icon(
-                            Icons.close,
-                            color: AppColors.dark.withValues(alpha: 0.55),
-                            size: 14,
-                          ),
-                        ),
-                      ],
-                    ),
+            child: RepaintBoundary(
+              child: Transform.scale(
+                scale: 0.965,
+                child: Opacity(
+                  opacity: 0.55,
+                  child: _MatchCard(
+                    match: widget.matches[_currentIndex + 1],
+                    top: top,
+                    bottom: bottomInset + bottomNavReserve + 22,
                   ),
                 ),
               ),
             ),
           ),
+        ListenableBuilder(
+          listenable: _dragPosition,
+          builder: (context, _) {
+            final drag = _dragPosition.value;
+            return Positioned.fill(
+              child: RepaintBoundary(
+                child: Transform.translate(
+                  offset: drag,
+                  child: Transform.rotate(
+                    angle: _rotationFor(drag, screenWidth),
+                    child: GestureDetector(
+                      onPanStart: _onPanStart,
+                      onPanUpdate: _onPanUpdate,
+                      onPanEnd: _onPanEnd,
+                      child: _MatchCard(
+                        match: current,
+                        top: top,
+                        bottom: bottomInset + bottomNavReserve + 22,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        ListenableBuilder(
+          listenable: _dragPosition,
+          builder: (context, _) {
+            final drag = _dragPosition.value;
+            final distance = drag.distance;
+            if (distance <= 30) {
+              return const SizedBox.shrink();
+            }
+            return Positioned.fill(
+              child: IgnorePointer(
+                child: _SwipeIndicator(
+                  color: _indicatorColor(drag),
+                  text: _indicatorText(drag),
+                  opacity: math.min(distance / 100, 1.0),
+                  dragPosition: drag,
+                ),
+              ),
+            );
+          },
+        ),
       ],
     );
   }
@@ -373,10 +311,14 @@ class _MatchCard extends StatelessWidget {
               ),
             ),
             if (match.photoUrl != null)
-              Image.network(
-                match.photoUrl!,
+              CachedNetworkImage(
+                imageUrl: MediaUrlUtils.normalize(match.photoUrl!) ?? match.photoUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                width: double.infinity,
+                height: double.infinity,
+                memCacheWidth: imageMemCachePx(320, context),
+                memCacheHeight: imageMemCachePx(420, context),
+                errorWidget: (_, __, ___) => const SizedBox.shrink(),
               ),
             DecoratedBox(
               decoration: BoxDecoration(
@@ -398,18 +340,16 @@ class _MatchCard extends StatelessWidget {
               bottom: 22,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.56),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.72),
-                      ),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.88),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.72),
                     ),
-                    child: Column(
+                  ),
+                  child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
@@ -520,7 +460,6 @@ class _MatchCard extends StatelessWidget {
                         ],
                       ],
                     ),
-                  ),
                 ),
               ),
             ),
@@ -560,8 +499,7 @@ class _SwipeIndicator extends StatelessWidget {
       icon = Icons.bookmark_add_rounded;
       caption = 'Отпустите, чтобы вернуться позже';
     } else {
-      icon = Icons.info_outline_rounded;
-      caption = 'Отпустите, чтобы открыть профиль';
+      return const SizedBox.shrink();
     }
 
     final panelColor = Color.lerp(
@@ -577,19 +515,17 @@ class _SwipeIndicator extends StatelessWidget {
           opacity: opacity,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: panelColor,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: color.withValues(alpha: 0.45),
-                    width: 1.4,
-                  ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: panelColor ?? Colors.white.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: color.withValues(alpha: 0.45),
+                  width: 1.4,
                 ),
-                child: Row(
+              ),
+              child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     Container(
@@ -632,8 +568,7 @@ class _SwipeIndicator extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }
 

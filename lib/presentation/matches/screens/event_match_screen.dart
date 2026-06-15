@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/event_messages.dart';
 import '../../../core/services/logger_service.dart';
+import '../../../core/utils/match_recommendation_utils.dart';
 import '../../../data/services/user_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/match_seen_service.dart';
@@ -56,8 +57,14 @@ class _EventMatchScreenState extends State<EventMatchScreen>
         '🔵 [EventMatchScreen] Current user location: lat=${_currentUser!.lastLatitude}, lon=${_currentUser!.lastLongitude}',
       );
 
-      final participants = await _eventService.getEventParticipants(widget.eventId);
-      
+      final results = await Future.wait(<Future<Object?>>[
+        _eventService.getEventParticipants(widget.eventId),
+        _userService.getIncomingLikes(eventId: widget.eventId),
+      ]);
+      final participants = results[0]! as List;
+      final incomingLikes = results[1]! as List<UserModel>;
+      final incomingLikeIds = incomingLikes.map((u) => u.id).toSet();
+
       // Фильтруем только GOING участников
       final goingParticipants = participants.where((p) => p.status == 'GOING').toList();
 
@@ -86,7 +93,21 @@ class _EventMatchScreenState extends State<EventMatchScreen>
         uniqueUsers[u.id] = u;
       }
 
-      final filteredUsers = uniqueUsers.values.toList();
+      final currentUserIsGoing = goingParticipants.any(
+        (dynamic p) => p.userId == currentUserId,
+      );
+      final sharedGoingEventCounts = currentUserIsGoing
+          ? <String, int>{
+              for (final UserModel user in uniqueUsers.values) user.id: 1,
+            }
+          : const <String, int>{};
+
+      final filteredUsers = MatchRecommendationUtils.sortUsers(
+        users: uniqueUsers.values.toList(),
+        currentUser: _currentUser!,
+        incomingLikeUserIds: incomingLikeIds,
+        sharedGoingEventCounts: sharedGoingEventCounts,
+      );
 
       if (otherUsers.isNotEmpty) {
         LoggerService.debug(

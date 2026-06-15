@@ -1,4 +1,4 @@
-import '../../core/config/app_config.dart';
+import '../../core/utils/media_url_utils.dart';
 
 /// Модель пользователя
 class UserModel {
@@ -13,6 +13,8 @@ class UserModel {
   final List<String> interests;
   final Map<String, dynamic>? socialLinks;
   final int? age;
+  final int? minAge;
+  final int? maxAge;
   final String? gender;
   final String? role;
   final double? lastLatitude;
@@ -42,6 +44,8 @@ class UserModel {
     this.interests = const [],
     this.socialLinks,
     this.age,
+    this.minAge,
+    this.maxAge,
     this.gender,
     this.role,
     this.lastLatitude,
@@ -58,30 +62,8 @@ class UserModel {
     this.eventsCreatedCount,
   });
 
-  static String? _normalizeMediaUrl(String? rawUrl) {
-    if (rawUrl == null || rawUrl.isEmpty) return rawUrl;
-
-    try {
-      final uri = Uri.parse(rawUrl);
-      final host = uri.host.toLowerCase();
-      final isLoopback =
-          host == 'localhost' || host == '127.0.0.1' || host == '0.0.0.0';
-      if (!isLoopback) return rawUrl;
-
-      final apiUri = Uri.parse(AppConfig.baseUrl);
-      if (apiUri.host.isEmpty) return rawUrl;
-
-      return uri
-          .replace(
-            scheme: apiUri.scheme.isEmpty ? 'http' : apiUri.scheme,
-            host: apiUri.host,
-            port: apiUri.hasPort ? apiUri.port : null,
-          )
-          .toString();
-    } catch (_) {
-      return rawUrl;
-    }
-  }
+  static String? _normalizeMediaUrl(String? rawUrl) =>
+      MediaUrlUtils.normalize(rawUrl);
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
@@ -104,6 +86,8 @@ class UserModel {
           [],
       socialLinks: json['socialLinks'] as Map<String, dynamic>?,
       age: json['age'] as int?,
+      minAge: json['minAge'] as int?,
+      maxAge: json['maxAge'] as int?,
       gender: json['gender'] as String?,
       role: json['role'] as String?,
       lastLatitude: (json['lastLatitude'] as num?)?.toDouble(),
@@ -140,6 +124,8 @@ class UserModel {
       'interests': interests,
       'socialLinks': socialLinks,
       'age': age,
+      'minAge': minAge,
+      'maxAge': maxAge,
       'gender': gender,
       'role': role,
       'lastLatitude': lastLatitude,
@@ -167,6 +153,8 @@ class UserModel {
     List<String>? interests,
     Map<String, dynamic>? socialLinks,
     int? age,
+    int? minAge,
+    int? maxAge,
     String? gender,
     String? role,
     double? lastLatitude,
@@ -194,6 +182,8 @@ class UserModel {
       interests: interests ?? this.interests,
       socialLinks: socialLinks ?? this.socialLinks,
       age: age ?? this.age,
+      minAge: minAge ?? this.minAge,
+      maxAge: maxAge ?? this.maxAge,
       gender: gender ?? this.gender,
       role: role ?? this.role,
       lastLatitude: lastLatitude ?? this.lastLatitude,

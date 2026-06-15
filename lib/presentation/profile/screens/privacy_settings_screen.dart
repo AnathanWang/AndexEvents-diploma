@@ -9,6 +9,8 @@ class PrivacySettingsScreen extends StatefulWidget {
     required this.showInMatches,
     required this.incognitoMode,
     required this.hideOnlineStatus,
+    this.minAge,
+    this.maxAge,
     super.key,
   });
 
@@ -16,6 +18,8 @@ class PrivacySettingsScreen extends StatefulWidget {
   final bool showInMatches;
   final bool incognitoMode;
   final bool hideOnlineStatus;
+  final int? minAge;
+  final int? maxAge;
 
   @override
   State<PrivacySettingsScreen> createState() => _PrivacySettingsScreenState();
@@ -26,6 +30,13 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
   late bool _showInMatches;
   late bool _incognitoMode;
   late bool _hideOnlineStatus;
+  int? _minAge;
+  int? _maxAge;
+
+  static const List<int> _ageOptions = <int>[
+    18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+    31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 45, 50, 55, 60, 65, 70,
+  ];
 
   @override
   void initState() {
@@ -34,14 +45,25 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
     _showInMatches = widget.showInMatches;
     _incognitoMode = widget.incognitoMode;
     _hideOnlineStatus = widget.hideOnlineStatus;
+    _minAge = widget.minAge;
+    _maxAge = widget.maxAge;
   }
 
   void _save() {
-    Navigator.of(context).pop(<String, bool>{
+    if (_minAge != null && _maxAge != null && _minAge! > _maxAge!) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Минимальный возраст не может быть больше максимального')),
+      );
+      return;
+    }
+
+    Navigator.of(context).pop(<String, Object?>{
       'showVisitedEvents': _showVisitedEvents,
       'showInMatches': _showInMatches,
       'incognitoMode': _incognitoMode,
       'hideOnlineStatus': _hideOnlineStatus,
+      'minAge': _minAge,
+      'maxAge': _maxAge,
     });
   }
 
@@ -134,6 +156,54 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
             ),
           ),
           const SizedBox(height: 18),
+          AuthGlassCard(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Возраст в рекомендациях',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF243252),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Показывать в ленте знакомств только людей из выбранного диапазона. «Любой» — без ограничения.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.36,
+                    color: Color(0xFF66739B),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _AgeDropdown(
+                        label: 'От',
+                        value: _minAge,
+                        options: _ageOptions,
+                        onChanged: (int? value) => setState(() => _minAge = value),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _AgeDropdown(
+                        label: 'До',
+                        value: _maxAge,
+                        options: _ageOptions,
+                        onChanged: (int? value) => setState(() => _maxAge = value),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
           const AuthGlassCard(
             padding: EdgeInsets.all(16),
             child: Row(
@@ -161,6 +231,67 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AgeDropdown extends StatelessWidget {
+  const _AgeDropdown({
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  final String label;
+  final int? value;
+  final List<int> options;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF66739B),
+          ),
+        ),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<int?>(
+          value: value,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFE2E9FB)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFE2E9FB)),
+            ),
+          ),
+          items: <DropdownMenuItem<int?>>[
+            const DropdownMenuItem<int?>(
+              value: null,
+              child: Text('Любой'),
+            ),
+            ...options.map(
+              (int age) => DropdownMenuItem<int?>(
+                value: age,
+                child: Text('$age'),
+              ),
+            ),
+          ],
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 }

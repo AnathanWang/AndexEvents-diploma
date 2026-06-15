@@ -25,25 +25,44 @@ class EventsLoaded extends EventState {
   final List<EventModel> events;
   final bool hasMore;
   final int currentPage;
+  final double? viewportLatitude;
+  final double? viewportLongitude;
+  final int? viewportRadiusMeters;
 
   const EventsLoaded({
     required this.events,
     this.hasMore = true,
     this.currentPage = 1,
+    this.viewportLatitude,
+    this.viewportLongitude,
+    this.viewportRadiusMeters,
   });
 
   @override
-  List<Object?> get props => [events, hasMore, currentPage];
+  List<Object?> get props => [
+        events,
+        hasMore,
+        currentPage,
+        viewportLatitude,
+        viewportLongitude,
+        viewportRadiusMeters,
+      ];
 
   EventsLoaded copyWith({
     List<EventModel>? events,
     bool? hasMore,
     int? currentPage,
+    double? viewportLatitude,
+    double? viewportLongitude,
+    int? viewportRadiusMeters,
   }) {
     return EventsLoaded(
       events: events ?? this.events,
       hasMore: hasMore ?? this.hasMore,
       currentPage: currentPage ?? this.currentPage,
+      viewportLatitude: viewportLatitude ?? this.viewportLatitude,
+      viewportLongitude: viewportLongitude ?? this.viewportLongitude,
+      viewportRadiusMeters: viewportRadiusMeters ?? this.viewportRadiusMeters,
     );
   }
 }

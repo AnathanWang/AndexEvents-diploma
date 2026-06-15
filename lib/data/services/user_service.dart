@@ -186,6 +186,10 @@ class UserService {
     bool? showInMatches,
     bool? incognitoMode,
     bool? hideOnlineStatus,
+    int? minAge,
+    int? maxAge,
+    bool? clearMinAge,
+    bool? clearMaxAge,
     String? fcmToken,
   }) async {
     try {
@@ -213,6 +217,16 @@ class UserService {
       if (showInMatches != null) body['showInMatches'] = showInMatches;
       if (incognitoMode != null) body['incognitoMode'] = incognitoMode;
       if (hideOnlineStatus != null) body['hideOnlineStatus'] = hideOnlineStatus;
+      if (clearMinAge == true) {
+        body['clearMinAge'] = true;
+      } else if (minAge != null) {
+        body['minAge'] = minAge;
+      }
+      if (clearMaxAge == true) {
+        body['clearMaxAge'] = true;
+      } else if (maxAge != null) {
+        body['maxAge'] = maxAge;
+      }
       if (fcmToken != null) body['fcmToken'] = fcmToken;
 
       final url = '${AppConfig.baseUrl}/users/me';

@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -35,25 +33,23 @@ class HomeFloatingNavBar extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(26),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface.withValues(alpha: 0.56),
-                borderRadius: BorderRadius.circular(26),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.dark.withValues(alpha: 0.12),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface.withValues(alpha: 0.94),
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                width: 1,
               ),
-              child: Padding(
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.dark.withValues(alpha: 0.1),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
@@ -165,7 +161,6 @@ class HomeFloatingNavBar extends StatelessWidget {
               ),
             ),
           ),
-        ),
         if (!isFullBanActive)
           Positioned(
             left: 0,
