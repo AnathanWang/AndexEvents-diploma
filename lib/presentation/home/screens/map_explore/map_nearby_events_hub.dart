@@ -2,14 +2,109 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/event_model.dart';
 import '../../../events/bloc/event_bloc.dart';
-import '../../../events/bloc/event_event.dart';
 import '../../../events/screens/real_event_detail_screen.dart';
+
+/// Bottom slot for the nearby-events hub with soft show/hide transitions.
+class MapExploreEventsHubSlot extends StatelessWidget {
+  const MapExploreEventsHubSlot({
+    super.key,
+    required this.expanded,
+    required this.gestureHidden,
+    required this.hubHeight,
+    required this.hub,
+    required this.collapsedButton,
+  });
+
+  static const Duration _hideDuration = Duration(milliseconds: 260);
+  static const Duration _showDuration = Duration(milliseconds: 380);
+
+  final bool expanded;
+  final bool gestureHidden;
+  final double hubHeight;
+  final Widget hub;
+  final Widget collapsedButton;
+
+  @override
+  Widget build(BuildContext context) {
+    const collapsedHeight = 42.0;
+
+    return AnimatedSize(
+      duration: _showDuration,
+      curve: Curves.easeInOutCubic,
+      alignment: Alignment.bottomCenter,
+      child: SizedBox(
+        height: expanded ? hubHeight : collapsedHeight,
+        width: double.infinity,
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          clipBehavior: Clip.none,
+          children: [
+            _AnimatedHubLayer(
+              visible: expanded && !gestureHidden,
+              hideDuration: _hideDuration,
+              showDuration: _showDuration,
+              hiddenOffset: gestureHidden ? 0.22 : 0.1,
+              child: hub,
+            ),
+            _AnimatedHubLayer(
+              visible: !expanded,
+              hideDuration: _hideDuration,
+              showDuration: _showDuration,
+              hiddenOffset: 0.14,
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: collapsedButton,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedHubLayer extends StatelessWidget {
+  const _AnimatedHubLayer({
+    required this.visible,
+    required this.hideDuration,
+    required this.showDuration,
+    required this.hiddenOffset,
+    required this.child,
+  });
+
+  final bool visible;
+  final Duration hideDuration;
+  final Duration showDuration;
+  final double hiddenOffset;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = visible ? showDuration : hideDuration;
+    final curve = visible ? Curves.easeOutCubic : Curves.easeInCubic;
+
+    return IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedOpacity(
+        opacity: visible ? 1 : 0,
+        duration: duration,
+        curve: visible ? Curves.easeOut : Curves.easeIn,
+        child: AnimatedSlide(
+          offset: visible ? Offset.zero : Offset(0, hiddenOffset),
+          duration: duration,
+          curve: curve,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
 
 class MapNearbyEventsHub extends StatelessWidget {
   const MapNearbyEventsHub({
@@ -19,6 +114,7 @@ class MapNearbyEventsHub extends StatelessWidget {
     required this.hubHeight,
     required this.activeIndexListenable,
     required this.onHideHub,
+    this.onEventDetailClosed,
   });
 
   final List<EventModel> events;
@@ -26,6 +122,7 @@ class MapNearbyEventsHub extends StatelessWidget {
   final double hubHeight;
   final ValueNotifier<int> activeIndexListenable;
   final VoidCallback onHideHub;
+  final VoidCallback? onEventDetailClosed;
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +228,7 @@ class MapNearbyEventsHub extends StatelessWidget {
                             padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
                             child: MapNearbyEventCard(
                               event: events[current],
+                              onDetailClosed: onEventDetailClosed,
                             ),
                           );
                         },
@@ -308,9 +406,11 @@ class MapNearbyEventCard extends StatelessWidget {
   const MapNearbyEventCard({
     super.key,
     required this.event,
+    this.onDetailClosed,
   });
 
   final EventModel event;
+  final VoidCallback? onDetailClosed;
 
   String _getCategoryName(String category) {
     switch (category) {
@@ -378,7 +478,7 @@ class MapNearbyEventCard extends StatelessWidget {
           ),
         ).then((_) {
           if (!context.mounted) return;
-          context.read<EventBloc>().add(const EventsLoadRequested());
+          onDetailClosed?.call();
         });
       },
       child: Container(

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/performance_utils.dart';
 import '../../../../data/models/event_model.dart';
 
 class EventDetailSliverAppBar extends StatelessWidget {
@@ -133,7 +134,7 @@ class _GalleryBackground extends StatelessWidget {
                 key: ValueKey<String>(imageGallery[safeIndex]),
                 imageUrl: imageGallery[safeIndex],
                 fit: BoxFit.cover,
-                memCacheWidth: 900,
+                memCacheWidth: imageMemCachePx(300, context),
                 placeholder: (context, url) => ColoredBox(
                   color: Colors.grey.shade300,
                   child: const Center(

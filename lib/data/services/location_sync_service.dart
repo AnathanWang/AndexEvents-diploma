@@ -45,11 +45,10 @@ class LocationSyncService {
       (position) => unawaited(_onPosition(position, reason: 'stream')),
       onError: (Object error) {
         LoggerService.error('[LocationSyncService] Stream error: $error');
+        _startFallbackTimer();
       },
       cancelOnError: false,
     );
-
-    _startFallbackTimer();
   }
 
   Future<void> stop() async {
@@ -125,6 +124,7 @@ class LocationSyncService {
   }
 
   void _startFallbackTimer() {
+    if (_positionStream != null) return;
     _fallbackTimer?.cancel();
     _fallbackTimer = Timer.periodic(_minInterval, (_) {
       if (!_isStarted) return;

@@ -3,11 +3,11 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 
 import '../../core/services/logger_service.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/map_viewport_utils.dart';
 import '../../data/models/event_model.dart';
 import '../../data/models/map_user_preview.dart';
 
@@ -55,6 +55,8 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
   List<MapObject> _cachedMapObjects = const [];
   List<String> _cachedEventIds = const [];
   List<String> _cachedUserIds = const [];
+  bool _cachedUserMarkersVisible = false;
+  double _cameraZoom = 13;
   bool _initialCameraApplied = false;
   bool _userLayerEnabled = false;
 
@@ -67,41 +69,12 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
   void initState() {
     super.initState();
     _initMarkerIcons();
-    _getUserLocation();
   }
 
   @override
   void dispose() {
     _mapController = null;
     super.dispose();
-  }
-
-  Future<void> _getUserLocation() async {
-    try {
-      final permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        await Geolocator.requestPermission();
-      }
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 8),
-        ),
-      );
-
-      if (!mounted) return;
-
-      _userLocation = Point(
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
-      widget.onUserLocationUpdated?.call(_userLocation!);
-      _refreshMapObjectsIfNeeded(force: true);
-      _applyInitialCamera();
-    } catch (e) {
-      LoggerService.error('Error getting user location: $e');
-    }
   }
 
   Future<void> _enableUserLayer(YandexMapController controller) async {
@@ -118,6 +91,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
       if (userCamera != null && mounted) {
         _userLocation = userCamera.target;
         widget.onUserLocationUpdated?.call(_userLocation!);
+        _applyInitialCamera();
       }
     } catch (e) {
       LoggerService.error('Error enabling user layer: $e');
@@ -160,15 +134,18 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
 
     final nextEventIds = _eventIds(widget.events);
     final nextUserIds = widget.users.map((user) => user.id).toList();
+    final usersVisible = shouldShowMapUserMarkers(_cameraZoom);
     if (!force &&
         _listEquals(_cachedEventIds, nextEventIds) &&
         _listEquals(_cachedUserIds, nextUserIds) &&
+        usersVisible == _cachedUserMarkersVisible &&
         _cachedMapObjects.isNotEmpty) {
       return;
     }
 
     _cachedEventIds = nextEventIds;
     _cachedUserIds = nextUserIds;
+    _cachedUserMarkersVisible = usersVisible;
     _cachedMapObjects = _buildMarkers();
     if (mounted) {
       setState(() {});
@@ -299,9 +276,11 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
       );
     }
 
-    final usersForMarkers = widget.users.length > _maxUserMarkers
-        ? widget.users.take(_maxUserMarkers).toList()
-        : widget.users;
+    final usersForMarkers = shouldShowMapUserMarkers(_cameraZoom)
+        ? (widget.users.length > _maxUserMarkers
+            ? widget.users.take(_maxUserMarkers).toList()
+            : widget.users)
+        : const <MapUserPreview>[];
 
     final userPlacemarks = <PlacemarkMapObject>[];
     for (final user in usersForMarkers) {
@@ -359,6 +338,19 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
     return mapObjects;
   }
 
+  void _handleCameraPositionChanged(
+    CameraPosition cameraPosition,
+    CameraUpdateReason reason,
+    bool finished,
+  ) {
+    final wasVisible = shouldShowMapUserMarkers(_cameraZoom);
+    _cameraZoom = cameraPosition.zoom;
+    if (wasVisible != shouldShowMapUserMarkers(_cameraZoom)) {
+      _refreshMapObjectsIfNeeded(force: true);
+    }
+    widget.onCameraPositionChanged?.call(cameraPosition, reason, finished);
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool liteGestures =
@@ -385,7 +377,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
             tiltGesturesEnabled: false,
             zoomGesturesEnabled: widget.isInteractive,
             fastTapEnabled: widget.isInteractive,
-            onCameraPositionChanged: widget.onCameraPositionChanged,
+            onCameraPositionChanged: _handleCameraPositionChanged,
           ),
           if (!widget.isInteractive)
             Container(

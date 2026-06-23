@@ -38,6 +38,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late final EventBloc _mapEventBloc;
   late final EventBloc _feedEventBloc;
   late final ProfileBloc _profileBloc;
+  late final Widget _mapTab;
   late final Widget _feedTab;
   late final Widget _matchesTab;
   late final Widget _profileTab;
@@ -56,6 +57,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       value: _feedEventBloc,
       child: const EventsFeedScreen(),
     );
+    _mapTab = BlocProvider<EventBloc>.value(
+      value: _mapEventBloc,
+      child: const MapExploreScreen(),
+    );
     _matchesTab = MatchesScreen(matches: _matches);
     _profileTab = ProfileScreen(events: _events, matches: _matches);
     _loadMutualMatches();
@@ -67,7 +72,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
-        LocationSyncService.instance.syncNow(reason: 'resume');
         LocationSyncService.instance.start();
         break;
       case AppLifecycleState.paused:
@@ -145,17 +149,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Widget _buildActiveTab() {
-    if (_index == 0) {
-      return BlocProvider<EventBloc>.value(
-        value: _mapEventBloc,
-        child: const MapExploreScreen(),
-      );
-    }
-
-    final int stackIndex = _index - 1;
     return IndexedStack(
-      index: stackIndex,
+      index: _index,
       children: <Widget>[
+        _mapTab,
         _feedTab,
         _matchesTab,
         _profileTab,

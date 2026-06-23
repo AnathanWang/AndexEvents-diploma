@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 
+import '../../../core/services/logger_service.dart';
 import '../../../core/utils/event_list_filters.dart';
 import '../../../core/utils/map_viewport_utils.dart';
 import '../../../data/models/map_user_preview.dart';
@@ -21,7 +22,6 @@ import '../../../data/models/event_model.dart';
 import '../../../data/services/event_service.dart';
 import '../screens/search_screen.dart';
 import 'map_explore/map_explore_control_buttons.dart';
-import 'map_explore/map_explore_filter_button.dart';
 import 'map_explore/map_explore_search_bar.dart';
 import 'map_explore/map_nearby_events_hub.dart';
 
@@ -32,7 +32,8 @@ class MapExploreScreen extends StatefulWidget {
   State<MapExploreScreen> createState() => _MapExploreScreenState();
 }
 
-class _MapExploreScreenState extends State<MapExploreScreen> {
+class _MapExploreScreenState extends State<MapExploreScreen>
+    with AutomaticKeepAliveClientMixin {
   static const int _viewportEventLimit = 35;
   static const int _maxMapEvents = 60;
   static const int _maxMapMarkers = 15;
@@ -40,7 +41,11 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
   static const int _hubEventLimit = 20;
   static const int _hubFetchLimit = 30;
   static const int _userHubRadiusMeters = 12000;
-  static const Duration _viewportDebounce = Duration(milliseconds: 450);
+  static const Duration _viewportDebounce = Duration(milliseconds: 600);
+  static const Point _defaultMapCenter = Point(
+    latitude: 58.603591,
+    longitude: 49.668023,
+  );
   static const MapAnimation _zoomAnimation = MapAnimation(
     type: MapAnimationType.smooth,
     duration: 0.35,
@@ -82,6 +87,7 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
   bool _isMapUsersRequestInFlight = false;
   bool _isHubRequestInFlight = false;
   bool _initialViewportLoaded = false;
+  bool _initialDataLoadScheduled = false;
   Offset? _panStart;
   static const double _panSlop = 12;
 
@@ -115,6 +121,9 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
     super.dispose();
   }
 
+  @override
+  bool get wantKeepAlive => true;
+
   bool _sameEventIds(List<EventModel> a, List<EventModel> b) {
     if (a.length != b.length) return false;
     for (var i = 0; i < a.length; i++) {
@@ -129,11 +138,12 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
       for (final item in events) item.id: item,
     };
     var next = merged.values.toList();
-    final focus = _mapFocusCenter;
-    if (focus != null && next.length > _maxMapEvents) {
-      next = eventsNearestToPoint(next, focus, limit: _maxMapEvents);
-    } else if (next.length > _maxMapEvents) {
-      next = next.take(_maxMapEvents).toList();
+    if (next.length > _maxMapEvents) {
+      next = eventsNearestToPoint(
+        next,
+        _mapFocusCenter,
+        limit: _maxMapEvents,
+      );
     }
 
     if (_sameEventIds(_allEvents, next)) {
@@ -151,14 +161,14 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
     });
   }
 
-  Point? get _mapFocusCenter => _cameraCenter ?? _currentUserLocation;
+  Point get _mapFocusCenter =>
+      _cameraCenter ?? _currentUserLocation ?? _defaultMapCenter;
 
   int _estimatedViewportRadiusMeters() {
-    final center = _mapFocusCenter;
-    if (center == null) {
-      return 2500;
-    }
-    return mapViewportRadiusFromZoom(_cameraZoom, center.latitude);
+    return mapViewportRadiusFromZoom(
+      _cameraZoom,
+      _mapFocusCenter.latitude,
+    );
   }
 
   List<EventModel> _applyMapFilters(List<EventModel> events) {
@@ -171,19 +181,15 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
   }
 
   List<EventModel> _eventsNearMapFocus(List<EventModel> events) {
-    final center = _mapFocusCenter;
-    if (center == null) {
-      return events;
-    }
-    return eventsWithinRadius(events, center, _estimatedViewportRadiusMeters());
+    return eventsWithinRadius(
+      events,
+      _mapFocusCenter,
+      _estimatedViewportRadiusMeters(),
+    );
   }
 
   void _updateMapMarkerEvents() {
     final center = _mapFocusCenter;
-    if (center == null) {
-      return;
-    }
-
     final next = eventsNearestToPoint(
       _eventsNearMapFocus(_applyMapFilters(_allEvents)),
       center,
@@ -197,37 +203,31 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
   }
 
   void _updateMapMarkerUsers() {
-    final center = _mapFocusCenter;
-    if (center == null) {
+    if (!shouldShowMapUserMarkers(_cameraZoom)) {
+      if (_mapMarkerUsersNotifier.value.isEmpty) {
+        return;
+      }
+      _mapMarkerUsersNotifier.value = const [];
       return;
     }
 
+    final center = _mapFocusCenter;
     final radiusMeters = _estimatedViewportRadiusMeters();
-    final visible = _allMapUsers.where((user) {
+    final withDistance = <({MapUserPreview user, double distance})>[];
+    for (final user in _allMapUsers) {
       final distance = Geolocator.distanceBetween(
         center.latitude,
         center.longitude,
         user.latitude,
         user.longitude,
       );
-      return distance <= radiusMeters;
-    }).toList();
+      if (distance <= radiusMeters) {
+        withDistance.add((user: user, distance: distance));
+      }
+    }
+    withDistance.sort((a, b) => a.distance.compareTo(b.distance));
 
-    visible.sort((a, b) {
-      final da = Geolocator.distanceBetween(
-        center.latitude,
-        center.longitude,
-        a.latitude,
-        a.longitude,
-      );
-      final db = Geolocator.distanceBetween(
-        center.latitude,
-        center.longitude,
-        b.latitude,
-        b.longitude,
-      );
-      return da.compareTo(db);
-    });
+    final visible = withDistance.map((entry) => entry.user).toList();
 
     final next = visible.length > _maxMapUsers
         ? visible.take(_maxMapUsers).toList()
@@ -294,20 +294,23 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
     }
   }
 
-  void _requestMapEventsNearUser() {
-    final userCenter = _currentUserLocation;
-    if (userCenter == null) return;
+  void _scheduleInitialDataLoad() {
+    if (_initialDataLoadScheduled || _mapController == null) return;
+    _initialDataLoadScheduled = true;
+    _scheduleViewportApiLoad(mergeWithExisting: true, immediate: true);
+    if (_currentUserLocation != null) {
+      unawaited(_loadHubEventsFromUserLocation());
+    }
+  }
 
-    context.read<EventBloc>().add(
-      EventsLoadRequested(
-        latitude: userCenter.latitude,
-        longitude: userCenter.longitude,
-        maxDistance: _userHubRadiusMeters,
-        limit: _viewportEventLimit,
-        mergeWithExisting: true,
-        silent: true,
-      ),
-    );
+  void _scheduleInitialDataLoadAfterMapReady() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Future<void>.delayed(const Duration(milliseconds: 450), () {
+        if (!mounted) return;
+        _scheduleInitialDataLoad();
+      });
+    });
   }
 
   void _onMapFiltersChanged(Map<String, dynamic> next) {
@@ -324,6 +327,10 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
     required double longitude,
     required double radiusKm,
   }) async {
+    if (!shouldShowMapUserMarkers(_cameraZoom)) {
+      return;
+    }
+
     if (_isMapUsersRequestInFlight) return;
 
     _isMapUsersRequestInFlight = true;
@@ -342,8 +349,8 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
       };
       _allMapUsers = merged.values.toList();
       _updateMapMarkerUsers();
-    } catch (_) {
-      // Map users are optional; keep existing markers.
+    } catch (e, stackTrace) {
+      LoggerService.error('[MapExplore] getMapUsers failed', e, stackTrace);
     } finally {
       _isMapUsersRequestInFlight = false;
     }
@@ -425,7 +432,7 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
 
   void _endMapGesture() {
     _gestureEndDebounce?.cancel();
-    _gestureEndDebounce = Timer(const Duration(milliseconds: 150), () {
+    _gestureEndDebounce = Timer(const Duration(milliseconds: 280), () {
       if (!mounted) return;
       if (!_mapGesturingNotifier.value) return;
       _mapGesturingNotifier.value = false;
@@ -453,8 +460,15 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
     CameraUpdateReason reason,
     bool finished,
   ) {
+    final previousZoom = _cameraZoom;
     _cameraCenter = cameraPosition.target;
     _cameraZoom = cameraPosition.zoom;
+
+    final usersVisibilityChanged = shouldShowMapUserMarkers(previousZoom) !=
+        shouldShowMapUserMarkers(_cameraZoom);
+    if (usersVisibilityChanged) {
+      _updateMapMarkerUsers();
+    }
 
     if (reason == CameraUpdateReason.gestures && !finished) {
       _beginMapGesture();
@@ -464,11 +478,19 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
     if (finished && reason == CameraUpdateReason.gestures) {
       _endMapGesture();
       _updateMapMarkerEvents();
-      _updateMapMarkerUsers();
+      if (!usersVisibilityChanged) {
+        _updateMapMarkerUsers();
+      }
       _scheduleViewportApiLoad(mergeWithExisting: true);
     } else if (finished) {
       _updateMapMarkerEvents();
-      _updateMapMarkerUsers();
+      if (!usersVisibilityChanged) {
+        _updateMapMarkerUsers();
+      }
+      if (!_initialViewportLoaded ||
+          (usersVisibilityChanged && shouldShowMapUserMarkers(_cameraZoom))) {
+        _scheduleViewportApiLoad(mergeWithExisting: true, immediate: true);
+      }
     }
   }
 
@@ -527,6 +549,7 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final double screenWidth = MediaQuery.sizeOf(context).width;
     final double bottomSafeInset = MediaQuery.paddingOf(context).bottom;
     final bool isCompact = screenWidth < 360;
@@ -538,7 +561,6 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                 ? 18
                 : 30;
     final double eventsHubHorizontalInset = isCompact ? 8 : 12;
-    final double filterBarTop = MediaQuery.paddingOf(context).top + 64;
     final double navOverlayClearance = bottomSafeInset + 94;
     final double eventsHubHeight = isCompact ? 184 : 204;
     final double eventsHubBottom = navOverlayClearance;
@@ -585,25 +607,20 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                       isInteractive: true,
                       onMapCreated: (controller) {
                         _mapController = controller;
-                        _scheduleViewportApiLoad(
-                          mergeWithExisting: true,
-                          immediate: true,
-                        );
-                        if (_currentUserLocation != null) {
-                          unawaited(_loadHubEventsFromUserLocation());
-                          _requestMapEventsNearUser();
-                        }
+                        _cameraCenter ??= _defaultMapCenter;
+                        _scheduleInitialDataLoadAfterMapReady();
                       },
                       onUserLocationUpdated: (location) {
                         final hadLocation = _currentUserLocation != null;
                         _currentUserLocation = location;
                         if (!hadLocation) {
                           unawaited(_loadHubEventsFromUserLocation());
-                          _requestMapEventsNearUser();
-                          _scheduleViewportApiLoad(
-                            mergeWithExisting: true,
-                            immediate: true,
-                          );
+                          if (!_initialViewportLoaded) {
+                            _scheduleViewportApiLoad(
+                              mergeWithExisting: true,
+                              immediate: true,
+                            );
+                          }
                         }
                       },
                       onCameraPositionChanged: _onCameraPositionChanged,
@@ -639,6 +656,8 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
             controller: _searchController,
             horizontalInset: navHorizontalInset,
             readOnly: true,
+            filters: _mapFilters,
+            onFiltersChanged: _onMapFiltersChanged,
             onOpenSearch: _openSearchScreen,
             onQueryChanged: (_) {},
             onClearQuery: () {
@@ -648,13 +667,6 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
                 _updateMapMarkerEvents();
               });
             },
-          ),
-
-          MapExploreFilterButton(
-            top: filterBarTop,
-            horizontalInset: navHorizontalInset,
-            filters: _mapFilters,
-            onFiltersChanged: _onMapFiltersChanged,
           ),
 
           MapExploreControlButtons(
@@ -676,49 +688,47 @@ class _MapExploreScreenState extends State<MapExploreScreen> {
             },
           ),
 
-          if (!_isEventsHubHidden)
-            ValueListenableBuilder<bool>(
-              valueListenable: _mapGesturingNotifier,
-              builder: (context, mapGesturing, _) {
-                return Positioned(
-                  left: eventsHubHorizontalInset,
-                  right: eventsHubHorizontalInset,
-                  bottom: eventsHubBottom,
-                  child: IgnorePointer(
-                    ignoring: mapGesturing,
-                    child: Offstage(
-                      offstage: mapGesturing,
-                      child: RepaintBoundary(
-                        child: MapNearbyEventsHub(
-                          events: _filteredEvents,
-                          searchQuery: _searchController.text,
-                          hubHeight: eventsHubHeight,
-                          activeIndexListenable: _activeEventIndexNotifier,
-                          onHideHub: () {
-                            setState(() {
-                              _isEventsHubHidden = true;
-                            });
-                          },
-                        ),
-                      ),
+          ValueListenableBuilder<bool>(
+            valueListenable: _mapGesturingNotifier,
+            builder: (context, mapGesturing, _) {
+              return Positioned(
+                left: eventsHubHorizontalInset,
+                right: eventsHubHorizontalInset,
+                bottom: eventsHubBottom,
+                child: RepaintBoundary(
+                  child: MapExploreEventsHubSlot(
+                    expanded: !_isEventsHubHidden,
+                    gestureHidden: mapGesturing,
+                    hubHeight: eventsHubHeight,
+                    hub: MapNearbyEventsHub(
+                      events: _filteredEvents,
+                      searchQuery: _searchController.text,
+                      hubHeight: eventsHubHeight,
+                      activeIndexListenable: _activeEventIndexNotifier,
+                      onHideHub: () {
+                        setState(() {
+                          _isEventsHubHidden = true;
+                        });
+                      },
+                      onEventDetailClosed: () {
+                        _scheduleViewportApiLoad(
+                          mergeWithExisting: true,
+                          immediate: true,
+                        );
+                      },
+                    ),
+                    collapsedButton: MapExploreShowHubButton(
+                      onShowHub: () {
+                        setState(() {
+                          _isEventsHubHidden = false;
+                        });
+                      },
                     ),
                   ),
-                );
-              },
-            ),
-
-          if (_isEventsHubHidden)
-            Positioned(
-              left: eventsHubHorizontalInset,
-              bottom: eventsHubBottom + 8,
-              child: MapExploreShowHubButton(
-                onShowHub: () {
-                  setState(() {
-                    _isEventsHubHidden = false;
-                  });
-                },
-              ),
-            ),
+                ),
+              );
+            },
+          ),
 
           if (_isInitialLoading)
             const ColoredBox(

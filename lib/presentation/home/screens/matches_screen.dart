@@ -1,5 +1,5 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../../core/services/logger_service.dart';
 import '../../../data/services/user_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/match_seen_service.dart';
@@ -40,29 +40,21 @@ class _MatchesScreenState extends State<MatchesScreen>
   Future<void> _loadMatches() async {
     try {
       if (_currentUser == null) {
-        LoggerService.warning(
-          '🟡 [MatchesScreen] _currentUser is null, cannot load matches',
-        );
         return;
       }
 
-      LoggerService.debug('🔵 [MatchesScreen] Starting to load matches...');
-      LoggerService.debug(
-        '🔵 [MatchesScreen] Current user location: lat=${_currentUser!.lastLatitude}, lon=${_currentUser!.lastLongitude}',
-      );
-
-      final otherUsers = await _userService.getOtherUsers(
-        limit: 30,
-        latitude: _currentUser!.lastLatitude,
-        longitude: _currentUser!.lastLongitude,
-        radiusKm: 50,
-      );
-      final mutualMatches = await _userService.getMutualMatches();
+      final results = await Future.wait<List<UserModel>>([
+        _userService.getOtherUsers(
+          limit: 30,
+          latitude: _currentUser!.lastLatitude,
+          longitude: _currentUser!.lastLongitude,
+          radiusKm: 50,
+        ),
+        _userService.getMutualMatches(),
+      ]);
+      final otherUsers = results[0];
+      final mutualMatches = results[1];
       final mutualIds = mutualMatches.map((u) => u.id).toSet();
-
-      LoggerService.debug(
-        '🔵 [MatchesScreen] Received ${otherUsers.length} users from service',
-      );
 
       final currentUserId = _currentUser!.id;
       final seen = await _matchSeenService.getSeenUserIds(currentUserId);
@@ -76,32 +68,20 @@ class _MatchesScreenState extends State<MatchesScreen>
 
       final filteredUsers = uniqueUsers.values.toList();
 
-      if (otherUsers.isNotEmpty) {
-        LoggerService.debug(
-          '🔵 [MatchesScreen] First user: name=${otherUsers.first.displayName}, photoUrl=${otherUsers.first.photoUrl}',
-        );
-      }
-
       if (mounted) {
         setState(() {
-          // Конвертируем UserModel в MatchPreview
-          _matches = filteredUsers.map((user) {
-            final match = MatchPreview.fromUserModel(
-              user,
-              currentUserInterests: _currentUser?.interests ?? const <String>[],
-            );
-            LoggerService.info(
-              '🟢 [MatchesScreen] Created match: name=${match.name}, age=${match.age}, photoUrl=${match.photoUrl}',
-            );
-            return match;
-          }).toList();
-          LoggerService.info(
-            '🟢 [MatchesScreen] Loaded ${_matches.length} matches into state',
-          );
+          _matches = filteredUsers
+              .map(
+                (user) => MatchPreview.fromUserModel(
+                  user,
+                  currentUserInterests: _currentUser?.interests ?? const <String>[],
+                ),
+              )
+              .toList();
         });
       }
-    } catch (e) {
-      LoggerService.error('🔴 [MatchesScreen] Error loading matches: $e');
+    } catch (_) {
+      // UI shows empty state
     }
   }
 
@@ -111,12 +91,11 @@ class _MatchesScreenState extends State<MatchesScreen>
     });
 
     try {
-      final user = await _userService.getCurrentUser();
+      _currentUser ??= await _userService.getCurrentUser();
       if (!mounted) return;
-      _currentUser = user;
 
-      if (resetSeen) {
-        await _matchSeenService.clear(user.id);
+      if (resetSeen && _currentUser != null) {
+        await _matchSeenService.clear(_currentUser!.id);
       }
       await _loadMatches();
       if (!mounted) return;
@@ -130,8 +109,7 @@ class _MatchesScreenState extends State<MatchesScreen>
       } else {
         CustomNotification.success(context, 'Подборка обновлена');
       }
-    } catch (e) {
-      LoggerService.error('🔴 [MatchesScreen] Error refreshing matches: $e');
+    } catch (_) {
       if (mounted) {
         CustomNotification.show(
           context,
@@ -153,16 +131,14 @@ class _MatchesScreenState extends State<MatchesScreen>
 
     try {
       userToOpen = await _userService.getUserById(match.id);
-    } catch (e) {
-      LoggerService.warning(
-        '🟡 [MatchesScreen] Не удалось загрузить свежий профиль, используем данные карточки: $e',
-      );
+    } catch (_) {
+      // Use card data when refresh fails.
     }
 
     if (!mounted) return;
 
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
+      CupertinoPageRoute<void>(
         builder: (context) => UserProfileScreen.fromUser(
           user: userToOpen,
           matchPercentage: match.matchPercentage,
@@ -179,12 +155,7 @@ class _MatchesScreenState extends State<MatchesScreen>
     });
 
     try {
-      LoggerService.debug('🔵 [MatchesScreen] Loading current user...');
       final user = await _userService.getCurrentUser();
-
-      LoggerService.info(
-        '🟢 [MatchesScreen] User loaded: name=${user.displayName}, onboardingCompleted=${user.isOnboardingCompleted}',
-      );
 
       if (mounted) {
         setState(() {
@@ -192,20 +163,11 @@ class _MatchesScreenState extends State<MatchesScreen>
           _isLoading = false;
         });
 
-        // После загрузки текущего пользователя, загружаем матчи
         if (user.isOnboardingCompleted) {
-          LoggerService.debug(
-            '🔵 [MatchesScreen] Onboarding completed, loading matches...',
-          );
           await _loadMatches();
-        } else {
-          LoggerService.warning(
-            '🟡 [MatchesScreen] Onboarding not completed, showing incomplete screen',
-          );
         }
       }
-    } catch (e) {
-      LoggerService.error('🔴 [MatchesScreen] Error loading user data: $e');
+    } catch (_) {
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -229,75 +191,42 @@ class _MatchesScreenState extends State<MatchesScreen>
   }
 
   void _handleLike(MatchPreview match) {
-    LoggerService.info('🟢 [_handleLike] Like: ${match.name}');
-
     final currentUserId = _currentUser?.id;
     if (currentUserId != null && currentUserId == match.id) {
-      LoggerService.warning('🟡 [_handleLike] Skip self-like for userId=$currentUserId');
       return;
     }
 
-    _userService
-        .sendLike(match.id)
-        .then((_) {
-          if (currentUserId != null) {
-            _matchSeenService.markSeen(currentUserId, match.id);
-          }
-          LoggerService.info(
-            '🟢 [_handleLike] Successfully sent like for ${match.name}',
-          );
-        })
-        .catchError((e) {
-          LoggerService.error('🔴 [_handleLike] Error sending like: $e');
-        });
+    _userService.sendLike(match.id).then((_) {
+      if (currentUserId != null) {
+        _matchSeenService.markSeen(currentUserId, match.id);
+      }
+    });
   }
 
   void _handleDislike(MatchPreview match) {
-    LoggerService.debug('🔴 [_handleDislike] Dislike: ${match.name}');
-
     final currentUserId = _currentUser?.id;
     if (currentUserId != null && currentUserId == match.id) {
-      LoggerService.warning('🟡 [_handleDislike] Skip self-dislike for userId=$currentUserId');
       return;
     }
 
-    _userService
-        .sendDislike(match.id)
-        .then((_) {
-          if (currentUserId != null) {
-            _matchSeenService.markSeen(currentUserId, match.id);
-          }
-          LoggerService.info(
-            '🟢 [_handleDislike] Successfully sent dislike for ${match.name}',
-          );
-        })
-        .catchError((e) {
-          LoggerService.error('🔴 [_handleDislike] Error sending dislike: $e');
-        });
+    _userService.sendDislike(match.id).then((_) {
+      if (currentUserId != null) {
+        _matchSeenService.markSeen(currentUserId, match.id);
+      }
+    });
   }
 
   void _handleSuperLike(MatchPreview match) {
-    LoggerService.debug('🔵 [_handleSuperLike] Super Like: ${match.name}');
-
     final currentUserId = _currentUser?.id;
     if (currentUserId != null && currentUserId == match.id) {
-      LoggerService.warning('🟡 [_handleSuperLike] Skip self-super-like for userId=$currentUserId');
       return;
     }
 
-    _userService
-        .sendSuperLike(match.id)
-        .then((_) {
-          if (currentUserId != null) {
-            _matchSeenService.markSeen(currentUserId, match.id);
-          }
-          LoggerService.info(
-            '🟢 [_handleSuperLike] Successfully sent super like for ${match.name}',
-          );
-        })
-        .catchError((e) {
-          LoggerService.error('🔴 [_handleSuperLike] Error sending super like: $e');
-        });
+    _userService.sendSuperLike(match.id).then((_) {
+      if (currentUserId != null) {
+        _matchSeenService.markSeen(currentUserId, match.id);
+      }
+    });
   }
 
 
@@ -472,45 +401,6 @@ class _MatchesScreenState extends State<MatchesScreen>
   Widget _buildMainContent() {
     return Stack(
       children: [
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: <Color>[
-                  Color(0xFFEAF2FF),
-                  Color(0xFFD9E8FF),
-                  Color(0xFFEFF5FF),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          top: -70,
-          left: -60,
-          child: Container(
-            width: 230,
-            height: 230,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.primary.withValues(alpha: 0.12),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: -90,
-          right: -40,
-          child: Container(
-            width: 260,
-            height: 260,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.accent.withValues(alpha: 0.24),
-            ),
-          ),
-        ),
         Positioned.fill(
           child: MatchSwipeDeck(
             key: ValueKey('matches-deck-$_deckEpoch'),

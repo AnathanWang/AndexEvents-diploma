@@ -1,5 +1,6 @@
 package com.andexevents.users.service;
 
+import com.andexevents.users.model.MapUserDto;
 import com.andexevents.users.model.UserDto;
 import com.andexevents.users.model.GlobalMatchContext;
 import com.andexevents.users.repo.UserRepository;

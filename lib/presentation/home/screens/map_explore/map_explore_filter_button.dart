@@ -1,126 +1,77 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../widgets/event_filters.dart';
+import '../../../widgets/event_filters_sheet.dart';
 
+/// Compact filter trigger for the map top bar (no [Positioned] — parent lays out).
 class MapExploreFilterButton extends StatelessWidget {
   const MapExploreFilterButton({
     super.key,
-    required this.top,
-    required this.horizontalInset,
     required this.filters,
     required this.onFiltersChanged,
   });
 
-  final double top;
-  final double horizontalInset;
   final Map<String, dynamic> filters;
   final ValueChanged<Map<String, dynamic>> onFiltersChanged;
 
-  bool get _hasActiveFilters {
-    return filters['category'] != 'all' ||
-        filters['date'] != 'week' ||
-        filters['sort'] != 'nearest' ||
-        filters['price'] != 'all' ||
-        filters['format'] != 'all';
-  }
-
   Future<void> _openFilters(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-          ),
-          child: DraggableScrollableSheet(
-            initialChildSize: 0.72,
-            minChildSize: 0.45,
-            maxChildSize: 0.92,
-            expand: false,
-            builder: (context, scrollController) {
-              return Container(
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 10),
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.dark.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: ListView(
-                        controller: scrollController,
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                        children: [
-                          EventFiltersWidget(
-                            initialFilters: filters,
-                            onFiltersChanged: (next) {
-                              onFiltersChanged(next);
-                              Navigator.of(sheetContext).pop();
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        );
-      },
+    HapticFeedback.selectionClick();
+    await showEventFiltersSheet(
+      context,
+      initialFilters: filters,
+      onApply: onFiltersChanged,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: top,
-      right: horizontalInset,
-      child: Material(
-        color: _hasActiveFilters
-            ? AppColors.primary.withValues(alpha: 0.92)
-            : AppColors.surface.withValues(alpha: 0.9),
+    final hasActive = !eventFiltersAreDefault(filters);
+    final activeCount = eventFiltersActiveCount(filters);
+
+    return Material(
+      color: hasActive
+          ? AppColors.primary.withValues(alpha: 0.92)
+          : AppColors.surface.withValues(alpha: 0.9),
+      borderRadius: BorderRadius.circular(14),
+      elevation: 2,
+      shadowColor: AppColors.dark.withValues(alpha: 0.12),
+      child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        elevation: 2,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: () => _openFilters(context),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  CupertinoIcons.slider_horizontal_3,
-                  size: 18,
-                  color:
-                      _hasActiveFilters ? AppColors.accent : AppColors.primary,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Фильтры',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color:
-                        _hasActiveFilters ? AppColors.accent : AppColors.primary,
+        onTap: () => _openFilters(context),
+        child: SizedBox(
+          height: 52,
+          width: 52,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(
+                CupertinoIcons.slider_horizontal_3,
+                size: 22,
+                color: hasActive ? AppColors.accent : AppColors.primary,
+              ),
+              if (hasActive)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$activeCount',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
         ),
       ),

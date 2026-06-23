@@ -5,6 +5,11 @@ import 'package:yandex_mapkit/yandex_mapkit.dart';
 
 import '../../data/models/event_model.dart';
 
+/// User markers appear only when zoomed in enough to avoid cluttering the city view.
+const double mapUserMarkersMinZoom = 14.0;
+
+bool shouldShowMapUserMarkers(double zoom) => zoom >= mapUserMarkersMinZoom;
+
 /// Center of the map viewport.
 Point mapViewportCenter(VisibleRegion region) {
   final lat = (region.topLeft.latitude +

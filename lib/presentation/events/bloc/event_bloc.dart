@@ -243,7 +243,14 @@ class EventBloc extends Bloc<EventEvent, EventState> {
     Emitter<EventState> emit,
   ) async {
     try {
-      final eventModel = await _eventService.getEventById(event.eventId);
+      EventModel? eventModel;
+      final current = state;
+      if (current is EventDetailLoaded && current.event.id == event.eventId) {
+        eventModel = current.event;
+      } else {
+        eventModel = await _eventService.getEventById(event.eventId);
+      }
+
       if (_isEventFinished(eventModel.actualEndDateTime)) {
         emit(const EventError(EventMessages.eventFinishedParticipationUnavailable));
         return;
@@ -252,7 +259,6 @@ class EventBloc extends Bloc<EventEvent, EventState> {
       emit(const EventParticipationUpdating());
       await _eventService.participateInEvent(event.eventId, event.status);
       emit(const EventParticipationUpdated());
-      // Перезагрузим данные события после участия
       add(EventDetailLoadRequested(event.eventId));
     } catch (e) {
       emit(

@@ -317,7 +317,8 @@ class _AgeDropdown extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<int?>(
-          value: value,
+          key: ValueKey<int?>(value),
+          initialValue: value,
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.white,
