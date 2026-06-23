@@ -9,10 +9,10 @@ ORIGIN="${BASE%/api}"
 
 echo "==> Checking $BASE"
 
-code_me=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 15 "$BASE/users/me" || echo "000")
+code_me=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "$BASE/users/me" 2>/dev/null || echo "000")
 echo "GET /users/me (no auth): HTTP $code_me (expect 401 when server is up)"
 
-code_map=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 15 "$BASE/users/map?minLat=55&maxLat=56&minLon=37&maxLon=38" || echo "000")
+code_map=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "$BASE/users/map?minLat=55&maxLat=56&minLon=37&maxLon=38" 2>/dev/null || echo "000")
 echo "GET /users/map (no auth): HTTP $code_map (expect 401 when server is up)"
 
 if curl -s --connect-timeout 5 "$ORIGIN/" >/dev/null 2>&1; then
