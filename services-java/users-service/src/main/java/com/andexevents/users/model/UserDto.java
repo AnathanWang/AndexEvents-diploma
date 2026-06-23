@@ -30,6 +30,7 @@ public record UserDto(
         Boolean showInMatches,
         Boolean incognitoMode,
         Boolean hideOnlineStatus,
+        String matchGenderPreference,
         String fcmToken,
         Boolean isOnboardingCompleted,
         Instant createdAt,

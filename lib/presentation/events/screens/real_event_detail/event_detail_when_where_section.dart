@@ -112,6 +112,7 @@ class _CountdownRow extends StatelessWidget {
               EventCountdownTimer(
                 expirationTime: expirationTime,
                 isMinimal: true,
+                liveUpdates: false,
                 textStyle: const TextStyle(
                   color: Color(0xFF243252),
                   fontSize: 16,

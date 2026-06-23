@@ -9,6 +9,7 @@ import '../../core/auth/id_token_provider.dart';
 import '../../core/services/logger_service.dart';
 import '../models/admin_audit_log_model.dart';
 import '../models/user_sanction_model.dart';
+import '../models/map_user_preview.dart';
 import '../models/user_model.dart';
 import 'local_storage_service.dart';
 
@@ -190,6 +191,8 @@ class UserService {
     int? maxAge,
     bool? clearMinAge,
     bool? clearMaxAge,
+    String? matchGenderPreference,
+    bool? clearMatchGenderPreference,
     String? fcmToken,
   }) async {
     try {
@@ -226,6 +229,11 @@ class UserService {
         body['clearMaxAge'] = true;
       } else if (maxAge != null) {
         body['maxAge'] = maxAge;
+      }
+      if (clearMatchGenderPreference == true) {
+        body['clearMatchGenderPreference'] = true;
+      } else if (matchGenderPreference != null) {
+        body['matchGenderPreference'] = matchGenderPreference;
       }
       if (fcmToken != null) body['fcmToken'] = fcmToken;
 
@@ -438,6 +446,61 @@ class UserService {
     } catch (e) {
       LoggerService.error('[UserService] Ошибка при получении пользователей', e);
       throw Exception('Ошибка получения пользователей: $e');
+    }
+  }
+
+  /// Пользователи рядом для отображения на карте
+  Future<List<MapUserPreview>> getMapUsers({
+    required double latitude,
+    required double longitude,
+    double radiusKm = 15,
+    int limit = 40,
+  }) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final params = <String, dynamic>{
+        'latitude': latitude,
+        'longitude': longitude,
+        'radiusKm': radiusKm,
+        'limit': limit,
+      };
+
+      final uri = Uri.parse(
+        '${AppConfig.baseUrl}/users/map${_buildQueryString(params)}',
+      );
+
+      final response = await _with429Retry(
+        () => http
+            .get(
+              uri,
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Content-Type': 'application/json',
+              },
+            )
+            .timeout(const Duration(seconds: 10)),
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final usersList = json['data'] as List<dynamic>? ?? const <dynamic>[];
+        return usersList
+            .map(
+              (user) => MapUserPreview.fromJson(user as Map<String, dynamic>),
+            )
+            .toList();
+      }
+
+      throw Exception(
+        'Ошибка при получении пользователей на карте: ${response.statusCode}',
+      );
+    } catch (e) {
+      LoggerService.error('[UserService] getMapUsers failed', e);
+      rethrow;
     }
   }
 

@@ -17,6 +17,10 @@ class EventDetailBottomBar extends StatelessWidget {
     required this.myRating,
     required this.onToggleGoing,
     required this.onRate,
+    this.showCheckInButton = false,
+    this.isCheckedIn,
+    this.isCheckInLoading,
+    this.onToggleCheckIn,
   });
 
   final EventModel event;
@@ -27,6 +31,10 @@ class EventDetailBottomBar extends StatelessWidget {
   final ValueListenable<int?> myRating;
   final VoidCallback onToggleGoing;
   final VoidCallback onRate;
+  final bool showCheckInButton;
+  final ValueListenable<bool>? isCheckedIn;
+  final ValueListenable<bool>? isCheckInLoading;
+  final VoidCallback? onToggleCheckIn;
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +43,18 @@ class EventDetailBottomBar extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (showCheckInButton &&
+                isCheckedIn != null &&
+                isCheckInLoading != null &&
+                onToggleCheckIn != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _CheckInButton(
+                  isCheckedIn: isCheckedIn!,
+                  isLoading: isCheckInLoading!,
+                  onToggle: onToggleCheckIn!,
+                ),
+              ),
             _ParticipationButton(
               event: event,
               isEventFinished: isEventFinished,
@@ -48,6 +68,86 @@ class EventDetailBottomBar extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CheckInButton extends StatelessWidget {
+  const _CheckInButton({
+    required this.isCheckedIn,
+    required this.isLoading,
+    required this.onToggle,
+  });
+
+  final ValueListenable<bool> isCheckedIn;
+  final ValueListenable<bool> isLoading;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: isLoading,
+      builder: (context, loading, _) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: isCheckedIn,
+          builder: (context, checkedIn, __) {
+            final Color background = checkedIn
+                ? const Color(0xFF00C853).withValues(alpha: 0.92)
+                : const Color(0xFF9C5CFF).withValues(alpha: 0.92);
+            final Color border = checkedIn
+                ? const Color(0xFF00E676).withValues(alpha: 0.6)
+                : const Color(0xFFE1B7FF).withValues(alpha: 0.7);
+
+            return Container(
+              height: 46,
+              decoration: BoxDecoration(
+                color: background,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: border),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: loading ? null : onToggle,
+                  borderRadius: BorderRadius.circular(18),
+                  child: Center(
+                    child: loading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Icon(
+                                checkedIn
+                                    ? Icons.verified_rounded
+                                    : Icons.location_on_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                checkedIn ? 'Вы здесь' : 'Чек-ин',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -184,4 +284,3 @@ class _ParticipationButton extends StatelessWidget {
     );
   }
 }
-

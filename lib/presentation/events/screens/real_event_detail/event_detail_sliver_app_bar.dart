@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -10,7 +11,7 @@ class EventDetailSliverAppBar extends StatelessWidget {
     required this.event,
     required this.categoryColor,
     required this.imageGallery,
-    required this.currentImageIndex,
+    required this.currentImageIndexListenable,
     required this.onImageIndexChanged,
     required this.favoriteAction,
     required this.onBack,
@@ -22,7 +23,7 @@ class EventDetailSliverAppBar extends StatelessWidget {
   final EventModel event;
   final Color categoryColor;
   final List<String> imageGallery;
-  final int currentImageIndex;
+  final ValueListenable<int> currentImageIndexListenable;
   final ValueChanged<int> onImageIndexChanged;
 
   final Widget favoriteAction;
@@ -62,7 +63,7 @@ class EventDetailSliverAppBar extends StatelessWidget {
         background: _GalleryBackground(
           categoryColor: categoryColor,
           imageGallery: imageGallery,
-          currentImageIndex: currentImageIndex,
+          currentImageIndexListenable: currentImageIndexListenable,
           onImageIndexChanged: onImageIndexChanged,
         ),
       ),
@@ -106,79 +107,139 @@ class _GalleryBackground extends StatelessWidget {
   const _GalleryBackground({
     required this.categoryColor,
     required this.imageGallery,
-    required this.currentImageIndex,
+    required this.currentImageIndexListenable,
     required this.onImageIndexChanged,
   });
 
   final Color categoryColor;
   final List<String> imageGallery;
-  final int currentImageIndex;
+  final ValueListenable<int> currentImageIndexListenable;
   final ValueChanged<int> onImageIndexChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (imageGallery.isNotEmpty)
-          PageView.builder(
-            itemCount: imageGallery.length,
-            onPageChanged: onImageIndexChanged,
-            itemBuilder: (context, index) {
-              return CachedNetworkImage(
-                imageUrl: imageGallery[index],
+    return ValueListenableBuilder<int>(
+      valueListenable: currentImageIndexListenable,
+      builder: (context, currentIndex, _) {
+        final safeIndex = imageGallery.isEmpty
+            ? 0
+            : currentIndex.clamp(0, imageGallery.length - 1);
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            if (imageGallery.isNotEmpty)
+              CachedNetworkImage(
+                key: ValueKey<String>(imageGallery[safeIndex]),
+                imageUrl: imageGallery[safeIndex],
                 fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
+                memCacheWidth: 900,
+                placeholder: (context, url) => ColoredBox(
                   color: Colors.grey.shade300,
-                  child: const Center(child: CircularProgressIndicator()),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
                 errorWidget: (context, url, error) => _FallbackHero(
                   categoryColor: categoryColor,
                 ),
-              );
-            },
-          )
-        else
-          _FallbackHero(categoryColor: categoryColor),
-        IgnorePointer(
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.white.withValues(alpha: 0.04),
-                  Colors.transparent,
-                  Colors.black.withValues(alpha: 0.46),
-                ],
+              )
+            else
+              _FallbackHero(categoryColor: categoryColor),
+            if (imageGallery.length > 1) ...[
+              Positioned(
+                left: 8,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _GalleryNavButton(
+                    icon: Icons.chevron_left_rounded,
+                    onTap: safeIndex > 0
+                        ? () => onImageIndexChanged(safeIndex - 1)
+                        : null,
+                  ),
+                ),
               ),
-            ),
-          ),
-        ),
-        if (imageGallery.length > 1)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 16,
-            child: IgnorePointer(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  imageGallery.length,
-                  (index) => Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: currentImageIndex == index ? Colors.white : Colors.white54,
-                    ),
+              Positioned(
+                right: 8,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _GalleryNavButton(
+                    icon: Icons.chevron_right_rounded,
+                    onTap: safeIndex < imageGallery.length - 1
+                        ? () => onImageIndexChanged(safeIndex + 1)
+                        : null,
+                  ),
+                ),
+              ),
+            ],
+            IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.04),
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.46),
+                    ],
                   ),
                 ),
               ),
             ),
-          ),
-      ],
+            if (imageGallery.length > 1)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 16,
+                child: IgnorePointer(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      imageGallery.length,
+                      (index) => Container(
+                        width: 8,
+                        height: 8,
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: safeIndex == index
+                              ? Colors.white
+                              : Colors.white54,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _GalleryNavButton extends StatelessWidget {
+  const _GalleryNavButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: onTap == null ? 0.12 : 0.28),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(icon, color: Colors.white, size: 28),
+        ),
+      ),
     );
   }
 }

@@ -29,24 +29,34 @@ class MapNearbyEventsHub extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(30),
-      child: Container(
-        height: hubHeight,
-        decoration: BoxDecoration(
-          color: AppColors.surface.withValues(alpha: 0.88),
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.dark.withValues(alpha: 0.16),
-              blurRadius: 22,
-              offset: const Offset(0, -8),
+    return SizedBox(
+      height: hubHeight,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          IgnorePointer(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.surface.withValues(alpha: 0.88),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.dark.withValues(alpha: 0.16),
+                      blurRadius: 22,
+                      offset: const Offset(0, -8),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
-        child: Column(
-          children: [
+          ),
+          Column(
+            children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 child: Row(
@@ -111,16 +121,17 @@ class MapNearbyEventsHub extends StatelessWidget {
                               ),
                         ),
                       )
-                    : PageView.builder(
-                        itemCount: events.length,
-                        physics: const BouncingScrollPhysics(),
-                        onPageChanged: (index) {
-                          activeIndexListenable.value = index;
-                        },
-                        itemBuilder: (context, index) {
+                    : ValueListenableBuilder<int>(
+                        valueListenable: activeIndexListenable,
+                        builder: (context, activeIndex, _) {
+                          final int current = events.isEmpty
+                              ? 0
+                              : activeIndex.clamp(0, events.length - 1);
                           return Padding(
                             padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-                            child: MapNearbyEventCard(event: events[index]),
+                            child: MapNearbyEventCard(
+                              event: events[current],
+                            ),
                           );
                         },
                       ),
@@ -137,13 +148,17 @@ class MapNearbyEventsHub extends StatelessWidget {
                       return _HubPageIndicator(
                         currentIndex: current,
                         totalCount: events.length,
+                        onIndexSelected: (index) {
+                          activeIndexListenable.value = index;
+                        },
                       );
                     },
                   ),
                 ),
               if (events.length <= 1) const SizedBox(height: 8),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -205,10 +220,12 @@ class _HubPageIndicator extends StatelessWidget {
   const _HubPageIndicator({
     required this.currentIndex,
     required this.totalCount,
+    required this.onIndexSelected,
   });
 
   final int currentIndex;
   final int totalCount;
+  final ValueChanged<int> onIndexSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -233,18 +250,34 @@ class _HubPageIndicator extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List<Widget>.generate(
               visibleCount,
-              (index) => Container(
-                width: dotSize,
-                height: dotSize,
-                decoration: BoxDecoration(
-                  color: AppColors.dark.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
+              (index) {
+                final dotIndex = startIndex + index;
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    onIndexSelected(dotIndex);
+                  },
+                  child: SizedBox(
+                    width: dotSize + 8,
+                    height: dotSize + 8,
+                    child: Center(
+                      child: Container(
+                        width: dotSize,
+                        height: dotSize,
+                        decoration: BoxDecoration(
+                          color: AppColors.dark.withValues(alpha: 0.22),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           AnimatedPositioned(
-            duration: const Duration(milliseconds: 240),
+            duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
             left: (activeDot * (dotSize + dotGap)) -
                 ((activeWidth - dotSize) / 2),
@@ -332,6 +365,7 @@ class MapNearbyEventCard extends StatelessWidget {
     final formattedTime = DateFormat('d MMM, HH:mm', 'ru').format(event.dateTime);
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
         HapticFeedback.selectionClick();
         Navigator.push(
@@ -377,6 +411,8 @@ class MapNearbyEventCard extends StatelessWidget {
                   width: 104,
                   height: 112,
                   fit: BoxFit.cover,
+                  memCacheWidth: 208,
+                  memCacheHeight: 224,
                   placeholder: (context, url) => Container(
                     width: 104,
                     height: 112,

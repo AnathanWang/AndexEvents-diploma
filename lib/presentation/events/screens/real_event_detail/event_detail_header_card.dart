@@ -109,10 +109,11 @@ class EventDetailHeaderCard extends StatelessWidget {
               children: [
                 _PillButton(
                   label: 'Метчи',
-                  fg: categoryColor,
-                  bg: categoryColor.withValues(alpha: 0.10),
-                  border: categoryColor.withValues(alpha: 0.22),
+                  fg: Colors.white,
+                  bg: AppColors.primary.withValues(alpha: 0.92),
+                  border: Colors.transparent,
                   onTap: onOpenMatches,
+                  fontWeight: FontWeight.w800,
                 ),
                 if (showManageButton) ...[
                   const SizedBox(width: 8),

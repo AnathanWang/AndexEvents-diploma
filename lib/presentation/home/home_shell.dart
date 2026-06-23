@@ -11,6 +11,7 @@ import '../events/bloc/event_event.dart';
 import '../events/bloc/event_state.dart';
 import '../profile/bloc/profile_bloc.dart';
 import '../../core/theme/app_colors.dart';
+import '../../data/services/location_sync_service.dart';
 import '../../data/services/user_service.dart';
 import '../../data/models/user_sanction_model.dart';
 import '../widgets/glass_scene_stack.dart';
@@ -28,7 +29,7 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   static final List<EventPreview> _events = SampleData.events;
   final List<MatchPreview> _matches = <MatchPreview>[];
   final UserService _userService = UserService();
@@ -47,6 +48,7 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _mapEventBloc = EventBloc();
     _feedEventBloc = EventBloc();
     _profileBloc = ProfileBloc(userService: UserService());
@@ -58,6 +60,24 @@ class _HomeShellState extends State<HomeShell> {
     _profileTab = ProfileScreen(events: _events, matches: _matches);
     _loadMutualMatches();
     _refreshCreateEventAccess();
+    LocationSyncService.instance.start();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        LocationSyncService.instance.syncNow(reason: 'resume');
+        LocationSyncService.instance.start();
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+        LocationSyncService.instance.stop();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        break;
+    }
   }
 
   bool _isCreateSanction(UserSanctionModel sanction) {
@@ -205,6 +225,8 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    LocationSyncService.instance.stop();
     _mapEventBloc.close();
     _feedEventBloc.close();
     _profileBloc.close();

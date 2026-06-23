@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:yandex_mapkit/yandex_mapkit.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../events/screens/real_event_detail/real_event_detail_widgets.dart';
@@ -27,42 +26,80 @@ class EventDetailRouteSection extends StatelessWidget {
           children: [
             const EventDetailSectionTitle(
               'Маршрут',
-              subtitle: 'Карта и быстрый переход в навигацию',
+              subtitle: 'Откройте навигацию до места проведения',
             ),
             const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(18),
               child: SizedBox(
-                height: 180,
-                child: IgnorePointer(
-                  child: YandexMap(
-                    onMapCreated: (controller) {
-                      controller.moveCamera(
-                        CameraUpdate.newCameraPosition(
-                          CameraPosition(
-                            target: Point(
-                              latitude: event.latitude,
-                              longitude: event.longitude,
-                            ),
-                            zoom: 13,
-                          ),
+                height: 140,
+                width: double.infinity,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.primary.withValues(alpha: 0.12),
+                        AppColors.accent.withValues(alpha: 0.18),
+                      ],
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        right: -20,
+                        top: -20,
+                        child: Icon(
+                          Icons.map_outlined,
+                          size: 120,
+                          color: AppColors.primary.withValues(alpha: 0.08),
                         ),
-                      );
-                    },
-                    mapObjects: [
-                      PlacemarkMapObject(
-                        mapId: const MapObjectId('event_detail_point'),
-                        point: Point(
-                          latitude: event.latitude,
-                          longitude: event.longitude,
-                        ),
-                        icon: PlacemarkIcon.single(
-                          PlacemarkIconStyle(
-                            image: BitmapDescriptor.fromAssetImage(
-                              'assets/icons/map_arrow.png',
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface.withValues(alpha: 0.9),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.location_on_rounded,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    event.location,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF243252),
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            scale: 0.3,
-                          ),
+                            const Spacer(),
+                            Text(
+                              '${event.latitude.toStringAsFixed(4)}, ${event.longitude.toStringAsFixed(4)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.dark.withValues(alpha: 0.5),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -94,4 +131,3 @@ class EventDetailRouteSection extends StatelessWidget {
     );
   }
 }
-

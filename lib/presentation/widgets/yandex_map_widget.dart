@@ -9,13 +9,16 @@ import 'package:yandex_mapkit/yandex_mapkit.dart';
 import '../../core/services/logger_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/event_model.dart';
+import '../../data/models/map_user_preview.dart';
 
 class YandexMapWidget extends StatefulWidget {
   final List<EventModel> events;
+  final List<MapUserPreview> users;
   final bool isInteractive;
   final void Function(YandexMapController)? onMapCreated;
   final void Function(Point)? onUserLocationUpdated;
   final void Function(EventModel)? onEventMarkerTapped;
+  final void Function(MapUserPreview)? onUserMarkerTapped;
   final void Function(
     CameraPosition cameraPosition,
     CameraUpdateReason reason,
@@ -25,10 +28,12 @@ class YandexMapWidget extends StatefulWidget {
   const YandexMapWidget({
     super.key,
     required this.events,
+    this.users = const [],
     this.isInteractive = true,
     this.onMapCreated,
     this.onUserLocationUpdated,
     this.onEventMarkerTapped,
+    this.onUserMarkerTapped,
     this.onCameraPositionChanged,
   });
 
@@ -38,15 +43,18 @@ class YandexMapWidget extends StatefulWidget {
 
 class _YandexMapWidgetState extends State<YandexMapWidget> {
   static const int _maxMarkers = 15;
+  static const int _maxUserMarkers = 25;
   static const double _markerScale = 0.68;
   static const MapObjectId _eventsClusterId =
       MapObjectId('events_cluster_collection');
 
   YandexMapController? _mapController;
   BitmapDescriptor? _eventMarkerDescriptor;
+  BitmapDescriptor? _userMarkerDescriptor;
   Point? _userLocation;
   List<MapObject> _cachedMapObjects = const [];
   List<String> _cachedEventIds = const [];
+  List<String> _cachedUserIds = const [];
   bool _initialCameraApplied = false;
   bool _userLayerEnabled = false;
 
@@ -146,16 +154,21 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
   }
 
   void _refreshMapObjectsIfNeeded({required bool force}) {
-    if (_eventMarkerDescriptor == null) return;
+    if (_eventMarkerDescriptor == null || _userMarkerDescriptor == null) {
+      return;
+    }
 
-    final nextIds = _eventIds(widget.events);
+    final nextEventIds = _eventIds(widget.events);
+    final nextUserIds = widget.users.map((user) => user.id).toList();
     if (!force &&
-        _listEquals(_cachedEventIds, nextIds) &&
+        _listEquals(_cachedEventIds, nextEventIds) &&
+        _listEquals(_cachedUserIds, nextUserIds) &&
         _cachedMapObjects.isNotEmpty) {
       return;
     }
 
-    _cachedEventIds = nextIds;
+    _cachedEventIds = nextEventIds;
+    _cachedUserIds = nextUserIds;
     _cachedMapObjects = _buildMarkers();
     if (mounted) {
       setState(() {});
@@ -171,17 +184,21 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
   }
 
   Future<void> _initMarkerIcons() async {
-    final eventIcon = await _createMarkerIcon();
+    final results = await Future.wait<Uint8List>([
+      _createEventMarkerIcon(),
+      _createUserMarkerIcon(),
+    ]);
 
     if (!mounted) return;
 
     setState(() {
-      _eventMarkerDescriptor = BitmapDescriptor.fromBytes(eventIcon);
+      _eventMarkerDescriptor = BitmapDescriptor.fromBytes(results[0]);
+      _userMarkerDescriptor = BitmapDescriptor.fromBytes(results[1]);
     });
     _refreshMapObjectsIfNeeded(force: true);
   }
 
-  Future<Uint8List> _createMarkerIcon() async {
+  Future<Uint8List> _createEventMarkerIcon() async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
 
@@ -224,9 +241,39 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
     return byteData!.buffer.asUint8List();
   }
 
+  Future<Uint8List> _createUserMarkerIcon() async {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+
+    const size = 44.0;
+    const center = size / 2;
+
+    final outerPaint = Paint()
+      ..color = const Color(0xFF9C5CFF)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(const Offset(center, center), 18, outerPaint);
+
+    final borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+    canvas.drawCircle(const Offset(center, center), 18, borderPaint);
+
+    final innerPaint = Paint()
+      ..color = const Color(0xFFFF6BB5)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(const Offset(center, center), 8, innerPaint);
+
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(size.toInt(), size.toInt());
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    return byteData!.buffer.asUint8List();
+  }
+
   List<MapObject> _buildMarkers() {
     final eventDescriptor = _eventMarkerDescriptor;
-    if (eventDescriptor == null) return [];
+    final userDescriptor = _userMarkerDescriptor;
+    if (eventDescriptor == null || userDescriptor == null) return [];
 
     final eventsForMarkers = widget.events.length > _maxMarkers
         ? widget.events.take(_maxMarkers).toList()
@@ -252,11 +299,37 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
       );
     }
 
-    if (placemarks.isEmpty) {
-      return const [];
+    final usersForMarkers = widget.users.length > _maxUserMarkers
+        ? widget.users.take(_maxUserMarkers).toList()
+        : widget.users;
+
+    final userPlacemarks = <PlacemarkMapObject>[];
+    for (final user in usersForMarkers) {
+      userPlacemarks.add(
+        PlacemarkMapObject(
+          mapId: MapObjectId('user_${user.id}'),
+          point: Point(latitude: user.latitude, longitude: user.longitude),
+          consumeTapEvents: true,
+          onTap: (_, __) => widget.onUserMarkerTapped?.call(user),
+          icon: PlacemarkIcon.single(
+            PlacemarkIconStyle(
+              image: userDescriptor,
+              scale: 0.9,
+            ),
+          ),
+          opacity: 1.0,
+          zIndex: 1,
+        ),
+      );
     }
 
-    return [
+    final mapObjects = <MapObject>[...userPlacemarks];
+
+    if (placemarks.isEmpty) {
+      return mapObjects;
+    }
+
+    mapObjects.add(
       ClusterizedPlacemarkCollection(
         mapId: _eventsClusterId,
         radius: 42,
@@ -281,7 +354,9 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
           );
         },
       ),
-    ];
+    );
+
+    return mapObjects;
   }
 
   @override

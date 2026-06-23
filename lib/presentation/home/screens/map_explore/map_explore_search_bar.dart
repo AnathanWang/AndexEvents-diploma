@@ -27,7 +27,11 @@ class MapExploreSearchBar extends StatelessWidget {
       top: MediaQuery.of(context).padding.top + 8,
       left: horizontalInset,
       right: horizontalInset,
-      child: ClipRRect(
+      child: Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: (_) {},
+        child: RepaintBoundary(
+          child: ClipRRect(
         borderRadius: BorderRadius.circular(26),
         child: Container(
           padding: const EdgeInsets.all(1.5),
@@ -99,6 +103,8 @@ class MapExploreSearchBar extends StatelessWidget {
                 vertical: 14,
               ),
             ),
+          ),
+        ),
           ),
         ),
       ),

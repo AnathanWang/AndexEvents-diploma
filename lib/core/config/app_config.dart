@@ -13,7 +13,7 @@ class AppConfig {
     }
 
     if (kReleaseMode) {
-      return 'https://api.andexevents.com/api';
+      return 'http://andex.1rmx.ru:40080/api';
     }
 
     if (kIsWeb) {

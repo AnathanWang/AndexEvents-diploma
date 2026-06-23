@@ -104,6 +104,26 @@ public class EventParticipantManagementController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(ex.getMessage()));
         } catch (EventService.NotFoundException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
+        } catch (EventService.BadRequestException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage()));
+        }
+    }
+
+    @PutMapping("/api/events/{eventId}/checkin/me")
+    public ResponseEntity<ApiResponse<Void>> checkInMe(HttpServletRequest request, @PathVariable String eventId, @RequestBody CheckInRequest body) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
+        }
+        try {
+            eventService.setCheckIn(eventId, auth.userId(), body != null && body.checkedIn(), auth.userId());
+            return ResponseEntity.ok(ApiResponse.okMessage("OK"));
+        } catch (EventService.ForbiddenException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(ex.getMessage()));
+        } catch (EventService.NotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
+        } catch (EventService.BadRequestException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage()));
         }
     }
 }

@@ -11,6 +11,7 @@ class PrivacySettingsScreen extends StatefulWidget {
     required this.hideOnlineStatus,
     this.minAge,
     this.maxAge,
+    this.matchGenderPreference,
     super.key,
   });
 
@@ -20,6 +21,7 @@ class PrivacySettingsScreen extends StatefulWidget {
   final bool hideOnlineStatus;
   final int? minAge;
   final int? maxAge;
+  final String? matchGenderPreference;
 
   @override
   State<PrivacySettingsScreen> createState() => _PrivacySettingsScreenState();
@@ -32,6 +34,7 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
   late bool _hideOnlineStatus;
   int? _minAge;
   int? _maxAge;
+  String? _matchGenderPreference;
 
   static const List<int> _ageOptions = <int>[
     18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
@@ -47,6 +50,7 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
     _hideOnlineStatus = widget.hideOnlineStatus;
     _minAge = widget.minAge;
     _maxAge = widget.maxAge;
+    _matchGenderPreference = widget.matchGenderPreference ?? 'all';
   }
 
   void _save() {
@@ -64,6 +68,7 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
       'hideOnlineStatus': _hideOnlineStatus,
       'minAge': _minAge,
       'maxAge': _maxAge,
+      'matchGenderPreference': _matchGenderPreference,
     });
   }
 
@@ -199,6 +204,55 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                       ),
                     ),
                   ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          AuthGlassCard(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Кого показывать в мэтчах',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF243252),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Фильтр по полу в ленте знакомств. «Все» — без ограничения.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.36,
+                    color: Color(0xFF66739B),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SegmentedButton<String>(
+                  segments: const <ButtonSegment<String>>[
+                    ButtonSegment<String>(
+                      value: 'all',
+                      label: Text('Все'),
+                    ),
+                    ButtonSegment<String>(
+                      value: 'male',
+                      label: Text('Мужчин'),
+                    ),
+                    ButtonSegment<String>(
+                      value: 'female',
+                      label: Text('Женщин'),
+                    ),
+                  ],
+                  selected: <String>{_matchGenderPreference ?? 'all'},
+                  onSelectionChanged: (Set<String> selection) {
+                    setState(() {
+                      _matchGenderPreference = selection.first;
+                    });
+                  },
                 ),
               ],
             ),

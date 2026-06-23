@@ -56,6 +56,22 @@ class EventParticipantsManageService {
     }
   }
 
+  Future<void> setSelfCheckIn(String eventId, {required bool checkedIn}) async {
+    final token = await _getIdToken();
+    final uri = Uri.parse('${AppConfig.baseUrl}/events/$eventId/checkin/me');
+    final resp = await http.put(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'checkedIn': checkedIn}),
+    );
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw Exception(_extractMessage(resp.body));
+    }
+  }
+
   Future<void> setCheckIn(String eventId, String userId, {required bool checkedIn}) async {
     final token = await _getIdToken();
     final uri = Uri.parse('${AppConfig.baseUrl}/events/$eventId/checkin/$userId');

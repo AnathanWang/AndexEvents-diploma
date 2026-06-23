@@ -7,7 +7,7 @@ import '../../../data/models/user_model.dart';
 import '../../../data/services/match_seen_service.dart';
 import '../../matches/widgets/match_swipe_deck.dart';
 import '../../models/match_preview.dart';
-import '../../profile/screens/edit_profile_screen.dart';
+import '../../profile/navigation/open_edit_profile.dart';
 import '../../profile/screens/user_profile_screen.dart';
 import '../../widgets/common/custom_notification.dart';
 
@@ -32,6 +32,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
   EventModel? _event;
   UserModel? _currentUser;
   List<MatchPreview> _matches = [];
+  int _deckEpoch = 0;
 
   final UserService _userService = UserService();
   final MatchSeenService _matchSeenService = MatchSeenService();
@@ -139,19 +140,39 @@ class _EventMatchScreenState extends State<EventMatchScreen>
   }
 
   Future<void> _refreshMatches({bool resetSeen = false}) async {
-    if (_currentUser == null) {
-      return;
-    }
-
     setState(() {
       _isLoading = true;
     });
 
     try {
+      final user = await _userService.getCurrentUser();
+      if (!mounted) return;
+      _currentUser = user;
+
       if (resetSeen) {
-        await _matchSeenService.clear(_currentUser!.id);
+        await _matchSeenService.clear(user.id);
       }
       await _loadMatches();
+      if (!mounted) return;
+
+      setState(() {
+        _deckEpoch++;
+      });
+
+      if (_matches.isEmpty) {
+        CustomNotification.show(context, 'Новых анкет пока нет');
+      } else {
+        CustomNotification.success(context, 'Подборка обновлена');
+      }
+    } catch (e) {
+      LoggerService.error('🔴 [EventMatchScreen] Error refreshing matches: $e');
+      if (mounted) {
+        CustomNotification.show(
+          context,
+          'Не удалось обновить подборку',
+          isError: true,
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -245,10 +266,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
   }
 
   Future<void> _openEditProfile() async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-    );
+    final result = await openEditProfile(context);
     if (result == true && mounted) {
       CustomNotification.success(context, 'Профиль успешно обновлен!');
     }
@@ -748,6 +766,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
         ),
         Positioned.fill(
           child: MatchSwipeDeck(
+            key: ValueKey('event-match-deck-$_deckEpoch'),
             matches: _matches,
             topPadding: 16,
             onOpenProfile: _openUserProfile,

@@ -20,7 +20,7 @@ for i in $(seq 1 60); do
   sleep 1
 done
 
-echo "==> Starting Java services (Flyway applies migrations V1–V8)..."
+echo "==> Starting Java services (Flyway applies migrations V1–V9)..."
 "${COMPOSE[@]}" up -d --force-recreate users-service events-service auth-service
 
 echo "==> Waiting for Flyway (~25s)..."
@@ -37,6 +37,10 @@ docker exec -i andexevents-postgres psql -U andexevents -d andexevents \
 echo "==> Seeding demo events..."
 docker exec -i andexevents-postgres psql -U andexevents -d andexevents \
   < "$ROOT/scripts/seed_demo_events.sql" >/dev/null
+
+echo "==> Seeding demo event participants..."
+docker exec -i andexevents-postgres psql -U andexevents -d andexevents \
+  < "$ROOT/scripts/seed_demo_participants.sql" >/dev/null
 
 echo ""
 echo "==> Done. Summary:"

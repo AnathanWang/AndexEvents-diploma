@@ -311,6 +311,8 @@ public class UserController {
                 null,
                 null,
                 null,
+                null,
+                null,
                 null
         );
 
@@ -382,6 +384,30 @@ public class UserController {
 
         List<UserDto> matches = userService.getMatches(auth.userId(), latitude, longitude, radiusKm, limit);
         return ResponseEntity.ok(ApiResponse.ok(matches));
+    }
+
+    @GetMapping("/map")
+    public ResponseEntity<ApiResponse<List<com.andexevents.users.model.MapUserDto>>> mapUsers(
+            HttpServletRequest request,
+            @RequestParam double latitude,
+            @RequestParam double longitude,
+            @RequestParam(defaultValue = "15") double radiusKm,
+            @RequestParam(defaultValue = "40") int limit
+    ) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Unauthorized: User ID not found"));
+        }
+
+        if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Invalid coordinates. Latitude must be between -90 and 90, longitude between -180 and 180"));
+        }
+
+        List<com.andexevents.users.model.MapUserDto> users =
+                userService.getMapUsers(auth.userId(), latitude, longitude, radiusKm, limit);
+        return ResponseEntity.ok(ApiResponse.ok(users));
     }
 
     @PostMapping("/me/photos")

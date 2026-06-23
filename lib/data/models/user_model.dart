@@ -16,6 +16,7 @@ class UserModel {
   final int? minAge;
   final int? maxAge;
   final String? gender;
+  final String? matchGenderPreference;
   final String? role;
   final double? lastLatitude;
   final double? lastLongitude;
@@ -47,6 +48,7 @@ class UserModel {
     this.minAge,
     this.maxAge,
     this.gender,
+    this.matchGenderPreference,
     this.role,
     this.lastLatitude,
     this.lastLongitude,
@@ -89,6 +91,7 @@ class UserModel {
       minAge: json['minAge'] as int?,
       maxAge: json['maxAge'] as int?,
       gender: json['gender'] as String?,
+      matchGenderPreference: json['matchGenderPreference'] as String?,
       role: json['role'] as String?,
       lastLatitude: (json['lastLatitude'] as num?)?.toDouble(),
       lastLongitude: (json['lastLongitude'] as num?)?.toDouble(),
@@ -127,6 +130,7 @@ class UserModel {
       'minAge': minAge,
       'maxAge': maxAge,
       'gender': gender,
+      'matchGenderPreference': matchGenderPreference,
       'role': role,
       'lastLatitude': lastLatitude,
       'lastLongitude': lastLongitude,
@@ -156,6 +160,7 @@ class UserModel {
     int? minAge,
     int? maxAge,
     String? gender,
+    String? matchGenderPreference,
     String? role,
     double? lastLatitude,
     double? lastLongitude,
@@ -185,6 +190,7 @@ class UserModel {
       minAge: minAge ?? this.minAge,
       maxAge: maxAge ?? this.maxAge,
       gender: gender ?? this.gender,
+      matchGenderPreference: matchGenderPreference ?? this.matchGenderPreference,
       role: role ?? this.role,
       lastLatitude: lastLatitude ?? this.lastLatitude,
       lastLongitude: lastLongitude ?? this.lastLongitude,

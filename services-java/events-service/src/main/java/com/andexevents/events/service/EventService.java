@@ -187,13 +187,30 @@ public class EventService {
         repo.deleteParticipation(eventId, targetUserId);
     }
 
-    public void setCheckIn(String eventId, String targetUserId, boolean checkedIn, String organizerUserId) {
+    public void setCheckIn(String eventId, String targetUserId, boolean checkedIn, String actorUserId) {
         EventRepository.EventRow event = repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
-        if (organizerUserId == null || organizerUserId.isBlank()) throw new ForbiddenException("Unauthorized");
-        if (event.createdById() == null || !event.createdById().equals(organizerUserId)) {
+        if (actorUserId == null || actorUserId.isBlank()) throw new ForbiddenException("Unauthorized");
+
+        boolean isSelf = targetUserId != null && targetUserId.equals(actorUserId);
+        boolean isOrganizer = event.createdById() != null && event.createdById().equals(actorUserId);
+
+        if (!isSelf && !isOrganizer) {
             throw new ForbiddenException("Forbidden");
         }
-        checkInRepository.setCheckIn(eventId, targetUserId, checkedIn, organizerUserId);
+
+        if (isSelf) {
+            String status = repo.getParticipationStatus(eventId, actorUserId);
+            if (!"GOING".equalsIgnoreCase(status)) {
+                throw new BadRequestException("Check-in доступен только участникам со статусом GOING");
+            }
+            if (isEventFinished(event)) {
+                throw new BadRequestException("Событие уже завершено");
+            }
+        } else if (!isOrganizer) {
+            throw new ForbiddenException("Forbidden");
+        }
+
+        checkInRepository.setCheckIn(eventId, targetUserId, checkedIn, actorUserId);
     }
 
     public void banUserForEvent(String eventId, String targetUserId, String reason, String organizerUserId) {
@@ -315,9 +332,11 @@ public class EventService {
 
         boolean isParticipating = false;
         String userParticipationStatus = null;
+        boolean isCheckedIn = false;
         if (viewerUserId != null && !viewerUserId.isBlank()) {
             isParticipating = repo.isParticipating(row.id(), viewerUserId);
             userParticipationStatus = repo.getParticipationStatus(row.id(), viewerUserId);
+            isCheckedIn = checkInRepository.isCheckedIn(row.id(), viewerUserId);
         }
 
         Double distance = nearby != null ? nearby.distance() : null;
@@ -363,9 +382,17 @@ public class EventService {
                 participantCount,
                 isParticipating,
                 userParticipationStatus,
+                isCheckedIn,
                 distance,
                 ratingStats
         );
+    }
+
+    private boolean isEventFinished(EventRepository.EventRow row) {
+        java.time.Instant end = row.endDateTime() != null
+                ? row.endDateTime()
+                : row.dateTime().plus(3, java.time.temporal.ChronoUnit.HOURS);
+        return end.isBefore(java.time.Instant.now());
     }
 
     private record NearbyMeta(double distance, long participantCount, EventDtos.CreatorDto createdBy) {

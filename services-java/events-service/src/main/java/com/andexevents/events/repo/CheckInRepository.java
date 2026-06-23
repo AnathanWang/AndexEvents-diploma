@@ -22,6 +22,16 @@ public class CheckInRepository {
         ));
     }
 
+    public boolean isCheckedIn(String eventId, String userId) {
+        List<Boolean> rows = jdbcTemplate.query(
+                "SELECT \"checkedIn\" FROM events.\"ParticipantCheckIn\" WHERE \"eventId\" = ? AND \"userId\" = ?",
+                (rs, rn) -> rs.getBoolean("checkedIn"),
+                eventId,
+                userId
+        );
+        return !rows.isEmpty() && Boolean.TRUE.equals(rows.get(0));
+    }
+
     public void setCheckIn(String eventId, String userId, boolean checkedIn, String checkedInById) {
         jdbcTemplate.update(
                 "INSERT INTO events.\"ParticipantCheckIn\" (\"eventId\", \"userId\", \"checkedIn\", \"checkedInAt\", \"checkedInById\") " +

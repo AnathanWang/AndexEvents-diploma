@@ -29,6 +29,7 @@ class EventModel {
   final int participantsCount;
   final bool isParticipating;
   final String? userParticipationStatus;
+  final bool isCheckedIn;
   final String? creatorName;
   final String? creatorPhotoUrl;
   final List<ParticipantModel> previewParticipants;
@@ -65,6 +66,7 @@ class EventModel {
     this.participantsCount = 0,
     this.isParticipating = false,
     this.userParticipationStatus,
+    this.isCheckedIn = false,
     this.creatorName,
     this.creatorPhotoUrl,
     this.previewParticipants = const [],
@@ -138,6 +140,7 @@ class EventModel {
       participantsCount: participantsCount,
       isParticipating: json['isParticipating'] as bool? ?? false,
       userParticipationStatus: json['userParticipationStatus'] as String?,
+      isCheckedIn: json['isCheckedIn'] as bool? ?? false,
       creatorName: createdBy?['displayName'] as String?,
       creatorPhotoUrl: _normalizeMediaUrl(createdBy?['photoUrl'] as String?),
       previewParticipants: previewParticipants,
@@ -207,6 +210,7 @@ class EventModel {
     int? participantsCount,
     bool? isParticipating,
     String? userParticipationStatus,
+    bool? isCheckedIn,
     String? creatorName,
     String? creatorPhotoUrl,
     List<ParticipantModel>? previewParticipants,
@@ -239,6 +243,7 @@ class EventModel {
       participantsCount: participantsCount ?? this.participantsCount,
       isParticipating: isParticipating ?? this.isParticipating,
       userParticipationStatus: userParticipationStatus ?? this.userParticipationStatus,
+      isCheckedIn: isCheckedIn ?? this.isCheckedIn,
       creatorName: creatorName ?? this.creatorName,
       creatorPhotoUrl: creatorPhotoUrl ?? this.creatorPhotoUrl,
       previewParticipants: previewParticipants ?? this.previewParticipants,

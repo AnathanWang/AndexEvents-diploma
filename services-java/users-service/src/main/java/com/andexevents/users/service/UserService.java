@@ -111,6 +111,11 @@ public class UserService {
         } else if (req.maxAge() != null) {
             updates.put("maxAge", req.maxAge());
         }
+        if (Boolean.TRUE.equals(req.clearMatchGenderPreference())) {
+            updates.put("matchGenderPreference", null);
+        } else if (req.matchGenderPreference() != null) {
+            updates.put("matchGenderPreference", req.matchGenderPreference());
+        }
 
         return userRepository.updateProfile(userId, updates);
     }
@@ -136,7 +141,8 @@ public class UserService {
                 radiusKm,
                 poolSize,
                 current.minAge(),
-                current.maxAge()
+                current.maxAge(),
+                current.matchGenderPreference()
         );
 
         List<String> candidateIds = candidates.stream().map(UserDto::id).toList();
@@ -180,6 +186,10 @@ public class UserService {
         userRepository.unblockUser(userId, targetUserId);
     }
 
+    public List<MapUserDto> getMapUsers(String userId, double latitude, double longitude, double radiusKm, int limit) {
+        return userRepository.findMapUsers(userId, latitude, longitude, radiusKm, limit);
+    }
+
     public record UpdateProfileRequest(
             String displayName,
             String photoUrl,
@@ -199,7 +209,9 @@ public class UserService {
             Integer minAge,
             Integer maxAge,
             Boolean clearMinAge,
-            Boolean clearMaxAge
+            Boolean clearMaxAge,
+            String matchGenderPreference,
+            Boolean clearMatchGenderPreference
     ) {
     }
 

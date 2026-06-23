@@ -55,8 +55,8 @@ bool shouldReloadMapEvents({
   required int? lastRadiusMeters,
   required Point nextCenter,
   required int nextRadiusMeters,
-  double moveFactor = 0.5,
-  double zoomFactor = 0.35,
+  double moveFactor = 0.35,
+  double zoomFactor = 0.25,
 }) {
   if (lastCenter == null || lastRadiusMeters == null) {
     return true;

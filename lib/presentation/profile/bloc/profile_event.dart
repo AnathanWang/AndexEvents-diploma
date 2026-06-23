@@ -30,6 +30,8 @@ class ProfileUpdateRequested extends ProfileEvent {
   final int? maxAge;
   final bool? clearMinAge;
   final bool? clearMaxAge;
+  final String? matchGenderPreference;
+  final bool? clearMatchGenderPreference;
 
   const ProfileUpdateRequested({
     this.displayName,
@@ -47,6 +49,8 @@ class ProfileUpdateRequested extends ProfileEvent {
     this.maxAge,
     this.clearMinAge,
     this.clearMaxAge,
+    this.matchGenderPreference,
+    this.clearMatchGenderPreference,
   });
 
   @override
@@ -66,6 +70,8 @@ class ProfileUpdateRequested extends ProfileEvent {
     maxAge,
     clearMinAge,
     clearMaxAge,
+    matchGenderPreference,
+    clearMatchGenderPreference,
   ];
 }
 

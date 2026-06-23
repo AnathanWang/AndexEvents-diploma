@@ -56,6 +56,7 @@ public class EventDtos {
             long participantCount,
             boolean isParticipating,
             String userParticipationStatus,
+            boolean isCheckedIn,
             Double distance,
             EventRatingStatsDto ratingStats
     ) {

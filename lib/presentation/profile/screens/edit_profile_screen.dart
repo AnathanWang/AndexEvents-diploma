@@ -46,6 +46,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _hideOnlineStatus = false;
   int? _minMatchAge;
   int? _maxMatchAge;
+  String? _matchGenderPreference;
 
   final List<String> _allInterests = <String>[
     'Спорт',
@@ -94,6 +95,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _hideOnlineStatus = user.hideOnlineStatus;
       _minMatchAge = user.minAge;
       _maxMatchAge = user.maxAge;
+      _matchGenderPreference = user.matchGenderPreference ?? 'all';
     }
   }
 
@@ -574,6 +576,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 _minMatchAge == null && _currentUser?.minAge != null,
             clearMaxAge:
                 _maxMatchAge == null && _currentUser?.maxAge != null,
+            matchGenderPreference: _matchGenderPreference == 'all'
+                ? null
+                : _matchGenderPreference,
+            clearMatchGenderPreference:
+                (_matchGenderPreference == null ||
+                    _matchGenderPreference == 'all') &&
+                _currentUser?.matchGenderPreference != null &&
+                _currentUser!.matchGenderPreference!.isNotEmpty,
           ),
         );
       } catch (e) {
@@ -697,6 +707,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           hideOnlineStatus: _hideOnlineStatus,
           minAge: _minMatchAge,
           maxAge: _maxMatchAge,
+          matchGenderPreference: _matchGenderPreference,
         ),
       ),
     );
@@ -714,6 +725,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           result['hideOnlineStatus'] as bool? ?? _hideOnlineStatus;
       _minMatchAge = result['minAge'] as int?;
       _maxMatchAge = result['maxAge'] as int?;
+      _matchGenderPreference =
+          result['matchGenderPreference'] as String? ?? 'all';
     });
   }
 

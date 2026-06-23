@@ -4,9 +4,10 @@ import '../../../data/services/user_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/match_seen_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../matches/widgets/match_likes_sheet.dart';
 import '../../matches/widgets/match_swipe_deck.dart';
 import '../../models/match_preview.dart';
-import '../../profile/screens/edit_profile_screen.dart';
+import '../../profile/navigation/open_edit_profile.dart';
 import '../../profile/screens/user_profile_screen.dart';
 import '../../widgets/common/custom_notification.dart';
 
@@ -24,6 +25,7 @@ class _MatchesScreenState extends State<MatchesScreen>
   bool _isLoading = true;
   UserModel? _currentUser;
   late List<MatchPreview> _matches;
+  int _deckEpoch = 0;
 
   final UserService _userService = UserService();
   final MatchSeenService _matchSeenService = MatchSeenService();
@@ -50,9 +52,10 @@ class _MatchesScreenState extends State<MatchesScreen>
       );
 
       final otherUsers = await _userService.getOtherUsers(
-        limit: 20,
+        limit: 30,
         latitude: _currentUser!.lastLatitude,
         longitude: _currentUser!.lastLongitude,
+        radiusKm: 50,
       );
       final mutualMatches = await _userService.getMutualMatches();
       final mutualIds = mutualMatches.map((u) => u.id).toSet();
@@ -103,19 +106,39 @@ class _MatchesScreenState extends State<MatchesScreen>
   }
 
   Future<void> _refreshMatches({bool resetSeen = false}) async {
-    if (_currentUser == null) {
-      return;
-    }
-
     setState(() {
       _isLoading = true;
     });
 
     try {
+      final user = await _userService.getCurrentUser();
+      if (!mounted) return;
+      _currentUser = user;
+
       if (resetSeen) {
-        await _matchSeenService.clear(_currentUser!.id);
+        await _matchSeenService.clear(user.id);
       }
       await _loadMatches();
+      if (!mounted) return;
+
+      setState(() {
+        _deckEpoch++;
+      });
+
+      if (_matches.isEmpty) {
+        CustomNotification.show(context, 'Новых анкет пока нет');
+      } else {
+        CustomNotification.success(context, 'Подборка обновлена');
+      }
+    } catch (e) {
+      LoggerService.error('🔴 [MatchesScreen] Error refreshing matches: $e');
+      if (mounted) {
+        CustomNotification.show(
+          context,
+          'Не удалось обновить подборку',
+          isError: true,
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -198,10 +221,7 @@ class _MatchesScreenState extends State<MatchesScreen>
   }
 
   Future<void> _openEditProfile() async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-    );
+    final result = await openEditProfile(context);
     if (result == true && mounted) {
       CustomNotification.success(context, 'Профиль успешно обновлен!');
     }
@@ -363,12 +383,14 @@ class _MatchesScreenState extends State<MatchesScreen>
   }
 
   Widget _buildNoMatchesScreen() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
+    return Stack(
+      children: <Widget>[
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -439,8 +461,11 @@ class _MatchesScreenState extends State<MatchesScreen>
               ),
             ),
           ],
+            ),
+          ),
         ),
-      ),
+        if (_currentUser != null) _buildLikesButton(),
+      ],
     );
   }
 
@@ -488,6 +513,7 @@ class _MatchesScreenState extends State<MatchesScreen>
         ),
         Positioned.fill(
           child: MatchSwipeDeck(
+            key: ValueKey('matches-deck-$_deckEpoch'),
             matches: _matches,
             onOpenProfile: _openUserProfile,
             onSwipe: (action, match) {
@@ -511,7 +537,16 @@ class _MatchesScreenState extends State<MatchesScreen>
             },
           ),
         ),
+        if (_currentUser != null) _buildLikesButton(),
       ],
+    );
+  }
+
+  Widget _buildLikesButton() {
+    return Positioned(
+      top: MediaQuery.paddingOf(context).top + 8,
+      right: 16,
+      child: MatchLikesButton(currentUser: _currentUser!),
     );
   }
 

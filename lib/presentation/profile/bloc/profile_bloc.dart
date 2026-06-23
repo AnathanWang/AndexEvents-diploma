@@ -111,6 +111,12 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         showInMatches: event.showInMatches,
         incognitoMode: event.incognitoMode,
         hideOnlineStatus: event.hideOnlineStatus,
+        minAge: event.minAge,
+        maxAge: event.maxAge,
+        clearMinAge: event.clearMinAge,
+        clearMaxAge: event.clearMaxAge,
+        matchGenderPreference: event.matchGenderPreference,
+        clearMatchGenderPreference: event.clearMatchGenderPreference,
       );
 
       // Перезагружаем профиль

@@ -63,10 +63,18 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck>
   @override
   void didUpdateWidget(covariant MatchSwipeDeck oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.matches != widget.matches) {
+    if (!_sameMatchIds(oldWidget.matches, widget.matches)) {
       _currentIndex = 0;
       _resetDrag();
     }
+  }
+
+  bool _sameMatchIds(List<MatchPreview> a, List<MatchPreview> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return false;
+    }
+    return true;
   }
 
   void _onPanStart(DragStartDetails details) {
@@ -91,6 +99,12 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck>
     if (drag.dy < -screenHeight * 0.25) {
       widget.onSwipe(MatchSwipeAction.later, match);
       _animateCardOut(const Offset(0, -1000));
+      return;
+    }
+
+    if (drag.dy > screenHeight * 0.18) {
+      widget.onOpenProfile(match);
+      _animateDragTo(Offset.zero, duration: const Duration(milliseconds: 280));
       return;
     }
 
@@ -171,6 +185,7 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck>
     if (drag.dx > 50) return Colors.green;
     if (drag.dx < -50) return Colors.red;
     if (drag.dy < -50) return Colors.blue;
+    if (drag.dy > 50) return AppColors.primary;
     return Colors.transparent;
   }
 
@@ -178,6 +193,7 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck>
     if (drag.dx > 50) return 'НРАВИТСЯ';
     if (drag.dx < -50) return 'НЕ НРАВИТСЯ';
     if (drag.dy < -50) return 'ЕЩЁ ПОДУМАЮ';
+    if (drag.dy > 50) return 'ПРОФИЛЬ';
     return '';
   }
 
@@ -498,6 +514,9 @@ class _SwipeIndicator extends StatelessWidget {
     } else if (dragPosition.dy < -50) {
       icon = Icons.bookmark_add_rounded;
       caption = 'Отпустите, чтобы вернуться позже';
+    } else if (dragPosition.dy > 50) {
+      icon = Icons.person_rounded;
+      caption = 'Отпустите, чтобы открыть профиль';
     } else {
       return const SizedBox.shrink();
     }

@@ -1,6 +1,7 @@
 package com.andexevents.users.repo;
 
 import com.andexevents.users.model.GlobalMatchContext;
+import com.andexevents.users.model.MapUserDto;
 import com.andexevents.users.model.UserDto;
 import com.andexevents.users.service.UserService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -228,7 +229,8 @@ public class UserRepository {
             double radiusKm,
             int limit,
             Integer minAge,
-            Integer maxAge
+            Integer maxAge,
+            String matchGenderPreference
     ) {
         double earthRadiusKm = 6371.0;
         double latChange = (radiusKm / earthRadiusKm) * (180.0 / Math.PI);
@@ -290,10 +292,88 @@ public class UserRepository {
             params.add(maxAge);
         }
 
+        appendGenderFilter(sql, params, matchGenderPreference);
+
         sql.append("LIMIT ?");
         params.add(limit);
 
         return jdbcTemplate.query(sql.toString(), mapper(), params.toArray());
+    }
+
+    public List<MapUserDto> findMapUsers(
+            String userId,
+            double userLat,
+            double userLon,
+            double radiusKm,
+            int limit
+    ) {
+        double earthRadiusKm = 6371.0;
+        double latChange = (radiusKm / earthRadiusKm) * (180.0 / Math.PI);
+        double lonChange = (radiusKm / (earthRadiusKm * Math.cos((userLat * Math.PI) / 180.0))) * (180.0 / Math.PI);
+
+        double minLat = userLat - latChange;
+        double maxLat = userLat + latChange;
+        double minLon = userLon - lonChange;
+        double maxLon = userLon + lonChange;
+
+        String sql = """
+                SELECT u.id, u."displayName", u."photoUrl", u.age, u."lastLatitude", u."lastLongitude"
+                FROM users."User" u
+                WHERE u.id <> ?
+                  AND u."isOnboardingCompleted" = true
+                  AND u."isProfileVisible" = true
+                  AND u."isLocationVisible" = true
+                  AND u."lastLatitude" IS NOT NULL
+                  AND u."lastLongitude" IS NOT NULL
+                  AND u."lastLatitude" BETWEEN ? AND ?
+                  AND u."lastLongitude" BETWEEN ? AND ?
+                  AND NOT EXISTS (
+                    SELECT 1 FROM users."UserBlock" b
+                    WHERE (b."blockerId" = ? AND b."targetUserId" = u.id)
+                       OR (b."blockerId" = u.id AND b."targetUserId" = ?)
+                  )
+                LIMIT ?
+                """;
+
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new MapUserDto(
+                        rs.getString("id"),
+                        rs.getString("displayName"),
+                        rs.getString("photoUrl"),
+                        (Integer) rs.getObject("age"),
+                        (Double) rs.getObject("lastLatitude"),
+                        (Double) rs.getObject("lastLongitude")
+                ),
+                userId,
+                minLat,
+                maxLat,
+                minLon,
+                maxLon,
+                userId,
+                userId,
+                limit
+        );
+    }
+
+    private void appendGenderFilter(StringBuilder sql, List<Object> params, String matchGenderPreference) {
+        if (matchGenderPreference == null || matchGenderPreference.isBlank()) {
+            return;
+        }
+
+        String normalized = matchGenderPreference.trim().toLowerCase(Locale.ROOT);
+        if ("all".equals(normalized)) {
+            return;
+        }
+
+        if ("male".equals(normalized) || "мужской".equals(normalized) || "m".equals(normalized)) {
+            sql.append("AND LOWER(u.\"gender\") IN ('male', 'мужской', 'm') ");
+            return;
+        }
+
+        if ("female".equals(normalized) || "женский".equals(normalized) || "f".equals(normalized)) {
+            sql.append("AND LOWER(u.\"gender\") IN ('female', 'женский', 'f') ");
+        }
     }
 
     private RowMapper<UserDto> mapper() {
@@ -347,6 +427,7 @@ public class UserRepository {
                 (Boolean) rs.getObject("showInMatches"),
                 (Boolean) rs.getObject("incognitoMode"),
                 (Boolean) rs.getObject("hideOnlineStatus"),
+                rs.getString("matchGenderPreference"),
                 rs.getString("fcmToken"),
                 (Boolean) rs.getObject("isOnboardingCompleted"),
                 toInstant(rs.getObject("createdAt")),

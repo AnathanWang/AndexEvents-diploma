@@ -35,6 +35,17 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
 
   final List<String> _genders = <String>['Мужской', 'Женский', 'Не указывать'];
 
+  String? _normalizeGender(String? raw) {
+    switch (raw) {
+      case 'Мужской':
+        return 'male';
+      case 'Женский':
+        return 'female';
+      default:
+        return null;
+    }
+  }
+
   @override
   void dispose() {
     _ageController.dispose();
@@ -87,7 +98,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
         await _userService.updateProfile(
           photoUrl: photoUrl,
           age: int.tryParse(_ageController.text),
-          gender: _selectedGender,
+          gender: _normalizeGender(_selectedGender),
         ).timeout(
           const Duration(seconds: 15),
           onTimeout: () {
@@ -165,7 +176,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
 
       await _userService.updateProfile(
         age: int.tryParse(_ageController.text),
-        gender: _selectedGender,
+        gender: _normalizeGender(_selectedGender),
       );
 
       if (!mounted) return;

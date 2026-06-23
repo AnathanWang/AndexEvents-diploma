@@ -14,7 +14,6 @@ import '../../matches/screens/event_match_screen.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/widgets/auth_glass_card.dart';
 import '../../auth/widgets/auth_glass_scaffold.dart';
-import '../../widgets/glass_scene_stack.dart';
 import '../../profile/screens/user_profile_screen.dart';
 import '../../../data/services/rating_service.dart';
 import '../../../data/services/user_service.dart';
@@ -51,7 +50,10 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
       ValueNotifier<bool>(false);
   final ValueNotifier<bool> _isGoingLoadingNotifier =
       ValueNotifier<bool>(false);
-  int _currentImageIndex = 0;
+  final ValueNotifier<bool> _isCheckedInNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _isCheckInLoadingNotifier =
+      ValueNotifier<bool>(false);
+  final ValueNotifier<int> _currentImageIndexNotifier = ValueNotifier<int>(0);
   EventModel? _cachedEvent;
   final ExternalRouteService _routeService = ExternalRouteService();
   final UserService _userService = UserService();
@@ -204,12 +206,53 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
     }
   }
 
+  Future<void> _toggleCheckIn(EventModel event) async {
+    if (_isEventFinished(event)) {
+      CustomNotification.show(context, EventMessages.eventFinishedActionBlocked);
+      return;
+    }
+
+    if (event.userParticipationStatus != 'GOING') {
+      CustomNotification.show(
+        context,
+        'Сначала подтвердите участие',
+        isError: true,
+      );
+      return;
+    }
+
+    final next = !_isCheckedInNotifier.value;
+    _isCheckInLoadingNotifier.value = true;
+    try {
+      await _manageService.setSelfCheckIn(event.id, checkedIn: next);
+      if (!mounted) return;
+      _isCheckedInNotifier.value = next;
+      context.read<EventBloc>().add(EventDetailLoadRequested(event.id));
+      CustomNotification.show(
+        context,
+        next ? 'Присутствие отмечено' : 'Чек-ин отменён',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().replaceFirst('Exception: ', '').trim();
+      CustomNotification.show(context, msg, isError: true);
+    } finally {
+      if (mounted) {
+        _isCheckInLoadingNotifier.value = false;
+      }
+    }
+  }
+
   @override
   void dispose() {
     _isFavoriteNotifier.dispose();
     _isGoingNotifier.dispose();
+    _isCheckedInNotifier.dispose();
     _isFavoriteLoadingNotifier.dispose();
     _isGoingLoadingNotifier.dispose();
+    _isCheckInLoadingNotifier.dispose();
+    _myRatingNotifier.dispose();
+    _currentImageIndexNotifier.dispose();
     super.dispose();
   }
 
@@ -242,29 +285,20 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<EventBloc, EventState>(
-      listenWhen: (previous, current) {
-        // Слушаем все состояния для обновления кнопки участия
-        return true;
-      },
+      listenWhen: (previous, current) =>
+          current is EventDetailLoaded ||
+          current is EventError ||
+          current is EventParticipationUpdating,
       listener: (context, state) {
         if (state is EventDetailLoaded) {
-          if (mounted) {
-            setState(() {
-              _cachedEvent = state.event;
-            });
-          } else {
-            _cachedEvent = state.event;
-          }
           _isGoingNotifier.value = state.event.isParticipating;
           _isFavoriteNotifier.value =
               state.event.userParticipationStatus == 'INTERESTED';
+          _isCheckedInNotifier.value = state.event.isCheckedIn;
           _myRatingNotifier.value = state.event.myRating;
           _isFavoriteLoadingNotifier.value = false;
           _isGoingLoadingNotifier.value = false;
-        } else if (state is EventParticipationUpdating) {
-          // Локальные индикаторы уже включаются при нажатии соответствующей кнопки.
-        } else if (state is EventParticipationUpdated) {
-          // Ждем EventDetailLoaded, где индикаторы выключаются точечно.
+          _isCheckInLoadingNotifier.value = false;
         } else if (state is EventError) {
           _isFavoriteLoadingNotifier.value = false;
           _isGoingLoadingNotifier.value = false;
@@ -279,16 +313,18 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
           return false;
         }
 
-        // После первого успешного лоада не перестраиваем весь экран
-        // на detail-reload после нажатий лайк/участвовать.
-        if (_cachedEvent != null &&
-            (current is EventDetailLoading || current is EventDetailLoaded)) {
+        if (_cachedEvent != null && current is EventDetailLoading) {
           return false;
         }
 
         return true;
       },
       builder: (context, state) {
+        if (state is EventDetailLoaded) {
+          _cachedEvent = state.event;
+          return _buildEventDetail(context, state.event);
+        }
+
         if (_cachedEvent != null) {
           return _buildEventDetail(context, _cachedEvent!);
         }
@@ -375,11 +411,6 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
           );
         }
 
-        if (state is EventDetailLoaded) {
-          _cachedEvent = state.event;
-          return _buildEventDetail(context, state.event);
-        }
-
         return const AuthGlassScaffold(
           child: Center(
             child: CircularProgressIndicator(color: AppColors.primary),
@@ -400,20 +431,17 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: GlassSceneStack(
-        child: CustomScrollView(
-            slivers: [
+      body: CustomScrollView(
+        cacheExtent: 400,
+        slivers: [
           // App Bar с изображением
           EventDetailSliverAppBar(
             event: event,
             categoryColor: categoryColor,
             imageGallery: imageGallery,
-            currentImageIndex: _currentImageIndex,
+            currentImageIndexListenable: _currentImageIndexNotifier,
             onImageIndexChanged: (index) {
-              if (!mounted) return;
-              setState(() {
-                _currentImageIndex = index;
-              });
+              _currentImageIndexNotifier.value = index;
             },
             favoriteAction: _buildFavoriteAction(event),
             onBack: () => Navigator.of(context).pop(),
@@ -424,9 +452,10 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
 
           // Контент
           SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            child: RepaintBoundary(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 EventDetailHeaderCard(
                   event: event,
                   categoryName: categoryName,
@@ -495,12 +524,12 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                 const SizedBox(height: 100),
               ],
             ),
+            ),
           ),
         ],
       ),
-    ),
 
-      bottomSheet: EventDetailBottomBar(
+      bottomNavigationBar: EventDetailBottomBar(
         event: event,
         isEventFinished: _isEventFinished(event),
         categoryColor: categoryColor,
@@ -509,6 +538,12 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
         myRating: _myRatingNotifier,
         onToggleGoing: () => _toggleGoing(event),
         onRate: () => _showRatingDialog(event),
+        showCheckInButton: !_isCreator(event) &&
+            !_isEventFinished(event) &&
+            event.userParticipationStatus == 'GOING',
+        isCheckedIn: _isCheckedInNotifier,
+        isCheckInLoading: _isCheckInLoadingNotifier,
+        onToggleCheckIn: () => _toggleCheckIn(event),
       ),
     );
   }
