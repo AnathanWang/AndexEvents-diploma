@@ -5,9 +5,22 @@ import 'package:flutter/material.dart';
 import '../../../widgets/common/custom_notification.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/services/event_participants_manage_service.dart';
+import '../../../../core/utils/media_url_utils.dart';
 import '../../../../data/models/managed_participant_model.dart';
 import '../../../../data/models/waitlist_entry_model.dart';
 import '../../../../data/models/user_preview_model.dart';
+
+enum _BlocklistScope { event, global }
+
+class _BlocklistEntry {
+  const _BlocklistEntry({
+    required this.user,
+    required this.scope,
+  });
+
+  final UserPreviewModel user;
+  final _BlocklistScope scope;
+}
 
 class EventManageParticipantsSheet extends StatefulWidget {
   const EventManageParticipantsSheet({
@@ -33,7 +46,7 @@ class _EventManageParticipantsSheetState
 
   List<ManagedParticipantModel> _participants = const [];
   List<WaitlistEntryModel> _waitlist = const [];
-  List<UserPreviewModel> _blocked = const [];
+  List<_BlocklistEntry> _blocked = const [];
 
   @override
   void initState() {
@@ -46,33 +59,77 @@ class _EventManageParticipantsSheetState
       _loading = true;
       _error = null;
     });
+
+    Object? participantsError;
+    Object? waitlistError;
+
+    List<ManagedParticipantModel> participants = const [];
+    List<WaitlistEntryModel> waitlist = const [];
+    List<_BlocklistEntry> blocked = const [];
+
     try {
-      final results = await Future.wait<dynamic>([
-        widget.service.listManageParticipants(widget.eventId),
-        widget.service.listWaitlist(widget.eventId),
-        widget.service.listGlobalBlocked(),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _participants = results[0] as List<ManagedParticipantModel>;
-        _waitlist = results[1] as List<WaitlistEntryModel>;
-        _blocked = results[2] as List<UserPreviewModel>;
-        _loading = false;
-      });
+      participants = await widget.service.listManageParticipants(widget.eventId);
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '').trim();
-        _loading = false;
-      });
+      participantsError = e;
     }
+
+    try {
+      waitlist = await widget.service.listWaitlist(widget.eventId);
+    } catch (e) {
+      waitlistError = e;
+    }
+
+    List<UserPreviewModel> eventBanned = const [];
+    List<UserPreviewModel> globalBlocked = const [];
+
+    try {
+      eventBanned = await widget.service.listEventBans(widget.eventId);
+    } catch (_) {}
+
+    try {
+      globalBlocked = await widget.service.listGlobalBlocked();
+    } catch (_) {}
+
+    final seen = <String>{};
+    final merged = <_BlocklistEntry>[];
+    for (final user in eventBanned) {
+      if (seen.add(user.id)) {
+        merged.add(_BlocklistEntry(user: user, scope: _BlocklistScope.event));
+      }
+    }
+    for (final user in globalBlocked) {
+      if (seen.add(user.id)) {
+        merged.add(_BlocklistEntry(user: user, scope: _BlocklistScope.global));
+      }
+    }
+    blocked = merged;
+
+    if (!mounted) return;
+
+    final primaryError = participantsError ?? waitlistError;
+    setState(() {
+      _participants = participants;
+      _waitlist = waitlist;
+      _blocked = blocked;
+      _loading = false;
+      _error = primaryError == null
+          ? null
+          : primaryError.toString().replaceFirst('Exception: ', '').trim();
+    });
   }
 
-  Future<void> _run(Future<void> Function() fn) async {
+  Future<void> _run(
+    Future<void> Function() fn, {
+    String? successMessage,
+  }) async {
     setState(() => _actionInProgress = true);
     try {
       await fn();
       await _load();
+      if (!mounted) return;
+      if (successMessage != null && successMessage.trim().isNotEmpty) {
+        CustomNotification.show(context, successMessage);
+      }
     } catch (e) {
       if (!mounted) return;
       CustomNotification.show(
@@ -260,17 +317,32 @@ class _EventManageParticipantsSheetState
                 enabled: !_actionInProgress,
                 onSelected: (v) {
                   if (v == 'kick') {
-                    _run(() => widget.service.kick(widget.eventId, p.participant.userId));
+                    _run(
+                      () => widget.service.kick(widget.eventId, p.participant.userId),
+                      successMessage: 'Участник удалён',
+                    );
                   } else if (v == 'ban') {
-                    _run(() => widget.service.banForEvent(widget.eventId, p.participant.userId));
+                    _run(
+                      () => widget.service.banForEvent(
+                            widget.eventId,
+                            p.participant.userId,
+                          ),
+                      successMessage: 'Участник заблокирован на событии',
+                    );
                   } else if (v == 'checkin') {
-                    _run(() => widget.service.setCheckIn(
-                          widget.eventId,
-                          p.participant.userId,
-                          checkedIn: !p.checkedIn,
-                        ));
+                    _run(
+                      () => widget.service.setCheckIn(
+                            widget.eventId,
+                            p.participant.userId,
+                            checkedIn: !p.checkedIn,
+                          ),
+                      successMessage: p.checkedIn ? 'Чек-ин снят' : 'Чек-ин отмечен',
+                    );
                   } else if (v == 'block') {
-                    _run(() => widget.service.blockGlobally(p.participant.userId));
+                    _run(
+                      () => widget.service.blockGlobally(p.participant.userId),
+                      successMessage: 'Участник заблокирован глобально',
+                    );
                   }
                 },
                 itemBuilder: (_) => const [
@@ -343,7 +415,8 @@ class _EventManageParticipantsSheetState
     if (_blocked.isEmpty) {
       return _EmptyState(
         title: 'Блоклист пуст',
-        subtitle: 'Здесь будут пользователи, которых вы заблокировали глобально.',
+        subtitle:
+            'Здесь появятся пользователи после бана на событии или глобальной блокировки.',
       );
     }
 
@@ -352,19 +425,45 @@ class _EventManageParticipantsSheetState
       itemCount: _blocked.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
-        final u = _blocked[i];
+        final entry = _blocked[i];
+        final u = entry.user;
+        final isGlobal = entry.scope == _BlocklistScope.global;
         return _GlassRow(
           leading: _Avatar(url: u.photoUrl, label: u.displayName),
           title: u.displayName,
           subtitle: u.email ?? '',
-          trailing: OutlinedButton(
-            onPressed: _actionInProgress ? null : () => _run(() => widget.service.unblockGlobally(u.id)),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: BorderSide(color: AppColors.primary.withValues(alpha: 0.34)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Разблок.'),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _pill(
+                isGlobal ? 'ГЛОБАЛЬНО' : 'СОБЫТИЕ',
+                bg: isGlobal
+                    ? const Color(0xFFFFECEF)
+                    : const Color(0xFFFFF3E6),
+                fg: isGlobal
+                    ? const Color(0xFFC6284D)
+                    : const Color(0xFFB66A1E),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: _actionInProgress
+                    ? null
+                    : () => _run(
+                          () => isGlobal
+                              ? widget.service.unblockGlobally(u.id)
+                              : widget.service.unbanForEvent(widget.eventId, u.id),
+                          successMessage: isGlobal
+                              ? 'Глобальная блокировка снята'
+                              : 'Бан на событии снят',
+                        ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.34)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Разблок.'),
+              ),
+            ],
           ),
         );
       },
@@ -569,7 +668,7 @@ class _Avatar extends StatelessWidget {
       child: url != null && url!.trim().isNotEmpty
           ? ClipOval(
               child: Image.network(
-                url!,
+                MediaUrlUtils.resolve(url!),
                 width: 44,
                 height: 44,
                 fit: BoxFit.cover,

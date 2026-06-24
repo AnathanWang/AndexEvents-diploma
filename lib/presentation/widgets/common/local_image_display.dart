@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../../core/network/app_image_cache_manager.dart';
+import '../../../core/utils/media_url_utils.dart';
+
 /// Виджет для отображения изображений с бэкенда
 class LocalImageDisplay extends StatelessWidget {
   final String imageUrl;
@@ -25,7 +28,9 @@ class LocalImageDisplay extends StatelessWidget {
     return ClipRRect(
       borderRadius: borderRadius ?? BorderRadius.zero,
       child: CachedNetworkImage(
-        imageUrl: imageUrl,
+        imageUrl: MediaUrlUtils.resolve(imageUrl),
+        cacheManager: AppImageCacheManager.instance,
+        httpHeaders: TimeoutHttpFileService.defaultHeaders,
         fit: fit,
         width: width,
         height: height,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'common/app_network_image.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -137,7 +137,7 @@ class _EventCarouselState extends State<EventCarousel> {
             if (event.imageUrl != null)
               ClipRRect(
                 borderRadius: BorderRadius.circular(18),
-                child: CachedNetworkImage(
+                child: AppNetworkImage(
                   imageUrl: event.imageUrl!,
                   fit: BoxFit.cover,
                   memCacheWidth: imageMemCachePx(280, context),

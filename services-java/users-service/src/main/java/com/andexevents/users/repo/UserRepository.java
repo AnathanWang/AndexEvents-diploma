@@ -239,7 +239,8 @@ public class UserRepository {
             int limit,
             Integer minAge,
             Integer maxAge,
-            String matchGenderPreference
+            String matchGenderPreference,
+            boolean includeActed
     ) {
         double earthRadiusKm = 6371.0;
         double latChange = (radiusKm / earthRadiusKm) * (180.0 / Math.PI);
@@ -266,15 +267,7 @@ public class UserRepository {
                 "AND u.\"lastLatitude\" BETWEEN ? AND ? " +
                 "AND u.\"lastLongitude\" BETWEEN ? AND ? " +
                 "AND NOT EXISTS (" +
-                "SELECT 1 FROM users.\"UserBlock\" b WHERE (b.\"blockerId\" = ? AND b.\"targetUserId\" = u.id) OR (b.\"blockerId\" = u.id AND b.\"targetUserId\" = ?)) " +
-                "AND NOT EXISTS (" +
-                "SELECT 1 FROM \"Match\" m " +
-                "WHERE COALESCE(m.\"eventId\", '') = '' " +
-                "AND (" +
-                "  (m.\"userAId\" = ? AND m.\"userBId\" = u.id AND m.\"userAAction\" IS NOT NULL) " +
-                "  OR (m.\"userBId\" = ? AND m.\"userAId\" = u.id AND m.\"userBAction\" IS NOT NULL) " +
-                "  OR (COALESCE(m.\"isMutual\", false) = true AND ((m.\"userAId\" = ? AND m.\"userBId\" = u.id) OR (m.\"userBId\" = ? AND m.\"userAId\" = u.id)))" +
-                ")) "
+                "SELECT 1 FROM users.\"UserBlock\" b WHERE (b.\"blockerId\" = ? AND b.\"targetUserId\" = u.id) OR (b.\"blockerId\" = u.id AND b.\"targetUserId\" = ?)) "
         );
 
         List<Object> params = new ArrayList<>();
@@ -287,10 +280,34 @@ public class UserRepository {
         params.add(maxLon);
         params.add(userId);
         params.add(userId);
-        params.add(userId);
-        params.add(userId);
-        params.add(userId);
-        params.add(userId);
+
+        if (includeActed) {
+            sql.append(
+                "AND NOT EXISTS (" +
+                "SELECT 1 FROM \"Match\" m " +
+                "WHERE COALESCE(m.\"eventId\", '') = '' " +
+                "AND COALESCE(m.\"isMutual\", false) = true " +
+                "AND ((m.\"userAId\" = ? AND m.\"userBId\" = u.id) OR (m.\"userBId\" = ? AND m.\"userAId\" = u.id))" +
+                ") "
+            );
+            params.add(userId);
+            params.add(userId);
+        } else {
+            sql.append(
+                "AND NOT EXISTS (" +
+                "SELECT 1 FROM \"Match\" m " +
+                "WHERE COALESCE(m.\"eventId\", '') = '' " +
+                "AND (" +
+                "  (m.\"userAId\" = ? AND m.\"userBId\" = u.id AND m.\"userAAction\" IS NOT NULL) " +
+                "  OR (m.\"userBId\" = ? AND m.\"userAId\" = u.id AND m.\"userBAction\" IS NOT NULL) " +
+                "  OR (COALESCE(m.\"isMutual\", false) = true AND ((m.\"userAId\" = ? AND m.\"userBId\" = u.id) OR (m.\"userBId\" = ? AND m.\"userAId\" = u.id)))" +
+                ")) "
+            );
+            params.add(userId);
+            params.add(userId);
+            params.add(userId);
+            params.add(userId);
+        }
 
         if (minAge != null) {
             sql.append("AND age >= ? ");
@@ -334,7 +351,10 @@ public class UserRepository {
                   AND u."isLocationVisible" = true
                   AND u."lastLatitude" IS NOT NULL
                   AND u."lastLongitude" IS NOT NULL
-                  AND u."lastLocationUpdate" > NOW() - INTERVAL '3 minutes'
+                  AND (
+                    u.id LIKE 'fake-match-%'
+                    OR u."lastLocationUpdate" > NOW() - INTERVAL '3 minutes'
+                  )
                   AND u."lastLatitude" BETWEEN ? AND ?
                   AND u."lastLongitude" BETWEEN ? AND ?
                   AND NOT EXISTS (
@@ -363,6 +383,16 @@ public class UserRepository {
                 userId,
                 userId,
                 limit
+        );
+    }
+
+    public int refreshDemoBotLocationTimestamps() {
+        return jdbcTemplate.update(
+                "UPDATE users.\"User\" SET \"lastLocationUpdate\" = NOW(), \"updatedAt\" = NOW() " +
+                        "WHERE id LIKE 'fake-match-%' " +
+                        "AND \"isLocationVisible\" = true " +
+                        "AND \"lastLatitude\" IS NOT NULL " +
+                        "AND \"lastLongitude\" IS NOT NULL"
         );
     }
 

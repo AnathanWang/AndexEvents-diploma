@@ -11,6 +11,9 @@ import '../events/bloc/event_event.dart';
 import '../events/bloc/event_state.dart';
 import '../profile/bloc/profile_bloc.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/match/match_auto_refresh.dart';
+import '../../core/match/match_refresh_bus.dart';
+import '../../core/events/event_refresh_bus.dart';
 import '../../data/services/location_sync_service.dart';
 import '../../data/services/user_service.dart';
 import '../../data/models/user_sanction_model.dart';
@@ -66,6 +69,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _loadMutualMatches();
     _refreshCreateEventAccess();
     LocationSyncService.instance.start();
+    MatchAutoRefresh.instance.start();
   }
 
   @override
@@ -73,10 +77,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.resumed:
         LocationSyncService.instance.start();
+        MatchAutoRefresh.instance.start();
+        _loadMutualMatches();
+        MatchRefreshBus.instance.notify();
+        EventRefreshBus.instance.notify();
         break;
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
         LocationSyncService.instance.stop();
+        MatchAutoRefresh.instance.stop();
         break;
       case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
@@ -142,6 +151,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     HapticFeedback.selectionClick();
     setState(() => _index = index);
 
+    if (index == 0 || index == 1) {
+      EventRefreshBus.instance.notify();
+    }
+    if (index == 2 || index == 3) {
+      _loadMutualMatches();
+      MatchRefreshBus.instance.notify();
+    }
+
     // Map reloads via its own viewport logic when mounted.
     if (index == 1 && _feedEventBloc.state is! EventsLoaded) {
       _feedEventBloc.add(const EventsLoadRequested());
@@ -187,9 +204,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
     if (!mounted) return;
     if (created == true) {
-      // Refresh both map "nearby" and feed lists after a new event is created.
-      _mapEventBloc.add(const EventsLoadRequested());
-      _feedEventBloc.add(const EventsLoadRequested());
+      EventRefreshBus.instance.notify();
+      _mapEventBloc.add(
+        const EventsLoadRequested(skipCache: true, silent: true, mergeWithExisting: true),
+      );
+      _feedEventBloc.add(
+        const EventsLoadRequested(skipCache: true, silent: true),
+      );
     }
   }
 
@@ -206,7 +227,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             users.map(
               (u) => MatchPreview.fromUserModel(
                 u,
-                currentUserInterests: currentUser.interests,
                 currentUser: currentUser,
               ),
             ),
@@ -225,6 +245,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     LocationSyncService.instance.stop();
+    MatchAutoRefresh.instance.stop();
     _mapEventBloc.close();
     _feedEventBloc.close();
     _profileBloc.close();

@@ -6,12 +6,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/services/logger_service.dart';
+import '../../../core/events/event_refresh_listener.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/event_recommendation_utils.dart';
 import '../../events/bloc/event_bloc.dart';
 import '../../events/bloc/event_event.dart';
 import '../../events/bloc/event_state.dart';
 import '../../events/screens/real_event_detail_screen.dart';
 import '../../../data/models/event_model.dart';
+import '../../../data/services/event_service.dart';
+import '../../../data/services/user_service.dart';
 import '../../widgets/event_carousel.dart';
 import './search_screen.dart';
 import 'events_feed/events_feed_widgets.dart';
@@ -26,7 +30,8 @@ class EventsFeedScreen extends StatefulWidget {
   State<EventsFeedScreen> createState() => _EventsFeedScreenState();
 }
 
-class _EventsFeedScreenState extends State<EventsFeedScreen> {
+class _EventsFeedScreenState extends State<EventsFeedScreen>
+    with EventRefreshListener<EventsFeedScreen> {
   late TextEditingController _searchController;
   List<EventModel> _filteredEvents = [];
   List<EventModel> _allEvents = [];
@@ -49,17 +54,57 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
   Map<String, dynamic> _currentFilters = {
     'category': 'all',
     'date': 'all',
-    'sort': 'nearest',
+    'sort': 'recommended',
     'price': 'all',
     'format': 'all',
   };
   Timer? _searchDebounce;
+  final UserService _userService = UserService();
+  final EventService _eventService = EventService();
+  EventRecommendationProfile _recommendationProfile =
+      const EventRecommendationProfile(user: null, preferredCategories: {});
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController();
     context.read<EventBloc>().add(const EventsLoadRequested());
+    _loadRecommendationProfile();
+  }
+
+  @override
+  void onEventsShouldRefresh() {
+    context.read<EventBloc>().add(
+      const EventsLoadRequested(skipCache: true, silent: true),
+    );
+    _loadRecommendationProfile();
+  }
+
+  Future<void> _loadRecommendationProfile() async {
+    try {
+      final user = await _userService.getCurrentUser();
+      List<EventModel> participated = const <EventModel>[];
+      try {
+        participated = await _eventService.getUserParticipatedEvents(user.id);
+      } catch (_) {}
+
+      if (!mounted) return;
+      setState(() {
+        _recommendationProfile = EventRecommendationUtils.buildProfile(
+          user: user,
+          participatedEvents: participated,
+        );
+        _filterEvents(_allEvents, _searchController.text);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _recommendationProfile = const EventRecommendationProfile(
+          user: null,
+          preferredCategories: {},
+        );
+      });
+    }
   }
 
   @override
@@ -178,13 +223,21 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
           matchesFormat(event);
     }).toList();
 
-    final sort = (_currentFilters['sort'] ?? 'nearest') as String;
+    final sort = (_currentFilters['sort'] ?? 'recommended') as String;
     if (sort == 'rating') {
       out.sort((a, b) => b.averageRating.compareTo(a.averageRating));
     } else if (sort == 'popular') {
       out.sort((a, b) => b.participantsCount.compareTo(a.participantsCount));
-    } else {
+    } else if (sort == 'nearest') {
       out.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    } else {
+      final origin = _recommendationOrigin();
+      out = EventRecommendationUtils.sortEvents(
+        events: out,
+        profile: _recommendationProfile,
+        originLatitude: origin.$1,
+        originLongitude: origin.$2,
+      );
     }
 
     _filteredEvents = out;
@@ -290,6 +343,47 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
     return upcoming;
   }
 
+  (double?, double?) _recommendationOrigin() {
+    if (_selectedCityLatitude != null && _selectedCityLongitude != null) {
+      return (_selectedCityLatitude, _selectedCityLongitude);
+    }
+
+    final user = _recommendationProfile.user;
+    if (user?.lastLatitude != null && user?.lastLongitude != null) {
+      return (user!.lastLatitude, user.lastLongitude);
+    }
+
+    return (null, null);
+  }
+
+  void _openEventDetail(EventModel event) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => BlocProvider(
+          create: (context) => EventBloc(),
+          child: RealEventDetailScreen(eventId: event.id),
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 1.0);
+          const end = Offset.zero;
+          final curve = Curves.easeOutCubic;
+          final curvedAnimation = curve.transform(animation.value);
+          final tween = Tween(begin: begin, end: end);
+          final offsetAnimation = tween.animate(
+            AlwaysStoppedAnimation(curvedAnimation),
+          );
+
+          return SlideTransition(
+            position: offsetAnimation,
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 280),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<EventBloc, EventState>(
@@ -306,7 +400,9 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
           return FeedErrorState(
             message: state.message,
             onRetry: () {
-              context.read<EventBloc>().add(const EventsLoadRequested());
+              context.read<EventBloc>().add(
+                const EventsLoadRequested(skipCache: true),
+              );
             },
           );
         }
@@ -319,7 +415,9 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
 
           return RefreshIndicator(
             onRefresh: () async {
-              context.read<EventBloc>().add(const EventsLoadRequested());
+              context.read<EventBloc>().add(
+                const EventsLoadRequested(skipCache: true),
+              );
             },
             child: Container(
               decoration: BoxDecoration(
@@ -419,47 +517,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen> {
                       sliver: SliverToBoxAdapter(
                         child: EventCarousel(
                           events: _popularCarouselEvents,
-                          onEventSelected: (event) {
-                            Navigator.push(
-                              context,
-                              PageRouteBuilder(
-                                pageBuilder:
-                                    (context, animation, secondaryAnimation) =>
-                                        BlocProvider(
-                                          create: (context) => EventBloc(),
-                                          child: RealEventDetailScreen(
-                                            eventId: event.id,
-                                          ),
-                                        ),
-                                transitionsBuilder:
-                                    (
-                                      context,
-                                      animation,
-                                      secondaryAnimation,
-                                      child,
-                                    ) {
-                                  const begin = Offset(0.0, 1.0);
-                                  const end = Offset.zero;
-                                  final curve = Curves.easeOutCubic;
-                                  final curvedAnimation = curve.transform(
-                                    animation.value,
-                                  );
-                                  final tween = Tween(begin: begin, end: end);
-                                  final offsetAnimation = tween.animate(
-                                    AlwaysStoppedAnimation(curvedAnimation),
-                                  );
-
-                                  return SlideTransition(
-                                    position: offsetAnimation,
-                                    child: child,
-                                  );
-                                },
-                                transitionDuration: const Duration(
-                                  milliseconds: 280,
-                                ),
-                              ),
-                            );
-                          },
+                          onEventSelected: _openEventDetail,
                         ),
                       ),
                     ),

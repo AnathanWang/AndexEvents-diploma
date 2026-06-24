@@ -1,10 +1,9 @@
 import 'dart:math' as math;
 
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../widgets/common/app_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/media_url_utils.dart';
 import '../../../core/utils/performance_utils.dart';
 import '../../models/match_preview.dart';
 
@@ -35,7 +34,6 @@ class MatchSwipeDeck extends StatefulWidget {
 
 class _MatchSwipeDeckState extends State<MatchSwipeDeck>
     with SingleTickerProviderStateMixin {
-  int _currentIndex = 0;
   final ValueNotifier<Offset> _dragPosition = ValueNotifier(Offset.zero);
   bool _isAnimating = false;
   late final AnimationController _motionController;
@@ -63,18 +61,10 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck>
   @override
   void didUpdateWidget(covariant MatchSwipeDeck oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_sameMatchIds(oldWidget.matches, widget.matches)) {
-      _currentIndex = 0;
+    if (widget.matches.isEmpty) {
       _resetDrag();
+      _isAnimating = false;
     }
-  }
-
-  bool _sameMatchIds(List<MatchPreview> a, List<MatchPreview> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i].id != b[i].id) return false;
-    }
-    return true;
   }
 
   void _onPanStart(DragStartDetails details) {
@@ -93,12 +83,14 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck>
 
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final match = widget.matches[_currentIndex];
+    final match = widget.matches.first;
     final drag = _dragPosition.value;
 
     if (drag.dy < -screenHeight * 0.25) {
-      widget.onSwipe(MatchSwipeAction.later, match);
-      _animateCardOut(const Offset(0, -1000));
+      _animateCardOut(
+        const Offset(0, -1000),
+        () => widget.onSwipe(MatchSwipeAction.later, match),
+      );
       return;
     }
 
@@ -109,14 +101,18 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck>
     }
 
     if (drag.dx < -screenWidth * 0.4) {
-      widget.onSwipe(MatchSwipeAction.dislike, match);
-      _animateCardOut(const Offset(-1000, 0));
+      _animateCardOut(
+        const Offset(-1000, 0),
+        () => widget.onSwipe(MatchSwipeAction.dislike, match),
+      );
       return;
     }
 
     if (drag.dx > screenWidth * 0.4) {
-      widget.onSwipe(MatchSwipeAction.like, match);
-      _animateCardOut(const Offset(1000, 0));
+      _animateCardOut(
+        const Offset(1000, 0),
+        () => widget.onSwipe(MatchSwipeAction.like, match),
+      );
       return;
     }
 
@@ -147,7 +143,7 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck>
     onComplete?.call();
   }
 
-  void _animateCardOut(Offset targetPosition) {
+  void _animateCardOut(Offset targetPosition, VoidCallback onComplete) {
     _isAnimating = true;
     _motionController.duration = const Duration(milliseconds: 380);
     _motionAnimation = Tween<Offset>(
@@ -160,19 +156,17 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck>
     _motionController.forward(from: 0).then((_) {
       if (!mounted) return;
       _isAnimating = false;
-      _nextCard();
+      onComplete();
+      _finishCard();
     });
   }
 
-  void _nextCard() {
+  void _finishCard() {
     if (!mounted) return;
-    if (_currentIndex < widget.matches.length - 1) {
-      setState(() => _currentIndex++);
-    } else {
-      setState(() => _currentIndex = 0);
+    _resetDrag();
+    if (widget.matches.isEmpty) {
       widget.onDeckEmpty();
     }
-    _resetDrag();
   }
 
   double _rotationFor(Offset drag, double screenWidth) {
@@ -208,21 +202,23 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck>
     final top = widget.topPadding ?? (MediaQuery.of(context).padding.top + 22);
     final screenWidth = MediaQuery.sizeOf(context).width;
 
-    final current = widget.matches[_currentIndex];
+    final current = widget.matches.first;
 
     return Stack(
       children: [
-        if (_currentIndex < widget.matches.length - 1)
+        if (widget.matches.length > 1)
           Positioned.fill(
-            child: RepaintBoundary(
-              child: Transform.scale(
-                scale: 0.965,
-                child: Opacity(
-                  opacity: 0.55,
-                  child: _MatchCard(
-                    match: widget.matches[_currentIndex + 1],
-                    top: top,
-                    bottom: bottomInset + bottomNavReserve + 22,
+            child: IgnorePointer(
+              child: RepaintBoundary(
+                child: Transform.scale(
+                  scale: 0.965,
+                  child: Opacity(
+                    opacity: 0.55,
+                    child: _MatchCard(
+                      match: widget.matches[1],
+                      top: top,
+                      bottom: bottomInset + bottomNavReserve + 22,
+                    ),
                   ),
                 ),
               ),
@@ -327,8 +323,8 @@ class _MatchCard extends StatelessWidget {
               ),
             ),
             if (match.photoUrl != null)
-              CachedNetworkImage(
-                imageUrl: MediaUrlUtils.normalize(match.photoUrl!) ?? match.photoUrl!,
+              AppNetworkImage(
+                imageUrl: match.photoUrl!,
                 fit: BoxFit.cover,
                 width: double.infinity,
                 height: double.infinity,
@@ -590,4 +586,3 @@ class _SwipeIndicator extends StatelessWidget {
       );
   }
 }
-

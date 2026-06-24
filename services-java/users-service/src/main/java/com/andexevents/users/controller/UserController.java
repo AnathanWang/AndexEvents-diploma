@@ -275,7 +275,8 @@ public class UserController {
             @RequestParam(required = false) Double latitude,
             @RequestParam(required = false) Double longitude,
             @RequestParam(defaultValue = "50") double radiusKm,
-            @RequestParam(defaultValue = "20") int limit
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "false") boolean includeActed
     ) {
         AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
         if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
@@ -290,7 +291,14 @@ public class UserController {
             }
         }
 
-        List<UserDto> matches = userService.getMatches(auth.userId(), latitude, longitude, radiusKm, limit);
+        List<UserDto> matches = userService.getMatches(
+                auth.userId(),
+                latitude,
+                longitude,
+                radiusKm,
+                limit,
+                includeActed
+        );
         return ResponseEntity.ok(ApiResponse.ok(matches));
     }
 

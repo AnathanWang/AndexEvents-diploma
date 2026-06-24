@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/users/blocks")
+@RequestMapping("/api/events/organizer/blocks")
 public class OrganizerBlockController {
     private final EventService eventService;
 

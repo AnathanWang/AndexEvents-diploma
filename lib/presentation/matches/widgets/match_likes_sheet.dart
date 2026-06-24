@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../../core/match/match_refresh_listener.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/user_service.dart';
@@ -42,7 +43,8 @@ class MatchLikesSheet extends StatefulWidget {
   State<MatchLikesSheet> createState() => _MatchLikesSheetState();
 }
 
-class _MatchLikesSheetState extends State<MatchLikesSheet> {
+class _MatchLikesSheetState extends State<MatchLikesSheet>
+    with MatchRefreshListener<MatchLikesSheet> {
   final UserService _userService = UserService();
 
   _MatchLikesFilter _filter = _MatchLikesFilter.mutual;
@@ -54,6 +56,17 @@ class _MatchLikesSheetState extends State<MatchLikesSheet> {
   @override
   void initState() {
     super.initState();
+    _loadMatchesFor(_filter);
+  }
+
+  @override
+  void onMatchesShouldRefresh() {
+    _invalidateAndReload();
+  }
+
+  void _invalidateAndReload() {
+    _matchesByFilter.clear();
+    if (!mounted) return;
     _loadMatchesFor(_filter);
   }
 
@@ -92,7 +105,7 @@ class _MatchLikesSheetState extends State<MatchLikesSheet> {
           .map(
             (u) => MatchPreview.fromUserModel(
               u,
-              currentUserInterests: widget.currentUser.interests,
+              currentUser: widget.currentUser,
             ),
           )
           .toList();
@@ -123,11 +136,12 @@ class _MatchLikesSheetState extends State<MatchLikesSheet> {
       child: InkWell(
         borderRadius: BorderRadius.circular(999),
         onTap: () {
-          if (selected) return;
-          setState(() => _filter = filter);
-          if (_matchesByFilter[filter] == null) {
+          if (selected) {
             _loadMatchesFor(filter);
+            return;
           }
+          setState(() => _filter = filter);
+          _loadMatchesFor(filter);
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
@@ -206,23 +220,33 @@ class _MatchLikesSheetState extends State<MatchLikesSheet> {
     }
 
     if (matches.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 8),
-        child: Column(
+      return RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () => _loadMatchesFor(_filter),
+        child: ListView(
+          controller: scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
           children: <Widget>[
-            Icon(
-              Icons.favorite_border_rounded,
-              size: 42,
-              color: AppColors.dark.withValues(alpha: 0.28),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _emptyMessage(),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.dark.withValues(alpha: 0.58),
-                fontSize: 14,
-                height: 1.35,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 8),
+              child: Column(
+                children: <Widget>[
+                  Icon(
+                    Icons.favorite_border_rounded,
+                    size: 42,
+                    color: AppColors.dark.withValues(alpha: 0.28),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _emptyMessage(),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.dark.withValues(alpha: 0.58),
+                      fontSize: 14,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -230,29 +254,34 @@ class _MatchLikesSheetState extends State<MatchLikesSheet> {
       );
     }
 
-    return ListView.separated(
-      controller: scrollController,
-      padding: const EdgeInsets.only(bottom: 24),
-      itemCount: matches.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final match = matches[index];
-        return MatchCard(
-          match: match,
-          onOpenProfile: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (context) => UserProfileScreen.fromUser(
-                  user: match.userModel,
-                  matchPercentage: match.matchPercentage,
-                  commonInterests: match.commonInterests,
-                  canViewSensitiveInfo: _canViewSensitiveInfo,
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () => _loadMatchesFor(_filter),
+      child: ListView.separated(
+        controller: scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 24),
+        itemCount: matches.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final match = matches[index];
+          return MatchCard(
+            match: match,
+            onOpenProfile: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (context) => UserProfileScreen.fromUser(
+                    user: match.userModel,
+                    matchPercentage: match.matchPercentage,
+                    commonInterests: match.commonInterests,
+                    canViewSensitiveInfo: _canViewSensitiveInfo,
+                  ),
                 ),
-              ),
-            );
-          },
-        );
-      },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -358,6 +387,13 @@ class _MatchLikesSheetState extends State<MatchLikesSheet> {
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _invalidateAndReload,
+                          icon: Icon(
+                            Icons.refresh_rounded,
+                            color: AppColors.dark.withValues(alpha: 0.5),
                           ),
                         ),
                         IconButton(

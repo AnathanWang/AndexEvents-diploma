@@ -319,6 +319,15 @@ public class EventRepository {
         return rows.stream().findFirst();
     }
 
+    public void deleteParticipationForOrganizer(String organizerUserId, String userId) {
+        jdbcTemplate.update(
+                "DELETE FROM events.\"Participant\" p USING events.\"Event\" e " +
+                        "WHERE p.\"eventId\" = e.id AND e.\"createdById\" = ? AND p.\"userId\" = ?",
+                organizerUserId,
+                userId
+        );
+    }
+
     public record EventCreateParams(
             String title,
             String description,

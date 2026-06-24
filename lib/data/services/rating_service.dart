@@ -54,7 +54,7 @@ class RatingService {
       },
     );
 
-    if (response.statusCode != 200) {
+    if (response.statusCode != 200 && response.statusCode != 201) {
       String message = 'Не удалось оставить отзыв';
       try {
         final Map<String, dynamic> body = jsonDecode(response.body) as Map<String, dynamic>;

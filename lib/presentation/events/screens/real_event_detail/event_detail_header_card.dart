@@ -11,7 +11,7 @@ class EventDetailHeaderCard extends StatelessWidget {
     required this.event,
     required this.categoryName,
     required this.categoryColor,
-    required this.showCreatorReviewButton,
+    required this.showReviewsButton,
     required this.showManageButton,
     required this.onOpenReviews,
     required this.onOpenMatches,
@@ -21,7 +21,7 @@ class EventDetailHeaderCard extends StatelessWidget {
   final EventModel event;
   final String categoryName;
   final Color categoryColor;
-  final bool showCreatorReviewButton;
+  final bool showReviewsButton;
   final bool showManageButton;
   final VoidCallback onOpenReviews;
   final VoidCallback onOpenMatches;
@@ -56,7 +56,7 @@ class EventDetailHeaderCard extends StatelessWidget {
                 color: Color(0xFF1F3552),
               ),
             ),
-            if (event.ratingCount > 0 || showCreatorReviewButton)
+            if (event.ratingCount > 0 || showReviewsButton)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Row(
@@ -85,7 +85,7 @@ class EventDetailHeaderCard extends StatelessWidget {
                         ),
                       ),
                     const Spacer(),
-                    if (showCreatorReviewButton)
+                    if (showReviewsButton)
                       TextButton.icon(
                         onPressed: onOpenReviews,
                         icon: const Icon(Icons.rate_review_rounded, size: 16),

@@ -1,9 +1,9 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/media_url_utils.dart';
 import '../../../core/utils/performance_utils.dart';
+import 'app_network_image.dart';
 
 class NetworkAvatar extends StatelessWidget {
   const NetworkAvatar({
@@ -45,7 +45,7 @@ class NetworkAvatar extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       alignment: Alignment.center,
       child: normalized != null && normalized.isNotEmpty
-          ? CachedNetworkImage(
+          ? AppNetworkImage(
               imageUrl: normalized,
               width: size,
               height: size,

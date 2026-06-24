@@ -23,6 +23,9 @@ class EventsLoadRequested extends EventEvent {
   /// Не показывать полноэкранный лоадер (фоновая подгрузка viewport).
   final bool silent;
 
+  /// Пропустить локальный кэш и сразу запросить сервер.
+  final bool skipCache;
+
   const EventsLoadRequested({
     this.category,
     this.latitude,
@@ -32,6 +35,7 @@ class EventsLoadRequested extends EventEvent {
     this.limit = 20,
     this.mergeWithExisting = false,
     this.silent = false,
+    this.skipCache = false,
   });
 
   @override
@@ -44,17 +48,19 @@ class EventsLoadRequested extends EventEvent {
     limit,
     mergeWithExisting,
     silent,
+    skipCache,
   ];
 }
 
 /// Загрузить детали события
 class EventDetailLoadRequested extends EventEvent {
   final String eventId;
+  final bool silent;
 
-  const EventDetailLoadRequested(this.eventId);
+  const EventDetailLoadRequested(this.eventId, {this.silent = false});
 
   @override
-  List<Object?> get props => [eventId];
+  List<Object?> get props => [eventId, silent];
 }
 
 /// Создать событие

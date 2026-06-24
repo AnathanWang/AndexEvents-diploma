@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'dart:io';
 
+import '../../../core/utils/media_url_utils.dart';
 import 'package:flutter/material.dart';
 
 class PhotoGallerySheet extends StatefulWidget {
@@ -79,7 +80,7 @@ class _PhotoGallerySheetState extends State<PhotoGallerySheet>
 
     if (isNetworkImage) {
       return Image.network(
-        path,
+        MediaUrlUtils.resolve(path),
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
           return Container(

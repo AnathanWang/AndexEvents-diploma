@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'app/andex_app.dart';
 import 'firebase_options.dart';
+import 'core/match/match_refresh_bus.dart';
 import 'data/services/user_service.dart';
 import 'core/services/logger_service.dart';
 
@@ -99,6 +100,12 @@ Future<void> _configurePushNotifications() async {
       LoggerService.info(
         '[FCM] Foreground message received: ${message.messageId}',
       );
+      final type = message.data['type']?.toString();
+      if (type == 'incoming_like' ||
+          type == 'incoming_super_like' ||
+          type == 'mutual_match') {
+        MatchRefreshBus.instance.notify();
+      }
     });
   } catch (e) {
     LoggerService.warning('[FCM] Setup error', e);

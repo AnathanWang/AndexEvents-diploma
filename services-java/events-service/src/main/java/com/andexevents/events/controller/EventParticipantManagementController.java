@@ -54,6 +54,22 @@ public class EventParticipantManagementController {
 
     public record BanRequest(String userId, String reason) {}
 
+    @GetMapping("/api/events/{eventId}/bans")
+    public ResponseEntity<ApiResponse<Object>> listBans(HttpServletRequest request, @PathVariable String eventId) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
+        }
+        try {
+            var banned = eventService.listEventBans(eventId, auth.userId());
+            return ResponseEntity.ok(ApiResponse.ok(Map.of("banned", banned)));
+        } catch (EventService.ForbiddenException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(ex.getMessage()));
+        } catch (EventService.NotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
+        }
+    }
+
     @PostMapping("/api/events/{eventId}/bans")
     public ResponseEntity<ApiResponse<Void>> ban(HttpServletRequest request, @PathVariable String eventId, @RequestBody BanRequest body) {
         AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);

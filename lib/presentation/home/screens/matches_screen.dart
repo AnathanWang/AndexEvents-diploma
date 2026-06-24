@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../../core/match/match_refresh_listener.dart';
+import '../../../core/utils/match_feed_utils.dart';
 import '../../../data/services/user_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/match_seen_service.dart';
@@ -21,7 +23,7 @@ class MatchesScreen extends StatefulWidget {
 }
 
 class _MatchesScreenState extends State<MatchesScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, MatchRefreshListener<MatchesScreen> {
   bool _isLoading = true;
   UserModel? _currentUser;
   late List<MatchPreview> _matches;
@@ -37,7 +39,27 @@ class _MatchesScreenState extends State<MatchesScreen>
     _loadUserData();
   }
 
-  Future<void> _loadMatches() async {
+  @override
+  void onMatchesShouldRefresh() {
+    _silentRefreshMatches();
+  }
+
+  Future<void> _silentRefreshMatches() async {
+    if (_currentUser == null || !_isProfileComplete || _isLoading) return;
+    // Don't interrupt an active swipe deck with a server reload.
+    if (_matches.isNotEmpty) return;
+    try {
+      await _loadMatches();
+    } catch (_) {
+      // Keep current deck on transient errors.
+    }
+  }
+
+  Future<void> _loadMatches({
+    bool includeActed = false,
+    bool skipSeenFilter = false,
+    bool replaceDeck = true,
+  }) async {
     try {
       if (_currentUser == null) {
         return;
@@ -45,19 +67,25 @@ class _MatchesScreenState extends State<MatchesScreen>
 
       final results = await Future.wait<List<UserModel>>([
         _userService.getOtherUsers(
-          limit: 30,
+          limit: includeActed ? 40 : 30,
           latitude: _currentUser!.lastLatitude,
           longitude: _currentUser!.lastLongitude,
           radiusKm: 50,
+          includeActed: includeActed,
         ),
         _userService.getMutualMatches(),
+        _userService.getIncomingLikes(),
       ]);
       final otherUsers = results[0];
       final mutualMatches = results[1];
+      final incomingLikes = results[2];
       final mutualIds = mutualMatches.map((u) => u.id).toSet();
+      final incomingLikeIds = incomingLikes.map((u) => u.id).toSet();
 
       final currentUserId = _currentUser!.id;
-      final seen = await _matchSeenService.getSeenUserIds(currentUserId);
+      final seen = skipSeenFilter
+          ? <String>{}
+          : await _matchSeenService.getSeenUserIds(currentUserId);
       final Map<String, UserModel> uniqueUsers = <String, UserModel>{};
       for (final u in otherUsers) {
         if (u.id == currentUserId) continue;
@@ -66,26 +94,35 @@ class _MatchesScreenState extends State<MatchesScreen>
         uniqueUsers[u.id] = u;
       }
 
-      final filteredUsers = uniqueUsers.values.toList();
+      final filteredUsers = preserveServerMatchOrder(
+        serverOrder: otherUsers,
+        filteredById: uniqueUsers,
+      );
 
-      if (mounted) {
-        setState(() {
-          _matches = filteredUsers
-              .map(
-                (user) => MatchPreview.fromUserModel(
-                  user,
-                  currentUserInterests: _currentUser?.interests ?? const <String>[],
-                ),
-              )
-              .toList();
-        });
+      final newMatches = filteredUsers
+          .map(
+            (user) => MatchPreview.fromUserModel(
+              user,
+              currentUser: _currentUser,
+              incomingLikeUserIds: incomingLikeIds,
+            ),
+          )
+          .toList();
+
+      if (!mounted) return;
+      if (!replaceDeck && newMatches.isEmpty && _matches.isNotEmpty) {
+        return;
       }
+
+      setState(() {
+        _matches = newMatches;
+      });
     } catch (_) {
       // UI shows empty state
     }
   }
 
-  Future<void> _refreshMatches({bool resetSeen = false}) async {
+  Future<void> _refreshMatches() async {
     setState(() {
       _isLoading = true;
     });
@@ -94,10 +131,14 @@ class _MatchesScreenState extends State<MatchesScreen>
       _currentUser ??= await _userService.getCurrentUser();
       if (!mounted) return;
 
-      if (resetSeen && _currentUser != null) {
+      if (_currentUser != null) {
         await _matchSeenService.clear(_currentUser!.id);
       }
-      await _loadMatches();
+      await _loadMatches(
+        includeActed: true,
+        skipSeenFilter: true,
+        replaceDeck: true,
+      );
       if (!mounted) return;
 
       setState(() {
@@ -190,17 +231,25 @@ class _MatchesScreenState extends State<MatchesScreen>
     await _loadUserData();
   }
 
+  void _removeFromDeck(String matchId) {
+    if (!mounted) return;
+    setState(() {
+      _matches = _matches.where((match) => match.id != matchId).toList();
+    });
+  }
+
   void _handleLike(MatchPreview match) {
     final currentUserId = _currentUser?.id;
     if (currentUserId != null && currentUserId == match.id) {
       return;
     }
 
-    _userService.sendLike(match.id).then((_) {
-      if (currentUserId != null) {
-        _matchSeenService.markSeen(currentUserId, match.id);
-      }
-    });
+    _removeFromDeck(match.id);
+    if (currentUserId != null) {
+      _matchSeenService.markSeen(currentUserId, match.id);
+    }
+
+    _userService.sendLike(match.id, refreshMatches: false);
   }
 
   void _handleDislike(MatchPreview match) {
@@ -209,11 +258,12 @@ class _MatchesScreenState extends State<MatchesScreen>
       return;
     }
 
-    _userService.sendDislike(match.id).then((_) {
-      if (currentUserId != null) {
-        _matchSeenService.markSeen(currentUserId, match.id);
-      }
-    });
+    _removeFromDeck(match.id);
+    if (currentUserId != null) {
+      _matchSeenService.markSeen(currentUserId, match.id);
+    }
+
+    _userService.sendDislike(match.id, refreshMatches: false);
   }
 
   void _handleSuperLike(MatchPreview match) {
@@ -222,11 +272,12 @@ class _MatchesScreenState extends State<MatchesScreen>
       return;
     }
 
-    _userService.sendSuperLike(match.id).then((_) {
-      if (currentUserId != null) {
-        _matchSeenService.markSeen(currentUserId, match.id);
-      }
-    });
+    _removeFromDeck(match.id);
+    if (currentUserId != null) {
+      _matchSeenService.markSeen(currentUserId, match.id);
+    }
+
+    _userService.sendSuperLike(match.id, refreshMatches: false);
   }
 
 
@@ -353,7 +404,7 @@ class _MatchesScreenState extends State<MatchesScreen>
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: () => _refreshMatches(resetSeen: true),
+              onPressed: _refreshMatches,
               icon: const Icon(Icons.refresh, size: 20),
               label: const Text('Обновить подборку'),
               style: ElevatedButton.styleFrom(
@@ -393,7 +444,10 @@ class _MatchesScreenState extends State<MatchesScreen>
             ),
           ),
         ),
-        if (_currentUser != null) _buildLikesButton(),
+        if (_currentUser != null) ...[
+          _buildRefreshButton(),
+          _buildLikesButton(),
+        ],
       ],
     );
   }
@@ -422,13 +476,50 @@ class _MatchesScreenState extends State<MatchesScreen>
               }
             },
             onDeckEmpty: () {
-              if (!mounted) return;
-              setState(() => _matches = <MatchPreview>[]);
+              if (!mounted || _matches.isEmpty) return;
             },
           ),
         ),
-        if (_currentUser != null) _buildLikesButton(),
+        if (_currentUser != null) ...[
+          _buildRefreshButton(),
+          _buildLikesButton(),
+        ],
       ],
+    );
+  }
+
+  Widget _buildRefreshButton() {
+    return Positioned(
+      top: MediaQuery.paddingOf(context).top + 8,
+      left: 16,
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.92),
+        elevation: 0,
+        shadowColor: AppColors.dark.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        child: InkWell(
+          onTap: _isLoading ? null : _refreshMatches,
+          borderRadius: BorderRadius.circular(999),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.refresh_rounded, size: 18, color: AppColors.primary),
+                SizedBox(width: 6),
+                Text(
+                  'Обновить',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

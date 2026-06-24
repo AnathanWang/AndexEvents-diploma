@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../widgets/common/app_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -61,7 +61,9 @@ class FeedEventCard extends StatelessWidget {
           ),
         ).then((changed) {
           if (context.mounted && changed == true) {
-            context.read<EventBloc>().add(const EventsLoadRequested());
+            context.read<EventBloc>().add(
+              const EventsLoadRequested(skipCache: true, silent: true),
+            );
           }
         });
       },
@@ -97,7 +99,7 @@ class FeedEventCard extends StatelessWidget {
                   fit: StackFit.expand,
                   children: <Widget>[
                     if (event.imageUrl != null)
-                      CachedNetworkImage(
+                      AppNetworkImage(
                         imageUrl: event.imageUrl!,
                         fit: BoxFit.cover,
                         memCacheWidth: imageMemCachePx(
@@ -306,7 +308,7 @@ class FeedEventCard extends StatelessWidget {
                     Row(
                       children: <Widget>[
                         if (event.creatorPhotoUrl != null)
-                          CachedNetworkImage(
+                          AppNetworkImage(
                             imageUrl: event.creatorPhotoUrl!,
                             memCacheWidth: imageMemCachePx(26, context),
                             memCacheHeight: imageMemCachePx(26, context),

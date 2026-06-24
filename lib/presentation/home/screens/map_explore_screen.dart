@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 
 import '../../../core/services/logger_service.dart';
+import '../../../core/events/event_refresh_listener.dart';
 import '../../../core/utils/event_list_filters.dart';
 import '../../../core/utils/map_viewport_utils.dart';
 import '../../../data/models/map_user_preview.dart';
@@ -34,7 +35,7 @@ class MapExploreScreen extends StatefulWidget {
 }
 
 class _MapExploreScreenState extends State<MapExploreScreen>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, EventRefreshListener<MapExploreScreen> {
   static const int _viewportEventLimit = 35;
   static const int _maxMapEvents = 60;
   static const int _maxMapMarkers = 15;
@@ -43,6 +44,7 @@ class _MapExploreScreenState extends State<MapExploreScreen>
   static const int _hubFetchLimit = 30;
   static const int _hubRadiusMeters = 5000;
   static const Duration _viewportDebounce = Duration(milliseconds: 600);
+  static const Duration _mapUsersRefreshInterval = Duration(seconds: 30);
   static const Point _defaultMapCenter = Point(
     latitude: 58.603591,
     longitude: 49.668023,
@@ -83,6 +85,7 @@ class _MapExploreScreenState extends State<MapExploreScreen>
   Point? _lastLoadCenter;
   int? _lastLoadRadiusMeters;
   Timer? _viewportApiDebounce;
+  Timer? _mapUsersRefreshTimer;
   bool _isViewportRequestInFlight = false;
   bool _isMapUsersRequestInFlight = false;
   bool _isHubRequestInFlight = false;
@@ -105,11 +108,52 @@ class _MapExploreScreenState extends State<MapExploreScreen>
         });
       }
     });
+    _mapUsersRefreshTimer = Timer.periodic(_mapUsersRefreshInterval, (_) {
+      if (!mounted || !shouldShowMapUserMarkers(_cameraZoom)) return;
+      unawaited(_refreshMapUsersForCurrentView());
+    });
+  }
+
+  Future<void> _refreshMapUsersForCurrentView() async {
+    if (_mapController == null) return;
+    final radiusKm = math.max(
+      _estimatedViewportRadiusMeters() / 1000.0,
+      mapUsersFetchMinRadiusKm,
+    );
+    await _loadMapUsersForViewport(
+      latitude: _mapFocusCenter.latitude,
+      longitude: _mapFocusCenter.longitude,
+      radiusKm: radiusKm,
+    );
+  }
+
+  @override
+  void onEventsShouldRefresh() {
+    _refreshAllEventData();
+  }
+
+  void _refreshAllEventData() {
+    _lastLoadCenter = null;
+    _lastLoadRadiusMeters = null;
+    unawaited(_loadHubEventsFromUserLocation());
+    unawaited(_refreshMapUsersForCurrentView());
+    if (_mapController != null) {
+      _scheduleViewportApiLoad(mergeWithExisting: true, immediate: true);
+    } else {
+      context.read<EventBloc>().add(
+        const EventsLoadRequested(
+          skipCache: true,
+          mergeWithExisting: true,
+          silent: true,
+        ),
+      );
+    }
   }
 
   @override
   void dispose() {
     _viewportApiDebounce?.cancel();
+    _mapUsersRefreshTimer?.cancel();
     _searchController.dispose();
     _activeEventIndexNotifier.dispose();
     _mapMarkerEventsNotifier.dispose();

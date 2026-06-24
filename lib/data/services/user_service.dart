@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../core/config/app_config.dart';
 import '../../core/auth/id_token_provider.dart';
 import '../../core/services/logger_service.dart';
+import '../../core/match/match_refresh_bus.dart';
 import '../models/admin_audit_log_model.dart';
 import '../models/user_sanction_model.dart';
 import '../models/map_user_preview.dart';
@@ -402,6 +403,7 @@ class UserService {
     double? latitude,
     double? longitude,
     double? radiusKm = 50,
+    bool includeActed = false,
   }) async {
     try {
       final token = await _getIdToken();
@@ -409,7 +411,10 @@ class UserService {
         throw Exception('Не удалось получить токен авторизации');
       }
 
-      final params = <String, dynamic>{'limit': limit};
+      final params = <String, dynamic>{
+        'limit': limit,
+        if (includeActed) 'includeActed': 'true',
+      };
 
       if (latitude != null && longitude != null && radiusKm != null) {
         params['latitude'] = latitude;
@@ -823,7 +828,11 @@ class UserService {
   }
 
   /// Отправить лайк на сервер
-  Future<void> sendLike(String targetUserId, {String? eventId}) async {
+  Future<void> sendLike(
+    String targetUserId, {
+    String? eventId,
+    bool refreshMatches = true,
+  }) async {
     try {
       final token = await _getIdToken();
       if (token == null) {
@@ -848,6 +857,9 @@ class UserService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         LoggerService.info('[UserService] Like sent to $targetUserId');
+        if (refreshMatches) {
+          MatchRefreshBus.instance.notify();
+        }
       } else if (response.statusCode == 401) {
         throw Exception('Истекла сессия авторизации');
       } else {
@@ -871,7 +883,11 @@ class UserService {
   }
 
   /// Отправить дизлайк на сервер
-  Future<void> sendDislike(String targetUserId, {String? eventId}) async {
+  Future<void> sendDislike(
+    String targetUserId, {
+    String? eventId,
+    bool refreshMatches = true,
+  }) async {
     try {
       final token = await _getIdToken();
       if (token == null) {
@@ -896,6 +912,9 @@ class UserService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         LoggerService.info('[UserService] Dislike sent to $targetUserId');
+        if (refreshMatches) {
+          MatchRefreshBus.instance.notify();
+        }
       } else if (response.statusCode == 401) {
         throw Exception('Истекла сессия авторизации');
       } else {
@@ -919,7 +938,11 @@ class UserService {
   }
 
   /// Отправить супер-лайк на сервер
-  Future<void> sendSuperLike(String targetUserId, {String? eventId}) async {
+  Future<void> sendSuperLike(
+    String targetUserId, {
+    String? eventId,
+    bool refreshMatches = true,
+  }) async {
     try {
       final token = await _getIdToken();
       if (token == null) {
@@ -944,6 +967,9 @@ class UserService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         LoggerService.info('[UserService] Super like sent to $targetUserId');
+        if (refreshMatches) {
+          MatchRefreshBus.instance.notify();
+        }
       } else if (response.statusCode == 401) {
         throw Exception('Истекла сессия авторизации');
       } else {

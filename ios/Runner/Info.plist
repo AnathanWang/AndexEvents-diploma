@@ -32,6 +32,8 @@
 	<string>Приложению нужен доступ к вашей геолокации для показа событий рядом</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>Приложению нужен доступ к календарю, чтобы добавлять события</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Приложению нужен доступ к календарю, чтобы добавлять события</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

@@ -240,7 +240,7 @@ services:
       MINIO_USE_SSL: "0"
       FIREBASE_CREDENTIALS_FILE: /app/firebase-credentials.json
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
-      UPLOADS_PUBLIC_BASE_URL: ${UPLOADS_PUBLIC_BASE_URL:-http://localhost}
+      UPLOADS_PUBLIC_BASE_URL: ${UPLOADS_PUBLIC_BASE_URL:-http://192.168.1.147}
     ports:
       - "8006:8006"
     depends_on:

@@ -112,7 +112,7 @@ class _EventFiltersSheetState extends State<_EventFiltersSheet> {
     super.initState();
     _selectedCategory = widget.initialFilters['category'] ?? 'all';
     _selectedDate = widget.initialFilters['date'] ?? 'week';
-    _sortBy = widget.initialFilters['sort'] ?? 'nearest';
+    _sortBy = widget.initialFilters['sort'] ?? 'recommended';
     _price = widget.initialFilters['price'] ?? 'all';
     _format = widget.initialFilters['format'] ?? 'all';
   }

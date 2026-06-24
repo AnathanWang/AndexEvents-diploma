@@ -9,6 +9,16 @@ import '../../../widgets/common/star_rating_widget.dart';
 
 const Color _secondaryTextColor = Color(0xFF5E6D86);
 
+class _EventReviewsData {
+  const _EventReviewsData({
+    required this.reviews,
+    required this.stats,
+  });
+
+  final List<EventReviewModel> reviews;
+  final EventRatingStats stats;
+}
+
 class EventReviewsBottomSheet extends StatefulWidget {
   const EventReviewsBottomSheet({
     super.key,
@@ -24,24 +34,34 @@ class EventReviewsBottomSheet extends StatefulWidget {
 }
 
 class _EventReviewsBottomSheetState extends State<EventReviewsBottomSheet> {
-  late Future<List<EventReviewModel>> _reviewsFuture;
+  late Future<_EventReviewsData> _dataFuture;
 
   @override
   void initState() {
     super.initState();
-    _reviewsFuture = widget.ratingService.getEventReviews(widget.event.id);
+    _dataFuture = _loadData();
+  }
+
+  Future<_EventReviewsData> _loadData() async {
+    final results = await Future.wait<Object>([
+      widget.ratingService.getEventReviews(widget.event.id),
+      widget.ratingService.getEventRatingStats(widget.event.id),
+    ]);
+
+    return _EventReviewsData(
+      reviews: results[0] as List<EventReviewModel>,
+      stats: results[1] as EventRatingStats,
+    );
   }
 
   void _reload() {
     setState(() {
-      _reviewsFuture = widget.ratingService.getEventReviews(widget.event.id);
+      _dataFuture = _loadData();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final event = widget.event;
-
     return DraggableScrollableSheet(
       initialChildSize: 0.72,
       minChildSize: 0.5,
@@ -86,14 +106,9 @@ class _EventReviewsBottomSheetState extends State<EventReviewsBottomSheet> {
               ),
             ),
             const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _ReviewsSummaryCard(event: event),
-            ),
-            const SizedBox(height: 12),
             Expanded(
-              child: FutureBuilder<List<EventReviewModel>>(
-                future: _reviewsFuture,
+              child: FutureBuilder<_EventReviewsData>(
+                future: _dataFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
@@ -140,37 +155,50 @@ class _EventReviewsBottomSheetState extends State<EventReviewsBottomSheet> {
                     );
                   }
 
-                  final reviews = snapshot.data ?? <EventReviewModel>[];
-                  if (reviews.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.chat_bubble_outline,
-                            size: 52,
-                            color: _secondaryTextColor.withValues(alpha: 0.6),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Пока нет отзывов',
-                            style: TextStyle(
-                              color: _secondaryTextColor.withValues(alpha: 0.9),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
+                  final data = snapshot.data;
+                  if (data == null) {
+                    return const SizedBox.shrink();
                   }
 
-                  return ListView.separated(
-                    controller: controller,
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                    itemCount: reviews.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) =>
-                        _ReviewTile(review: reviews[index]),
+                  return Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: _ReviewsSummaryCard(stats: data.stats),
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: data.reviews.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.chat_bubble_outline,
+                                      size: 52,
+                                      color: _secondaryTextColor.withValues(alpha: 0.6),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Пока нет отзывов',
+                                      style: TextStyle(
+                                        color: _secondaryTextColor.withValues(alpha: 0.9),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView.separated(
+                                controller: controller,
+                                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                                itemCount: data.reviews.length,
+                                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                                itemBuilder: (context, index) =>
+                                    _ReviewTile(review: data.reviews[index]),
+                              ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -183,9 +211,9 @@ class _EventReviewsBottomSheetState extends State<EventReviewsBottomSheet> {
 }
 
 class _ReviewsSummaryCard extends StatelessWidget {
-  const _ReviewsSummaryCard({required this.event});
+  const _ReviewsSummaryCard({required this.stats});
 
-  final EventModel event;
+  final EventRatingStats stats;
 
   @override
   Widget build(BuildContext context) {
@@ -209,7 +237,7 @@ class _ReviewsSummaryCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  event.averageRating.toStringAsFixed(1),
+                  stats.averageRating.toStringAsFixed(1),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -218,7 +246,7 @@ class _ReviewsSummaryCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${event.ratingCount} оценок',
+                  '${stats.ratingCount} оценок',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -234,12 +262,12 @@ class _ReviewsSummaryCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 StarRatingWidget(
-                  rating: event.averageRating,
+                  rating: stats.averageRating,
                   starSize: 18,
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  event.ratingCount == 0
+                  stats.ratingCount == 0
                       ? 'Событие без оценок'
                       : 'Средняя оценка участников',
                   style: TextStyle(
@@ -364,4 +392,3 @@ String _formatReviewDate(DateTime date) {
   final local = date.toLocal();
   return DateFormat('dd.MM.yyyy HH:mm', 'ru').format(local);
 }
-

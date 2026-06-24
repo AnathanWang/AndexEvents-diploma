@@ -108,20 +108,23 @@ class EventDetailRouteSection extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
                 onPressed: onOpenRoute,
-                icon: const Icon(Icons.route),
-                label: const Text('Построить маршрут'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                icon: const Icon(Icons.route, size: 18),
+                label: const Text(
+                  'Построить маршрут',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.35)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  visualDensity: VisualDensity.compact,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  elevation: 0,
                 ),
               ),
             ),

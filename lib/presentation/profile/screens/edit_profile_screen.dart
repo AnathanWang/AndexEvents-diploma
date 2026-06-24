@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../widgets/common/app_network_image.dart';
 import 'dart:io';
 import '../../../core/services/logger_service.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -335,7 +335,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         path.startsWith('http://') || path.startsWith('https://');
 
     if (isNetworkImage) {
-      return CachedNetworkImage(
+      return AppNetworkImage(
         imageUrl: path,
         fit: BoxFit.cover,
         placeholder: (context, url) => const Center(
@@ -823,7 +823,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   Image.file(_newCoverImage!, fit: BoxFit.cover)
                                 else if (user?.coverImageUrl != null &&
                                     user!.coverImageUrl!.isNotEmpty)
-                                  CachedNetworkImage(
+                                  AppNetworkImage(
                                     imageUrl: user.coverImageUrl!,
                                     fit: BoxFit.cover,
                                     errorWidget: (context, url, error) =>
@@ -936,7 +936,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                         color: const Color(0xFF75878A),
                                       ),
                                       child: ClipOval(
-                                        child: CachedNetworkImage(
+                                        child: AppNetworkImage(
                                           imageUrl: user.photoUrl!,
                                           fit: BoxFit.cover,
                                           placeholder: (context, url) => Center(

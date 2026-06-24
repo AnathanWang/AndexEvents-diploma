@@ -46,10 +46,10 @@ VALUES
   'fake-supabase-anna',
   'anna.match@example.test',
   'Anna',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=900',
+  '/uploads/photos/seed/photo-1494790108377-be9c29b29330.jpg',
   ARRAY[
-    'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=900',
-    'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=900'
+    '/uploads/photos/seed/photo-1524504388940-b1c1722653e1.jpg',
+    '/uploads/photos/seed/photo-1487412720507-e7ab37603c6f.jpg'
   ]::TEXT[],
   'Люблю бег, кофе и техно-мероприятия.',
   ARRAY['running','coffee','tech','startups']::TEXT[],
@@ -76,10 +76,10 @@ VALUES
   'fake-supabase-igor',
   'igor.match@example.test',
   'Igor',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=900',
+  '/uploads/photos/seed/photo-1500648767791-00dcc994a43e.jpg',
   ARRAY[
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=900',
-    'https://images.unsplash.com/photo-1463453091185-61582044d556?w=900'
+    '/uploads/photos/seed/photo-1507003211169-0a1dd7228f2d.jpg',
+    '/uploads/photos/seed/photo-1463453091185-61582044d556.jpg'
   ]::TEXT[],
   'Катаюсь на велике и хожу на джазовые вечера.',
   ARRAY['cycling','jazz','photography','travel']::TEXT[],
@@ -106,10 +106,10 @@ VALUES
   'fake-supabase-lena',
   'lena.match@example.test',
   'Lena',
-  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=900',
+  '/uploads/photos/seed/photo-1544005313-94ddf0286df2.jpg',
   ARRAY[
-    'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=900',
-    'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=900'
+    '/uploads/photos/seed/photo-1517841905240-472988babdf9.jpg',
+    '/uploads/photos/seed/photo-1512290923902-8a9f81dc236c.jpg'
   ]::TEXT[],
   'Архитектор, обожаю выставки и урбанистику.',
   ARRAY['art','architecture','exhibitions','books']::TEXT[],
@@ -136,9 +136,9 @@ VALUES
   'fake-supabase-max',
   'max.match@example.test',
   'Max',
-  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=900',
+  '/uploads/photos/seed/photo-1506794778202-cad84cf45f1d.jpg',
   ARRAY[
-    'https://images.unsplash.com/photo-1504593811423-6dd665756598?w=900'
+    '/uploads/photos/seed/photo-1504593811423-6dd665756598.jpg'
   ]::TEXT[],
   'Frontend разработчик, стендап и настолки по выходным.',
   ARRAY['frontend','standup','boardgames','movies']::TEXT[],
@@ -165,9 +165,9 @@ VALUES
   'fake-supabase-olga',
   'olga.match@example.test',
   'Olga',
-  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=900',
+  '/uploads/photos/seed/photo-1438761681033-6461ffad8d80.jpg',
   ARRAY[
-    'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=900'
+    '/uploads/photos/seed/photo-1489424731084-a5d8b219a5bb.jpg'
   ]::TEXT[],
   'Плавание, йога, slow living и винтажные маркеты.',
   ARRAY['yoga','swimming','vintage','wellness']::TEXT[],
@@ -194,9 +194,9 @@ VALUES
   'fake-supabase-daniil',
   'daniil.match@example.test',
   'Daniil',
-  'https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?w=900',
+  '/uploads/photos/seed/photo-1506277886164-e25aa3f4ef7f.jpg',
   ARRAY[
-    'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?w=900'
+    '/uploads/photos/seed/photo-1547425260-76bcadfb4f2c.jpg'
   ]::TEXT[],
   'Стартапы, беговые клубы и разговорные митапы.',
   ARRAY['startups','running','networking','english']::TEXT[],
@@ -223,10 +223,10 @@ VALUES
   'fake-supabase-kate',
   'kate.match@example.test',
   'Kate',
-  'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=900',
+  '/uploads/photos/seed/photo-1529626455594-4ff0802cfb7e.jpg',
   ARRAY[
-    'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=900',
-    'https://images.unsplash.com/photo-1464863979621-258859e62245?w=900'
+    '/uploads/photos/seed/photo-1488426862026-3ee34a7d66df.jpg',
+    '/uploads/photos/seed/photo-1464863979621-258859e62245.jpg'
   ]::TEXT[],
   'Танцы, электронная музыка и ночные кинопоказы.',
   ARRAY['dance','electronic','cinema','travel']::TEXT[],
@@ -253,9 +253,9 @@ VALUES
   'fake-supabase-roman',
   'roman.match@example.test',
   'Roman',
-  'https://images.unsplash.com/photo-1504593811423-6dd665756598?w=900',
+  '/uploads/photos/seed/photo-1504593811423-6dd665756598.jpg',
   ARRAY[
-    'https://images.unsplash.com/photo-1521119989659-a83eee488004?w=900'
+    '/uploads/photos/seed/photo-1521119989659-a83eee488004.jpg'
   ]::TEXT[],
   'Продуктовый менеджер, футбол и крафтовый кофе.',
   ARRAY['product','football','coffee','books']::TEXT[],
@@ -282,8 +282,8 @@ VALUES
   'fake-supabase-polina',
   'polina.match@example.test',
   'Polina',
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=900',
-  ARRAY['https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=900']::TEXT[],
+  '/uploads/photos/seed/photo-1534528741775-53994a69daeb.jpg',
+  ARRAY['/uploads/photos/seed/photo-1524504388940-b1c1722653e1.jpg']::TEXT[],
   'Люблю театр, винтаж и прогулки по центру.',
   ARRAY['theatre','vintage','walking','coffee']::TEXT[],
   '{"telegram":"@polina_kirov"}'::jsonb,
@@ -309,8 +309,8 @@ VALUES
   'fake-supabase-nikita',
   'nikita.match@example.test',
   'Nikita',
-  'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=900',
-  ARRAY['https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=900']::TEXT[],
+  '/uploads/photos/seed/photo-1539571696357-5a69c17a67c6.jpg',
+  ARRAY['/uploads/photos/seed/photo-1507003211169-0a1dd7228f2d.jpg']::TEXT[],
   'Бег, баскетбол и барбекю с друзьями.',
   ARRAY['running','basketball','bbq','music']::TEXT[],
   '{"instagram":"nikita_sport"}'::jsonb,
@@ -336,8 +336,8 @@ VALUES
   'fake-supabase-vera',
   'vera.match@example.test',
   'Vera',
-  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=900',
-  ARRAY['https://images.unsplash.com/photo-1517841905240-472988babdf9?w=900']::TEXT[],
+  '/uploads/photos/seed/photo-1524504388940-b1c1722653e1.jpg',
+  ARRAY['/uploads/photos/seed/photo-1517841905240-472988babdf9.jpg']::TEXT[],
   'Иллюстратор, люблю выставки и авторское кино.',
   ARRAY['art','cinema','illustration','books']::TEXT[],
   '{"telegram":"@vera_art"}'::jsonb,
@@ -363,8 +363,8 @@ VALUES
   'fake-supabase-timur',
   'timur.match@example.test',
   'Timur',
-  'https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=900',
-  ARRAY['https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?w=900']::TEXT[],
+  '/uploads/photos/seed/photo-1504257432389-52343af06ae3.jpg',
+  ARRAY['/uploads/photos/seed/photo-1547425260-76bcadfb4f2c.jpg']::TEXT[],
   'Backend, настолки и craft beer.',
   ARRAY['backend','boardgames','beer','tech']::TEXT[],
   '{"telegram":"@timur_dev"}'::jsonb,
@@ -390,8 +390,8 @@ VALUES
   'fake-supabase-maria',
   'maria.match@example.test',
   'Maria',
-  'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=900',
-  ARRAY['https://images.unsplash.com/photo-1464863979621-258859e62245?w=900']::TEXT[],
+  '/uploads/photos/seed/photo-1488426862026-3ee34a7d66df.jpg',
+  ARRAY['/uploads/photos/seed/photo-1464863979621-258859e62245.jpg']::TEXT[],
   'Йога, медитация и уютные вечера с книгой.',
   ARRAY['yoga','meditation','books','wellness']::TEXT[],
   '{"instagram":"maria_calm"}'::jsonb,
@@ -417,8 +417,8 @@ VALUES
   'fake-supabase-alex',
   'alex.match@example.test',
   'Alex',
-  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=900',
-  ARRAY['https://images.unsplash.com/photo-1504593811423-6dd665756598?w=900']::TEXT[],
+  '/uploads/photos/seed/photo-1506794778202-cad84cf45f1d.jpg',
+  ARRAY['/uploads/photos/seed/photo-1504593811423-6dd665756598.jpg']::TEXT[],
   'Фотограф, люблю концерты и поездки на выходные.',
   ARRAY['photography','concerts','travel','coffee']::TEXT[],
   '{"telegram":"@alex_photo"}'::jsonb,
@@ -444,8 +444,8 @@ VALUES
   'fake-supabase-julia',
   'julia.match@example.test',
   'Julia',
-  'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=900',
-  ARRAY['https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=900']::TEXT[],
+  '/uploads/photos/seed/photo-1512290923902-8a9f81dc236c.jpg',
+  ARRAY['/uploads/photos/seed/photo-1489424731084-a5d8b219a5bb.jpg']::TEXT[],
   'Маркетолог, танцы и вечеринки с live music.',
   ARRAY['marketing','dance','party','networking']::TEXT[],
   '{"instagram":"julia_live"}'::jsonb,
@@ -471,8 +471,8 @@ VALUES
   'fake-supabase-denis',
   'denis.match@example.test',
   'Denis',
-  'https://images.unsplash.com/photo-1463453091185-61582044d556?w=900',
-  ARRAY['https://images.unsplash.com/photo-1521119989659-a83eee488004?w=900']::TEXT[],
+  '/uploads/photos/seed/photo-1463453091185-61582044d556.jpg',
+  ARRAY['/uploads/photos/seed/photo-1521119989659-a83eee488004.jpg']::TEXT[],
   'Дизайнер интерфейсов, кофе и велопрогулки.',
   ARRAY['design','ui','coffee','cycling']::TEXT[],
   '{"telegram":"@denis_ui"}'::jsonb,

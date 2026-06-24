@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/events/event_refresh_bus.dart';
 import '../../../core/constants/event_messages.dart';
 import '../../../data/models/event_model.dart';
 import '../../../data/services/event_service.dart';
@@ -83,7 +84,7 @@ class EventBloc extends Bloc<EventEvent, EventState> {
     final bool isViewportLoad =
         event.latitude != null && event.longitude != null;
 
-    if (event.page == 1 && !event.silent) {
+    if (event.page == 1 && !event.silent && !event.skipCache) {
       if (!event.mergeWithExisting && !isViewportLoad) {
         final cachedEvents =
             await _eventService.getCachedEvents(category: event.category);
@@ -162,20 +163,24 @@ class EventBloc extends Bloc<EventEvent, EventState> {
     EventDetailLoadRequested event,
     Emitter<EventState> emit,
   ) async {
-    emit(const EventDetailLoading());
+    if (!event.silent) {
+      emit(const EventDetailLoading());
+    }
 
     try {
       final eventModel = await _eventService.getEventById(event.eventId);
       emit(EventDetailLoaded(eventModel));
     } catch (e) {
-      emit(
-        EventError(
-          _extractErrorMessage(
-            e,
-            fallback: 'Не удалось загрузить событие',
+      if (!event.silent) {
+        emit(
+          EventError(
+            _extractErrorMessage(
+              e,
+              fallback: 'Не удалось загрузить событие',
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -204,6 +209,8 @@ class EventBloc extends Bloc<EventEvent, EventState> {
         maxAge: event.maxAge,
       );
 
+      await _eventService.clearEventsCache();
+      EventRefreshBus.instance.notify();
       emit(EventCreated(eventModel));
     } catch (e) {
       emit(
@@ -347,6 +354,8 @@ class EventBloc extends Bloc<EventEvent, EventState> {
       );
 
       emit(EventUpdated(eventModel));
+      await _eventService.clearEventsCache();
+      EventRefreshBus.instance.notify();
     } catch (e) {
       emit(
         EventError(
@@ -367,6 +376,8 @@ class EventBloc extends Bloc<EventEvent, EventState> {
 
     try {
       await _eventService.deleteEvent(event.eventId);
+      await _eventService.clearEventsCache();
+      EventRefreshBus.instance.notify();
       emit(const EventDeleted());
     } catch (e) {
       emit(

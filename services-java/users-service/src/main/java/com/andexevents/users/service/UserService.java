@@ -133,7 +133,14 @@ public class UserService {
         return userRepository.listBlockedUserIds(userId);
     }
 
-    public List<UserDto> getMatches(String userId, Double latitude, Double longitude, double radiusKm, int limit) {
+    public List<UserDto> getMatches(
+            String userId,
+            Double latitude,
+            Double longitude,
+            double radiusKm,
+            int limit,
+            boolean includeActed
+    ) {
         UserDto current = userRepository.findById(userId).orElse(null);
         if (current == null) return List.of();
 
@@ -151,7 +158,8 @@ public class UserService {
                 poolSize,
                 current.minAge(),
                 current.maxAge(),
-                current.matchGenderPreference()
+                current.matchGenderPreference(),
+                includeActed
         );
 
         List<String> candidateIds = candidates.stream().map(UserDto::id).toList();

@@ -47,10 +47,11 @@ public class EventService {
         return getById(id, null).orElseThrow();
     }
 
-    public List<EventDtos.EventDto> listAllApproved() {
+    public List<EventDtos.EventDto> listAllApproved(String viewerUserId) {
         List<EventDtos.EventDto> out = new ArrayList<>();
         for (EventRepository.EventRow row : repo.listApprovedEvents()) {
-            out.add(toDto(row, null, null));
+            if (isHiddenFromViewer(row, viewerUserId)) continue;
+            out.add(toDto(row, viewerUserId, null));
         }
         return out;
     }
@@ -71,6 +72,7 @@ public class EventService {
 
         List<EventDtos.EventDto> events = new ArrayList<>();
         for (EventRepository.NearbyEventRow r : qr.events()) {
+            if (isHiddenFromViewer(r.event(), viewerUserId)) continue;
             events.add(toDto(r.event(), viewerUserId, new NearbyMeta(r.distance(), r.participantCount(), r.createdBy())));
         }
 
@@ -89,6 +91,7 @@ public class EventService {
     public List<EventDtos.EventDto> listUserParticipatedEvents(String userId) {
         List<EventDtos.EventDto> out = new ArrayList<>();
         for (EventRepository.EventRow row : repo.listUserParticipatedApprovedEvents(userId)) {
+            if (isHiddenFromViewer(row, userId)) continue;
             out.add(toDto(row, userId, null));
         }
         return out;
@@ -97,6 +100,7 @@ public class EventService {
     public Optional<EventDtos.EventDto> getById(String eventId, String viewerUserId) {
         EventRepository.EventRow row = repo.findEventRowById(eventId).orElse(null);
         if (row == null) return Optional.empty();
+        if (isHiddenFromViewer(row, viewerUserId)) return Optional.empty();
         return Optional.of(toDto(row, viewerUserId, null));
     }
 
@@ -220,6 +224,7 @@ public class EventService {
             throw new ForbiddenException("Forbidden");
         }
         eventParticipantBanRepository.upsertBan(eventId, targetUserId, reason, organizerUserId);
+        repo.deleteParticipation(eventId, targetUserId);
     }
 
     public void unbanUserForEvent(String eventId, String targetUserId, String organizerUserId) {
@@ -229,6 +234,15 @@ public class EventService {
             throw new ForbiddenException("Forbidden");
         }
         eventParticipantBanRepository.deleteBan(eventId, targetUserId);
+    }
+
+    public List<EventDtos.UserPreviewDto> listEventBans(String eventId, String organizerUserId) {
+        EventRepository.EventRow event = repo.findEventRowById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+        if (organizerUserId == null || organizerUserId.isBlank()) throw new ForbiddenException("Unauthorized");
+        if (event.createdById() == null || !event.createdById().equals(organizerUserId)) {
+            throw new ForbiddenException("Forbidden");
+        }
+        return eventParticipantBanRepository.listBannedUsersForEvent(eventId);
     }
 
     public List<WaitlistRepository.WaitlistEntryRow> listWaitlist(String eventId, String organizerUserId) {
@@ -268,6 +282,7 @@ public class EventService {
     public void blockUserGlobally(String organizerUserId, String blockedUserId, String reason) {
         if (organizerUserId == null || organizerUserId.isBlank()) throw new ForbiddenException("Unauthorized");
         organizerBlockRepository.upsertBlock(organizerUserId, blockedUserId, reason);
+        repo.deleteParticipationForOrganizer(organizerUserId, blockedUserId);
     }
 
     public void unblockUserGlobally(String organizerUserId, String blockedUserId) {
@@ -314,13 +329,20 @@ public class EventService {
         if (requesterUserId == null || requesterUserId.isBlank()) {
             throw new ForbiddenException("Unauthorized");
         }
-        if (!requesterUserId.equals(row.createdById())) {
-            throw new ForbiddenException("Only creator can view reviews");
+        if (!isEventFinished(row)) {
+            throw new ForbiddenException("Reviews are available only after the event ends");
         }
         return ratingRepo.findReviews(eventId);
     }
 
     // ── Private helpers ────────────────────────────────────────────────────
+
+    private boolean isHiddenFromViewer(EventRepository.EventRow row, String viewerUserId) {
+        if (viewerUserId == null || viewerUserId.isBlank()) return false;
+        if (eventParticipantBanRepository.isBanned(row.id(), viewerUserId)) return true;
+        return row.createdById() != null
+                && organizerBlockRepository.isBlocked(row.createdById(), viewerUserId);
+    }
 
     private EventDtos.EventDto toDto(EventRepository.EventRow row, String viewerUserId, NearbyMeta nearby) {
         EventDtos.CreatorDto createdBy = nearby != null ? nearby.createdBy() : repo.findCreatorByEventId(row.id()).orElse(null);

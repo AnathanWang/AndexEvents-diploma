@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../widgets/common/app_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -214,7 +214,7 @@ class SearchEventCard extends StatelessWidget {
                 topLeft: Radius.circular(15),
                 bottomLeft: Radius.circular(15),
               ),
-              child: CachedNetworkImage(
+              child: AppNetworkImage(
                 imageUrl: event.imageUrl ?? '',
                 width: 100,
                 height: 100,

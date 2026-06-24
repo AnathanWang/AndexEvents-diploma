@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../widgets/common/app_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -130,7 +130,7 @@ class _GalleryBackground extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             if (imageGallery.isNotEmpty)
-              CachedNetworkImage(
+              AppNetworkImage(
                 key: ValueKey<String>(imageGallery[safeIndex]),
                 imageUrl: imageGallery[safeIndex],
                 fit: BoxFit.cover,

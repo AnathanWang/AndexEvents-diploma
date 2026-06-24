@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import '../../core/utils/image_utils.dart';
+import '../../core/utils/media_url_utils.dart';
 import '../../core/config/app_config.dart';
 import '../../core/auth/id_token_provider.dart';
 import '../../core/services/logger_service.dart';
@@ -37,33 +38,8 @@ class LocalStorageService {
 
   LocalStorageService._internal();
 
-  static String _normalizeUploadUrl(String rawUrl) {
-    try {
-      final uploadUri = Uri.parse(rawUrl);
-      final host = uploadUri.host.toLowerCase();
-      final isLoopbackHost =
-          host == 'localhost' || host == '127.0.0.1' || host == '0.0.0.0';
-
-      if (!isLoopbackHost) {
-        return rawUrl;
-      }
-
-      final apiUri = Uri.parse(AppConfig.baseUrl);
-      if (apiUri.host.isEmpty) {
-        return rawUrl;
-      }
-
-      return uploadUri
-          .replace(
-            scheme: apiUri.scheme.isEmpty ? 'http' : apiUri.scheme,
-            host: apiUri.host,
-            port: apiUri.hasPort ? apiUri.port : null,
-          )
-          .toString();
-    } catch (_) {
-      return rawUrl;
-    }
-  }
+  static String _normalizeUploadUrl(String rawUrl) =>
+      MediaUrlUtils.resolve(rawUrl);
 
   /// Загрузить фото события на бэкенд
   Future<String> uploadEventPhoto(

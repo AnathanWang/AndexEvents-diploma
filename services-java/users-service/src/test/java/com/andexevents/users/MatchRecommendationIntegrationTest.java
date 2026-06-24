@@ -248,10 +248,42 @@ class MatchRecommendationIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
+    @Test
+    void matches_includeActed_returnsUsersWithExistingGlobalAction() {
+        String aliceId = seedUser("alice", "alice@example.com", "uid-alice");
+        String bobId = seedUser("bob", "bob@example.com", "uid-bob");
+
+        completeOnboarding("alice", 30, List.of("Music"), 55.751244, 37.618423);
+        completeOnboarding("bob", 27, List.of("Music"), 55.751500, 37.618600);
+
+        jdbcTemplate.update(
+                """
+                INSERT INTO "Match" (
+                  id, "userAId", "userBId", "eventId", "userAAction", "userBAction", "isMutual", "createdAt", "updatedAt"
+                ) VALUES (?, ?, ?, NULL, 'LIKE', NULL, false, NOW(), NOW())
+                """,
+                UUID.randomUUID().toString(),
+                aliceId,
+                bobId
+        );
+
+        List<Map<String, Object>> matches = getMatches("alice", true);
+        assertThat(matches).extracting(m -> m.get("email"))
+                .contains("bob@example.com");
+    }
+
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> getMatches(String token) {
+        return getMatches(token, false);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> getMatches(String token, boolean includeActed) {
+        String url = includeActed
+                ? "/api/users/matches?radiusKm=10&limit=20&includeActed=true"
+                : "/api/users/matches?radiusKm=10&limit=20";
         ResponseEntity<Map> response = rest.exchange(
-                "/api/users/matches?radiusKm=10&limit=20",
+                url,
                 HttpMethod.GET,
                 authed(token),
                 Map.class

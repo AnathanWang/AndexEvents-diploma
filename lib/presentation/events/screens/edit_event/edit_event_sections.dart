@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../widgets/common/app_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -79,7 +79,7 @@ class EditEventPhotosSection extends StatelessWidget {
                   : photoUrls.isNotEmpty
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: CachedNetworkImage(
+                          child: AppNetworkImage(
                             imageUrl: photoUrls.first,
                             fit: BoxFit.cover,
                             placeholder: (context, url) => const Center(
@@ -162,7 +162,7 @@ class EditEventPhotosSection extends StatelessWidget {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(14),
-                        child: CachedNetworkImage(
+                        child: AppNetworkImage(
                           imageUrl: url,
                           width: 86,
                           height: 86,

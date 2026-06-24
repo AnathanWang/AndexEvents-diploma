@@ -20,6 +20,7 @@ import '../../../data/services/user_service.dart';
 import '../../../core/http/api_client.dart';
 import '../../widgets/report_dialog.dart';
 import '../../../data/services/calendar_service.dart';
+import '../../../core/events/event_refresh_bus.dart';
 import '../../../data/services/event_participants_manage_service.dart';
 import 'real_event_detail/event_manage_participants_sheet.dart';
 import 'real_event_detail/real_event_detail_widgets.dart';
@@ -157,6 +158,9 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
         service: _manageService,
       ),
     );
+    if (!mounted) return;
+    context.read<EventBloc>().add(EventDetailLoadRequested(event.id));
+    EventRefreshBus.instance.notify();
   }
 
   void _toggleFavorite(EventModel event) {
@@ -304,6 +308,22 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
         } else if (state is EventError) {
           _isFavoriteLoadingNotifier.value = false;
           _isGoingLoadingNotifier.value = false;
+          final message = state.message.trim();
+          final isUnavailable = message.contains('не найден') ||
+              message.contains('not found') ||
+              message.contains('недоступ');
+          if (isUnavailable) {
+            EventRefreshBus.instance.notify();
+            CustomNotification.show(
+              context,
+              'Событие недоступно',
+              isError: true,
+            );
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+            return;
+          }
           CustomNotification.show(context, state.message, isError: true);
         }
       },
@@ -462,8 +482,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                   event: event,
                   categoryName: categoryName,
                   categoryColor: categoryColor,
-                  showCreatorReviewButton:
-                      _isEventFinished(event) && _isCreator(event),
+                  showReviewsButton: _isEventFinished(event),
                   showManageButton: _isCreator(event),
                   onOpenReviews: () => _showReviewsBottomSheet(event),
                   onOpenMatches: () {
@@ -708,16 +727,17 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
   }
 
   void _showRatingDialog(EventModel event) {
+    final eventBloc = context.read<EventBloc>();
     showDialog(
       context: context,
-      builder: (context) => EventDetailRatingDialog(
+      builder: (_) => EventDetailRatingDialog(
         event: event,
         ratingService: _ratingService,
         onRated: (rating) {
           _myRatingNotifier.value = rating;
-          if (mounted) {
-            context.read<EventBloc>().add(EventDetailLoadRequested(event.id));
-          }
+          if (!mounted) return;
+          eventBloc.add(EventDetailLoadRequested(event.id, silent: true));
+          EventRefreshBus.instance.notify();
         },
       ),
     );

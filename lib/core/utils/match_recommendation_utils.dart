@@ -16,6 +16,63 @@ class MatchRecommendationUtils {
   static const int missingBioPenalty = 10;
   static const int emptyProfilePenalty = 60;
 
+  /// Human-readable compatibility percent for UI (0..100).
+  /// Sorting may use [scoreUser] with incoming-like boost; display should not.
+  static int displayCompatibilityPercent({
+    required UserModel candidate,
+    required UserModel currentUser,
+    Map<String, int> sharedGoingEventCounts = const <String, int>{},
+  }) {
+    var total = 28.0;
+
+    final left = _interestSet(currentUser.interests);
+    final right = _interestSet(candidate.interests);
+    if (left.isNotEmpty && right.isNotEmpty) {
+      final union = left.union(right).length;
+      if (union > 0) {
+        total += left.intersection(right).length / union * 38;
+      }
+    }
+
+    final candidateLat = candidate.lastLatitude;
+    final candidateLon = candidate.lastLongitude;
+    final originLat = currentUser.lastLatitude;
+    final originLon = currentUser.lastLongitude;
+    if (candidateLat != null &&
+        candidateLon != null &&
+        originLat != null &&
+        originLon != null) {
+      final distanceKm = _haversineKm(
+        originLat,
+        originLon,
+        candidateLat,
+        candidateLon,
+      );
+      total += math.max(0, 22 - distanceKm * 0.9);
+    } else {
+      total += 10;
+    }
+
+    if (candidate.photoUrl != null && candidate.photoUrl!.trim().isNotEmpty) {
+      total += 6;
+    } else if (candidate.photos.isNotEmpty) {
+      total += 4;
+    }
+    if (candidate.bio != null && candidate.bio!.trim().isNotEmpty) {
+      total += 4;
+    }
+    if (candidate.interests.isNotEmpty) {
+      total += 4;
+    }
+
+    final sharedEvents = sharedGoingEventCounts[candidate.id] ?? 0;
+    if (sharedEvents > 0) {
+      total += math.min(sharedEvents * 10.0, 16);
+    }
+
+    return total.round().clamp(38, 97);
+  }
+
   static int scoreUser({
     required UserModel candidate,
     required UserModel currentUser,
@@ -30,10 +87,7 @@ class MatchRecommendationUtils {
 
     score += (sharedGoingEventCounts[candidate.id] ?? 0) * sharedGoingEventWeight;
 
-    score += _commonInterests(
-          currentUser.interests,
-          candidate.interests,
-        ) *
+    score += _commonInterests(currentUser.interests, candidate.interests) *
         commonInterestWeight;
 
     final candidateLat = candidate.lastLatitude;
@@ -201,18 +255,19 @@ class MatchRecommendationUtils {
     List<String> left,
     List<String> right,
   ) {
-    final a = left
-        .map((e) => e.trim().toLowerCase())
-        .where((e) => e.isNotEmpty)
-        .toSet();
-    final b = right
-        .map((e) => e.trim().toLowerCase())
-        .where((e) => e.isNotEmpty)
-        .toSet();
+    final a = _interestSet(left);
+    final b = _interestSet(right);
     if (a.isEmpty || b.isEmpty) {
       return 0;
     }
     return a.intersection(b).length;
+  }
+
+  static Set<String> _interestSet(List<String> interests) {
+    return interests
+        .map((e) => e.trim().toLowerCase())
+        .where((e) => e.isNotEmpty)
+        .toSet();
   }
 
   static double _haversineKm(

@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../widgets/common/app_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -499,7 +499,7 @@ class MapNearbyEventCard extends StatelessWidget {
                   topLeft: Radius.circular(22),
                   bottomLeft: Radius.circular(22),
                 ),
-                child: CachedNetworkImage(
+                child: AppNetworkImage(
                   imageUrl: event.imageUrl!,
                   width: 104,
                   height: 112,

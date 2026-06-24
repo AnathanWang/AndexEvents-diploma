@@ -1,3 +1,5 @@
+import '../../core/utils/media_url_utils.dart';
+
 class UserPreviewModel {
   const UserPreviewModel({
     required this.id,
@@ -15,7 +17,7 @@ class UserPreviewModel {
     return UserPreviewModel(
       id: json['id'] as String,
       displayName: json['displayName'] as String? ?? 'Unknown',
-      photoUrl: json['photoUrl'] as String?,
+      photoUrl: MediaUrlUtils.normalize(json['photoUrl'] as String?),
       email: json['email'] as String?,
     );
   }

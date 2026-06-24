@@ -118,6 +118,22 @@ class EventParticipantsManageService {
     }
   }
 
+  Future<List<UserPreviewModel>> listEventBans(String eventId) async {
+    final token = await _getIdToken();
+    final uri = Uri.parse('${AppConfig.baseUrl}/events/$eventId/bans');
+    final resp = await http.get(uri, headers: {'Authorization': 'Bearer $token'});
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw Exception(_extractMessage(resp.body));
+    }
+    final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
+    final data = decoded['data'] as Map<String, dynamic>? ?? <String, dynamic>{};
+    final list = (data['banned'] as List<dynamic>? ?? <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(UserPreviewModel.fromJson)
+        .toList();
+    return list;
+  }
+
   Future<List<WaitlistEntryModel>> listWaitlist(String eventId) async {
     final token = await _getIdToken();
     final uri = Uri.parse('${AppConfig.baseUrl}/events/$eventId/waitlist');
@@ -154,7 +170,7 @@ class EventParticipantsManageService {
 
   Future<void> blockGlobally(String blockedUserId, {String? reason}) async {
     final token = await _getIdToken();
-    final uri = Uri.parse('${AppConfig.baseUrl}/users/blocks');
+    final uri = Uri.parse('${AppConfig.baseUrl}/events/organizer/blocks');
     final resp = await http.post(
       uri,
       headers: {
@@ -170,7 +186,7 @@ class EventParticipantsManageService {
 
   Future<List<UserPreviewModel>> listGlobalBlocked() async {
     final token = await _getIdToken();
-    final uri = Uri.parse('${AppConfig.baseUrl}/users/blocks');
+    final uri = Uri.parse('${AppConfig.baseUrl}/events/organizer/blocks');
     final resp = await http.get(uri, headers: {'Authorization': 'Bearer $token'});
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw Exception(_extractMessage(resp.body));
@@ -186,7 +202,7 @@ class EventParticipantsManageService {
 
   Future<void> unblockGlobally(String blockedUserId) async {
     final token = await _getIdToken();
-    final uri = Uri.parse('${AppConfig.baseUrl}/users/blocks/$blockedUserId');
+    final uri = Uri.parse('${AppConfig.baseUrl}/events/organizer/blocks/$blockedUserId');
     final resp = await http.delete(uri, headers: {'Authorization': 'Bearer $token'});
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw Exception(_extractMessage(resp.body));

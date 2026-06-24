@@ -3,12 +3,14 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/auth/id_token_provider.dart';
 import '../../core/config/app_config.dart';
+import '../../core/config/google_auth_config.dart';
 import '../../core/services/logger_service.dart';
 
 /// Сервис для работы с Firebase Authentication
@@ -28,6 +30,8 @@ class AuthService {
         _googleSignIn = googleSignIn ??
             GoogleSignIn(
               scopes: const ['email', 'profile'],
+              // Web client ID from Firebase — required for idToken on Android.
+              serverClientId: GoogleAuthConfig.webClientId,
             ),
         _idTokenProvider = idTokenProvider ?? const IdTokenProvider() {
     LoggerService.info('[AuthService] Инициализирован (Firebase)');
@@ -158,14 +162,20 @@ class AuthService {
     try {
       LoggerService.info('[Google Sign-In] Начинаем процесс входа...');
 
+      // Clear stale Google session so account picker / tokens are fresh.
+      await _googleSignIn.signOut();
+
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         throw Exception('Google Sign-In отменён пользователем');
       }
 
       final googleAuth = await googleUser.authentication;
-      if (googleAuth.idToken == null || googleAuth.accessToken == null) {
-        throw Exception('Не удалось получить токены от Google');
+      if (googleAuth.idToken == null) {
+        throw Exception(
+          'Не удалось получить idToken от Google. '
+          'Проверьте SHA-1 в Firebase и google-services.json.',
+        );
       }
 
       final credential = GoogleAuthProvider.credential(
@@ -206,6 +216,8 @@ class AuthService {
       };
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthException(e));
+    } on PlatformException catch (e) {
+      throw Exception(_mapGooglePlatformException(e));
     } catch (e) {
       LoggerService.error('[Google Sign-In] Exception', e);
       throw Exception('Ошибка входа через Google: $e');
@@ -448,6 +460,18 @@ class AuthService {
     return email.substring(0, at);
   }
 
+  String _mapGooglePlatformException(PlatformException e) {
+    final message = '${e.code} ${e.message ?? ''}'.toLowerCase();
+    if (message.contains('apiexception: 10') || message.contains('developer_error')) {
+      return 'Google Sign-In не настроен: добавьте SHA-1 в Firebase Console '
+          'и скачайте обновлённый google-services.json';
+    }
+    if (message.contains('network')) {
+      return 'Ошибка сети при входе через Google. Проверьте интернет.';
+    }
+    return 'Ошибка входа через Google: ${e.message ?? e.code}';
+  }
+
   String _mapFirebaseAuthException(FirebaseAuthException e) {
     final code = e.code.toLowerCase();
 
@@ -464,6 +488,11 @@ class AuthService {
         return 'Слишком простой пароль. Используйте минимум 6 символов.';
       case 'network-request-failed':
         return 'Ошибка сети. Проверьте подключение к интернету.';
+      case 'account-exists-with-different-credential':
+        return 'Этот email уже зарегистрирован другим способом входа. '
+            'Попробуйте email и пароль.';
+      case 'operation-not-allowed':
+        return 'Вход через Google отключён в Firebase Console.';
       default:
         return e.message ?? 'Ошибка авторизации';
     }

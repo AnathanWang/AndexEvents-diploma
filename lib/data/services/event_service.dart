@@ -253,6 +253,10 @@ class EventService {
         headers: headers,
       );
 
+      if (response.statusCode == 404) {
+        throw Exception('Событие не найдено или недоступно');
+      }
+
       if (response.statusCode != 200) {
         final errorData = json.decode(response.body);
         throw Exception(errorData['message'] ?? 'Ошибка загрузки события');

@@ -52,6 +52,8 @@ app:
         pattern: /api/events/*/participants/manage
       - method: DELETE
         pattern: /api/events/*/participants/*
+      - method: GET
+        pattern: /api/events/*/bans
       - method: POST
         pattern: /api/events/*/bans
       - method: DELETE
@@ -65,11 +67,11 @@ app:
       - method: PUT
         pattern: /api/events/*/checkin/*
       - method: POST
-        pattern: /api/users/blocks
+        pattern: /api/events/organizer/blocks
       - method: GET
-        pattern: /api/users/blocks
+        pattern: /api/events/organizer/blocks
       - method: DELETE
-        pattern: /api/users/blocks/*
+        pattern: /api/events/organizer/blocks/*
       - method: POST
         pattern: /api/events/*/rating
       - method: GET

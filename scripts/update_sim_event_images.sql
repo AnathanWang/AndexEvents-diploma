@@ -1,0 +1,45 @@
+-- Point sim-event-* rows at MinIO-hosted Unsplash covers.
+BEGIN;
+
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-001.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-001.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-001';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-002.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-002.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-002';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-003.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-003.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-003';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-004.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-004.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-004';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-005.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-005.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-005';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-006.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-006.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-006';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-007.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-007.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-007';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-008.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-008.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-008';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-009.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-009.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-009';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-010.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-010.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-010';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-011.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-011.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-011';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-012.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-012.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-012';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-013.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-013.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-013';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-014.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-014.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-014';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-015.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-015.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-015';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-016.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-016.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-016';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-017.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-017.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-017';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-018.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-018.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-018';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-019.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-019.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-019';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-020.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-020.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-020';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-021.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-021.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-021';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-022.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-022.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-022';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-023.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-023.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-023';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-024.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-024.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-024';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-025.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-025.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-025';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-026.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-026.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-026';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-027.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-027.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-027';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-028.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-028.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-028';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-029.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-029.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-029';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-030.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-030.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-030';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-031.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-031.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-031';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-032.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-032.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-032';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-033.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-033.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-033';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-034.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-034.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-034';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-035.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-035.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-035';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-036.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-036.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-036';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-037.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-037.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-037';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-038.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-038.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-038';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-039.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-039.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-039';
+UPDATE events."Event" SET "imageUrl" = '/uploads/events/seed/sim-event-040.jpg', "imageUrls" = ARRAY['/uploads/events/seed/sim-event-040.jpg']::TEXT[], "updatedAt" = NOW() WHERE "id" = 'sim-event-040';
+
+COMMIT;

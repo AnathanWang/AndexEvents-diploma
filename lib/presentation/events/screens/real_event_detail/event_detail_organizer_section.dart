@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../widgets/common/app_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../data/models/event_model.dart';
@@ -39,7 +39,7 @@ class EventDetailOrganizerSection extends StatelessWidget {
               child: Row(
                 children: [
                   if (event.creatorPhotoUrl != null)
-                    CachedNetworkImage(
+                    AppNetworkImage(
                       imageUrl: event.creatorPhotoUrl!,
                       imageBuilder: (context, imageProvider) => CircleAvatar(
                         radius: 26,

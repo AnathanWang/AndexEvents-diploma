@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/event_messages.dart';
+import '../../../core/match/match_refresh_listener.dart';
 import '../../../core/services/logger_service.dart';
 import '../../../core/utils/match_recommendation_utils.dart';
 import '../../../data/services/user_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/match_seen_service.dart';
 import '../../matches/widgets/match_swipe_deck.dart';
+import '../../matches/widgets/match_likes_sheet.dart';
 import '../../models/match_preview.dart';
 import '../../profile/navigation/open_edit_profile.dart';
 import '../../profile/screens/user_profile_screen.dart';
@@ -26,7 +28,7 @@ class EventMatchScreen extends StatefulWidget {
 }
 
 class _EventMatchScreenState extends State<EventMatchScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, MatchRefreshListener<EventMatchScreen> {
   bool _isLoading = true;
   bool _isEventFinished = false;
   EventModel? _event;
@@ -44,7 +46,27 @@ class _EventMatchScreenState extends State<EventMatchScreen>
     _loadUserData();
   }
 
-  Future<void> _loadMatches() async {
+  @override
+  void onMatchesShouldRefresh() {
+    _silentRefreshMatches();
+  }
+
+  Future<void> _silentRefreshMatches() async {
+    if (_currentUser == null || !_isProfileComplete || _isEventFinished || _isLoading) {
+      return;
+    }
+    if (_matches.isNotEmpty) return;
+    try {
+      await _loadMatches();
+    } catch (e) {
+      LoggerService.warning('[EventMatchScreen] Silent refresh failed: $e');
+    }
+  }
+
+  Future<void> _loadMatches({
+    bool skipSeenFilter = false,
+    bool replaceDeck = true,
+  }) async {
     try {
       if (_currentUser == null) {
         LoggerService.warning(
@@ -74,7 +96,9 @@ class _EventMatchScreenState extends State<EventMatchScreen>
       );
 
       final currentUserId = _currentUser!.id;
-      final seen = await _matchSeenService.getSeenUserIds(currentUserId);
+      final seen = skipSeenFilter
+          ? <String>{}
+          : await _matchSeenService.getSeenUserIds(currentUserId);
       final List<UserModel> otherUsers = [];
       
       for (final p in goingParticipants) {
@@ -116,30 +140,36 @@ class _EventMatchScreenState extends State<EventMatchScreen>
         );
       }
 
-      if (mounted) {
-        setState(() {
-          // Конвертируем UserModel в MatchPreview
-          _matches = filteredUsers.map((user) {
-            final match = MatchPreview.fromUserModel(
-              user,
-              currentUserInterests: _currentUser?.interests ?? const <String>[],
-            );
-            LoggerService.info(
-              '🟢 [EventMatchScreen] Created match: name=${match.name}, age=${match.age}, photoUrl=${match.photoUrl}',
-            );
-            return match;
-          }).toList();
-          LoggerService.info(
-            '🟢 [EventMatchScreen] Loaded ${_matches.length} matches into state',
-          );
-        });
+      final newMatches = filteredUsers.map((user) {
+        final match = MatchPreview.fromUserModel(
+          user,
+          currentUser: _currentUser,
+          incomingLikeUserIds: incomingLikeIds,
+          sharedGoingEventCounts: sharedGoingEventCounts,
+        );
+        LoggerService.info(
+          '🟢 [EventMatchScreen] Created match: name=${match.name}, age=${match.age}, photoUrl=${match.photoUrl}',
+        );
+        return match;
+      }).toList();
+
+      if (!mounted) return;
+      if (!replaceDeck && newMatches.isEmpty && _matches.isNotEmpty) {
+        return;
       }
+
+      setState(() {
+        _matches = newMatches;
+      });
+      LoggerService.info(
+        '🟢 [EventMatchScreen] Loaded ${_matches.length} matches into state',
+      );
     } catch (e) {
       LoggerService.error('🔴 [EventMatchScreen] Error loading matches: $e');
     }
   }
 
-  Future<void> _refreshMatches({bool resetSeen = false}) async {
+  Future<void> _refreshMatches() async {
     setState(() {
       _isLoading = true;
     });
@@ -149,10 +179,8 @@ class _EventMatchScreenState extends State<EventMatchScreen>
       if (!mounted) return;
       _currentUser = user;
 
-      if (resetSeen) {
-        await _matchSeenService.clear(user.id);
-      }
-      await _loadMatches();
+      await _matchSeenService.clear(user.id);
+      await _loadMatches(skipSeenFilter: true, replaceDeck: true);
       if (!mounted) return;
 
       setState(() {
@@ -273,6 +301,13 @@ class _EventMatchScreenState extends State<EventMatchScreen>
     await _loadUserData();
   }
 
+  void _removeFromDeck(String matchId) {
+    if (!mounted) return;
+    setState(() {
+      _matches = _matches.where((match) => match.id != matchId).toList();
+    });
+  }
+
   void _handleLike(MatchPreview match) {
     if (_isEventFinished) {
       CustomNotification.show(context, EventMessages.eventFinishedMatchesUnavailable);
@@ -286,12 +321,18 @@ class _EventMatchScreenState extends State<EventMatchScreen>
       return;
     }
 
+    _removeFromDeck(match.id);
+    if (currentUserId != null) {
+      _matchSeenService.markSeen(currentUserId, match.id);
+    }
+
     _userService
-        .sendLike(match.id, eventId: widget.eventId)
+        .sendLike(
+          match.id,
+          eventId: widget.eventId,
+          refreshMatches: false,
+        )
         .then((_) {
-          if (currentUserId != null) {
-            _matchSeenService.markSeen(currentUserId, match.id);
-          }
           LoggerService.info(
             '🟢 [_handleLike] Successfully sent like for ${match.name}',
           );
@@ -314,12 +355,18 @@ class _EventMatchScreenState extends State<EventMatchScreen>
       return;
     }
 
+    _removeFromDeck(match.id);
+    if (currentUserId != null) {
+      _matchSeenService.markSeen(currentUserId, match.id);
+    }
+
     _userService
-        .sendDislike(match.id, eventId: widget.eventId)
+        .sendDislike(
+          match.id,
+          eventId: widget.eventId,
+          refreshMatches: false,
+        )
         .then((_) {
-          if (currentUserId != null) {
-            _matchSeenService.markSeen(currentUserId, match.id);
-          }
           LoggerService.info(
             '🟢 [_handleDislike] Successfully sent dislike for ${match.name}',
           );
@@ -342,12 +389,18 @@ class _EventMatchScreenState extends State<EventMatchScreen>
       return;
     }
 
+    _removeFromDeck(match.id);
+    if (currentUserId != null) {
+      _matchSeenService.markSeen(currentUserId, match.id);
+    }
+
     _userService
-        .sendSuperLike(match.id, eventId: widget.eventId)
+        .sendSuperLike(
+          match.id,
+          eventId: widget.eventId,
+          refreshMatches: false,
+        )
         .then((_) {
-          if (currentUserId != null) {
-            _matchSeenService.markSeen(currentUserId, match.id);
-          }
           LoggerService.info(
             '🟢 [_handleSuperLike] Successfully sent super like for ${match.name}',
           );
@@ -511,6 +564,18 @@ class _EventMatchScreenState extends State<EventMatchScreen>
         iconTheme: IconThemeData(
           color: AppColors.dark.withValues(alpha: 0.88),
         ),
+        actions: <Widget>[
+          if (_currentUser != null)
+            IconButton(
+              tooltip: 'Мои лайки',
+              onPressed: () => MatchLikesSheet.show(
+                context,
+                currentUser: _currentUser!,
+                eventId: widget.eventId,
+              ),
+              icon: const Icon(Icons.favorite_rounded),
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -671,7 +736,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: () => _refreshMatches(resetSeen: true),
+            onPressed: _refreshMatches,
             icon: const Icon(Icons.refresh, size: 20),
             label: const Text('Обновить подборку'),
             style: ElevatedButton.styleFrom(
@@ -786,8 +851,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
               }
             },
             onDeckEmpty: () {
-              if (!mounted) return;
-              setState(() => _matches = <MatchPreview>[]);
+              if (!mounted || _matches.isEmpty) return;
             },
           ),
         ),

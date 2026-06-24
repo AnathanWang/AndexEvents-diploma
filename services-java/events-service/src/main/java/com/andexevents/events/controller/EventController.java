@@ -117,7 +117,7 @@ public class EventController {
             return ResponseEntity.ok(ApiResponse.ok(resp));
         }
 
-        List<EventDtos.EventDto> events = eventService.listAllApproved();
+        List<EventDtos.EventDto> events = eventService.listAllApproved(viewerUserId);
         return ResponseEntity.ok(ApiResponse.ok(Map.of("events", events)));
     }
 

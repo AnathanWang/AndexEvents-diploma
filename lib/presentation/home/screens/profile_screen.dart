@@ -2,10 +2,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import '../../../core/match/match_refresh_listener.dart';
 import '../../../core/services/logger_service.dart';
 import '../../widgets/common/custom_notification.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../widgets/common/app_network_image.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/user_sanction_model.dart';
 import '../../../data/models/event_model.dart';
@@ -41,7 +42,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, MatchRefreshListener<ProfileScreen> {
   final UserService _userService = UserService();
   final GlobalKey _avatarKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
@@ -69,6 +70,35 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     // Используем данные, которые могли прийти из HomeShell как стартовые
     _matchesByFilter[_ProfileMatchFilter.mutual] = widget.matches;
+  }
+
+  @override
+  void onMatchesShouldRefresh() {
+    _reloadCurrentMatches();
+  }
+
+  void _reloadCurrentMatches() {
+    final state = context.read<ProfileBloc>().state;
+    final UserModel? user = state is ProfileLoaded
+        ? state.user
+        : (state is ProfileUpdating ? state.user : null);
+    if (user == null) return;
+    _matchesByFilter.clear();
+    _loadMatchesFor(_filter, user);
+  }
+
+  Future<void> _refreshProfileAndMatches() async {
+    final state = context.read<ProfileBloc>().state;
+    final UserModel? user = state is ProfileLoaded
+        ? state.user
+        : (state is ProfileUpdating ? state.user : null);
+
+    context.read<ProfileBloc>().add(const ProfileLoadRequested());
+
+    if (user != null && mounted) {
+      _matchesByFilter.clear();
+      await _loadMatchesFor(_filter, user);
+    }
   }
 
   @override
@@ -138,7 +168,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               .map(
                 (u) => MatchPreview.fromUserModel(
                   u,
-                  currentUserInterests: currentUser.interests,
+                  currentUser: currentUser,
                 ),
               )
               .toList();
@@ -155,7 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           .map(
             (u) => MatchPreview.fromUserModel(
               u,
-              currentUserInterests: currentUser.interests,
+              currentUser: currentUser,
             ),
           )
           .toList();
@@ -326,7 +356,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         child: InkWell(
           borderRadius: BorderRadius.circular(999),
           onTap: () {
-            if (selected) return;
+            if (selected) {
+              _loadMatchesFor(f, currentUser);
+              return;
+            }
             setState(() {
               _filter = f;
             });
@@ -524,13 +557,16 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _openPrivacySettings(UserModel user) async {
-    final result = await Navigator.of(context).push<Map<String, bool>>(
-      MaterialPageRoute<Map<String, bool>>(
+    final result = await Navigator.of(context).push<Map<String, Object?>>(
+      MaterialPageRoute<Map<String, Object?>>(
         builder: (context) => PrivacySettingsScreen(
           showVisitedEvents: user.showVisitedEvents,
           showInMatches: user.showInMatches,
           incognitoMode: user.incognitoMode,
           hideOnlineStatus: user.hideOnlineStatus,
+          minAge: user.minAge,
+          maxAge: user.maxAge,
+          matchGenderPreference: user.matchGenderPreference,
         ),
       ),
     );
@@ -539,10 +575,21 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     context.read<ProfileBloc>().add(
       ProfileUpdateRequested(
-        showVisitedEvents: result['showVisitedEvents'],
-        showInMatches: result['showInMatches'],
-        incognitoMode: result['incognitoMode'],
-        hideOnlineStatus: result['hideOnlineStatus'],
+        showVisitedEvents: result['showVisitedEvents'] as bool?,
+        showInMatches: result['showInMatches'] as bool?,
+        incognitoMode: result['incognitoMode'] as bool?,
+        hideOnlineStatus: result['hideOnlineStatus'] as bool?,
+        minAge: result['minAge'] as int?,
+        maxAge: result['maxAge'] as int?,
+        clearMinAge:
+            result['minAge'] == null && user.minAge != null,
+        clearMaxAge:
+            result['maxAge'] == null && user.maxAge != null,
+        matchGenderPreference: result['matchGenderPreference'] as String?,
+        clearMatchGenderPreference:
+            (result['matchGenderPreference'] as String? ?? 'all') == 'all' &&
+                user.matchGenderPreference != null &&
+                user.matchGenderPreference != 'all',
       ),
     );
   }
@@ -598,9 +645,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
           ),
           child: RefreshIndicator(
-            onRefresh: () async {
-              context.read<ProfileBloc>().add(const ProfileLoadRequested());
-            },
+            onRefresh: _refreshProfileAndMatches,
             child: ListView(
               controller: _scrollController,
               padding: EdgeInsets.only(
@@ -763,7 +808,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         fit: StackFit.expand,
                         children: <Widget>[
                           hasCover
-                              ? CachedNetworkImage(
+                              ? AppNetworkImage(
                                   imageUrl: user.coverImageUrl!.trim(),
                                   fit: BoxFit.cover,
                                   errorWidget: (context, url, error) =>
@@ -917,7 +962,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           child:
                               (user.photoUrl != null &&
                                   user.photoUrl!.isNotEmpty)
-                              ? CachedNetworkImage(
+                              ? AppNetworkImage(
                                   imageUrl: user.photoUrl!.trim(),
                                   fit: BoxFit.cover,
                                   placeholder: (context, url) => const Center(
@@ -1493,7 +1538,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             if (hasImage)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: CachedNetworkImage(
+                child: AppNetworkImage(
                   imageUrl: imageUrl,
                   width: double.infinity,
                   height: 84,

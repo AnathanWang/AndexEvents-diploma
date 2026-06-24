@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../widgets/common/app_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -61,7 +61,7 @@ class CreateEventPhotosSection extends StatelessWidget {
                   : uploadedPhotoUrls.isNotEmpty
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: CachedNetworkImage(
+                          child: AppNetworkImage(
                             imageUrl: uploadedPhotoUrls.first,
                             fit: BoxFit.cover,
                             placeholder: (context, url) => const Center(
@@ -99,7 +99,7 @@ class CreateEventPhotosSection extends StatelessWidget {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(14),
-                        child: CachedNetworkImage(
+                        child: AppNetworkImage(
                           imageUrl: url,
                           width: 86,
                           height: 86,

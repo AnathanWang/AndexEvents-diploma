@@ -37,6 +37,16 @@ class AppConfig {
     return 'http://localhost/api';
   }
 
+  /// Origin for uploaded media (`/uploads/...`), without the `/api` suffix.
+  static String get uploadsOrigin {
+    final apiUri = Uri.parse(baseUrl);
+    return Uri(
+      scheme: apiUri.scheme.isEmpty ? 'http' : apiUri.scheme,
+      host: apiUri.host,
+      port: apiUri.hasPort ? apiUri.port : null,
+    ).toString();
+  }
+
   static const String apiVersion = 'v1';
 
   // Yandex Maps

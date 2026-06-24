@@ -13,6 +13,7 @@ import '../../events/screens/real_event_detail_screen.dart';
 import '../widgets/photo_gallery_sheet.dart';
 import '../../widgets/common/star_rating_widget.dart';
 import '../../../core/services/logger_service.dart';
+import '../../../core/utils/media_url_utils.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:andexevents/presentation/widgets/event_countdown_timer.dart';
 // import '../../../data/services/friend_service.dart'; // Removed FriendService
@@ -212,7 +213,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         children: <Widget>[
                           if ((event.imageUrl ?? '').trim().isNotEmpty)
                             Image.network(
-                              event.imageUrl!,
+                              MediaUrlUtils.resolve(event.imageUrl!),
                               fit: BoxFit.cover,
                               errorBuilder: (_, _, _) => Container(
                                 color: const Color(0xFF75878A),
@@ -682,7 +683,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         _user!.coverImageUrl!.trim().isNotEmpty)
                     ? BoxDecoration(
                         image: DecorationImage(
-                          image: NetworkImage(_user!.coverImageUrl!.trim()),
+                          image: NetworkImage(
+                            MediaUrlUtils.resolve(_user!.coverImageUrl!.trim()),
+                          ),
                           fit: BoxFit.cover,
                         ),
                       )
@@ -1121,7 +1124,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final photoUrl = _user?.photoUrl;
     if (photoUrl != null && photoUrl.isNotEmpty) {
       return Image.network(
-        photoUrl,
+        MediaUrlUtils.resolve(photoUrl),
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
           return _buildAvatarFallback();

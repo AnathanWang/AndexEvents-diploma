@@ -1,3 +1,5 @@
+import '../../core/utils/media_url_utils.dart';
+
 enum UserReportReason {
   spamProfile,
   fakeProfile,
@@ -171,7 +173,7 @@ class ReportUserSummary {
       id: json['id'] as String,
       displayName: json['displayName'] as String?,
       email: json['email'] as String?,
-      photoUrl: json['photoUrl'] as String?,
+      photoUrl: MediaUrlUtils.normalize(json['photoUrl'] as String?),
     );
   }
 }
@@ -191,7 +193,7 @@ class ReportEventSummary {
     return ReportEventSummary(
       id: json['id'] as String,
       title: json['title'] as String?,
-      imageUrl: json['imageUrl'] as String?,
+      imageUrl: MediaUrlUtils.normalize(json['imageUrl'] as String?),
     );
   }
 }
