@@ -12,6 +12,7 @@ import '../../../core/services/logger_service.dart';
 import '../../../core/events/event_refresh_listener.dart';
 import '../../../core/utils/event_list_filters.dart';
 import '../../../core/utils/map_viewport_utils.dart';
+import '../../../core/utils/match_recommendation_utils.dart';
 import '../../../data/models/map_user_preview.dart';
 import '../../../data/services/user_service.dart';
 import '../../events/bloc/event_bloc.dart';
@@ -21,6 +22,7 @@ import '../../events/screens/real_event_detail_screen.dart';
 import '../../profile/screens/user_profile_screen.dart';
 import '../../widgets/yandex_map_widget.dart';
 import '../../../data/models/event_model.dart';
+import '../../../data/models/user_model.dart';
 import '../../../data/services/event_service.dart';
 import '../screens/search_screen.dart';
 import 'map_explore/map_explore_control_buttons.dart';
@@ -533,13 +535,30 @@ class _MapExploreScreenState extends State<MapExploreScreen>
   Future<void> _openUserProfile(MapUserPreview preview) async {
     HapticFeedback.selectionClick();
     try {
-      final user = await _userService.getUserById(preview.id);
+      final results = await Future.wait<dynamic>(<Future<dynamic>>[
+        _userService.getUserById(preview.id),
+        _userService.getCurrentUser(),
+      ]);
+      final user = results[0] as UserModel;
+      final currentUser = results[1] as UserModel;
+      final commonInterests = MatchRecommendationUtils.commonInterestLabels(
+        left: currentUser.interests,
+        right: user.interests,
+      );
+      final matchPercentage =
+          MatchRecommendationUtils.displayCompatibilityPercent(
+            candidate: user,
+            currentUser: currentUser,
+          );
+
       if (!mounted) return;
       await Navigator.push<void>(
         context,
         CupertinoPageRoute<void>(
           builder: (context) => UserProfileScreen.fromUser(
             user: user,
+            matchPercentage: matchPercentage,
+            commonInterests: commonInterests,
             canViewSensitiveInfo: false,
           ),
         ),

@@ -69,6 +69,26 @@ void main() {
     expect(concertScore, greaterThan(cinemaScore));
   });
 
+  test('boosts events created by current user', () {
+    final profile = EventRecommendationUtils.buildProfile(
+      user: user(interests: const <String>[]),
+    );
+
+    final own = event(id: 'mine', category: 'other');
+    final other = event(id: 'other', category: 'other');
+
+    final ownScore = EventRecommendationUtils.scoreEvent(
+      event: own.copyWith(createdById: 'u1'),
+      profile: profile,
+    );
+    final otherScore = EventRecommendationUtils.scoreEvent(
+      event: other,
+      profile: profile,
+    );
+
+    expect(ownScore, greaterThan(otherScore));
+  });
+
   test('sortEvents ranks closer and more relevant events higher', () {
     final profile = EventRecommendationUtils.buildProfile(
       user: user(

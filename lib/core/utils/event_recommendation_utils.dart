@@ -10,6 +10,7 @@ class EventRecommendationUtils {
   static const double distancePenaltyPerKm = 2.5;
   static const int maxDistanceBoost = 35;
   static const int participatingPenalty = 80;
+  static const int ownEventBoost = 300;
 
   static const Map<String, List<String>> _interestToCategories = {
     'музыка': <String>['concert', 'party'],
@@ -86,6 +87,13 @@ class EventRecommendationUtils {
 
     if (event.isParticipating) {
       score -= participatingPenalty;
+    }
+
+    final userId = profile.user?.id;
+    if (userId != null &&
+        event.createdById != null &&
+        event.createdById == userId) {
+      score += ownEventBoost;
     }
 
     return score;

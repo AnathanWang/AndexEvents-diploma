@@ -17,6 +17,7 @@ import '../../core/events/event_refresh_bus.dart';
 import '../../data/services/location_sync_service.dart';
 import '../../data/services/user_service.dart';
 import '../../data/models/user_sanction_model.dart';
+import '../../data/models/event_model.dart';
 import '../widgets/glass_scene_stack.dart';
 import 'sample_data.dart';
 import 'screens/events_feed_screen.dart';
@@ -193,8 +194,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
 
     HapticFeedback.mediumImpact();
-    final created = await Navigator.of(context).push<bool>(
-      CupertinoPageRoute<bool>(
+    final created = await Navigator.of(context).push<EventModel?>(
+      CupertinoPageRoute<EventModel?>(
         builder: (BuildContext context) => BlocProvider(
           create: (context) => EventBloc(),
           child: const CreateEventScreen(),
@@ -203,7 +204,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     );
 
     if (!mounted) return;
-    if (created == true) {
+    if (created != null) {
+      setState(() => _index = 1);
+      _feedEventBloc.add(EventsMergeListRequested(<EventModel>[created]));
+      _mapEventBloc.add(EventsMergeListRequested(<EventModel>[created]));
       EventRefreshBus.instance.notify();
       _mapEventBloc.add(
         const EventsLoadRequested(skipCache: true, silent: true, mergeWithExisting: true),

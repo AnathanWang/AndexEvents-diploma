@@ -641,7 +641,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             _draftService.deleteDraft(usedDraftId);
             _activeDraftId = null;
           }
-          Navigator.of(context).pop(true);
+          Navigator.of(context).pop(state.event);
           CustomNotification.show(context, 'Событие успешно создано!');
         } else if (state is EventError) {
           setState(() {

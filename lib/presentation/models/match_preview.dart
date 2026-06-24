@@ -49,9 +49,10 @@ class MatchPreview {
       sharedGoingEventCounts: sharedGoingEventCounts,
     );
 
-    final commonInterests = _getCommonInterests(
-      effectiveInterests,
-      user.interests,
+    final commonInterests = MatchRecommendationUtils.commonInterestLabels(
+      left: effectiveInterests,
+      right: user.interests,
+      limit: 3,
     );
 
     final name = user.displayName?.isNotEmpty == true
@@ -102,24 +103,6 @@ class MatchPreview {
     if (union == 0) return 42;
     final similarity = a.intersection(b).length / union;
     return (42 + similarity * 55).round().clamp(38, 97);
-  }
-
-  /// Получить общие интересы (пересечение), максимум 3
-  static List<String> _getCommonInterests(
-    List<String> currentUserInterests,
-    List<String> otherUserInterests,
-  ) {
-    final a = currentUserInterests
-        .map((e) => e.trim().toLowerCase())
-        .where((e) => e.isNotEmpty)
-        .toSet();
-    final b = otherUserInterests
-        .map((e) => e.trim().toLowerCase())
-        .where((e) => e.isNotEmpty)
-        .toSet();
-
-    final common = a.intersection(b).toList()..sort();
-    return common.take(3).toList();
   }
 
   /// Построить subtitle из возраста и пола

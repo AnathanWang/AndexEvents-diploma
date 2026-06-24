@@ -128,4 +128,14 @@ void main() {
 
     expect(sorted.first.id, 'b');
   });
+
+  test('commonInterestLabels preserves spelling and ignores case', () {
+    final labels = MatchRecommendationUtils.commonInterestLabels(
+      left: const <String>['Музыка', 'Спорт'],
+      right: const <String>['музыка', 'Кино', 'СПОРТ'],
+    );
+
+    expect(labels, containsAll(<String>['Музыка', 'Спорт']));
+    expect(labels.length, 2);
+  });
 }

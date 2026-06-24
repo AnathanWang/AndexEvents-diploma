@@ -14,6 +14,7 @@ import '../widgets/photo_gallery_sheet.dart';
 import '../../widgets/common/star_rating_widget.dart';
 import '../../../core/services/logger_service.dart';
 import '../../../core/utils/media_url_utils.dart';
+import '../../../core/utils/match_recommendation_utils.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:andexevents/presentation/widgets/event_countdown_timer.dart';
 // import '../../../data/services/friend_service.dart'; // Removed FriendService
@@ -73,6 +74,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   late final EventService _eventService;
   final UserService _userService = UserService();
   UserModel? _liveUser;
+  UserModel? _currentUser;
   bool _isBlockedByMe = false;
 
   bool _eventsLoading = false;
@@ -81,6 +83,47 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   List<EventModel> _participatedEvents = <EventModel>[];
 
   UserModel? get _user => _liveUser ?? widget.user;
+
+  List<String> get _displayCommonInterests {
+    final mine = _currentUser?.interests ?? const <String>[];
+    final theirs = _user?.interests ?? const <String>[];
+    if (mine.isNotEmpty && theirs.isNotEmpty) {
+      return MatchRecommendationUtils.commonInterestLabels(
+        left: mine,
+        right: theirs,
+      );
+    }
+    if (widget.commonInterests.isNotEmpty) {
+      return widget.commonInterests;
+    }
+    return const <String>[];
+  }
+
+  int? get _displayMatchPercentage {
+    if (widget.matchPercentage != null) {
+      return widget.matchPercentage;
+    }
+    final mine = _currentUser;
+    final theirs = _user;
+    if (mine == null || theirs == null) return null;
+    return MatchRecommendationUtils.displayCompatibilityPercent(
+      candidate: theirs,
+      currentUser: mine,
+    );
+  }
+
+  String _commonInterestsTitle(int count) {
+    if (count == 0) return 'Нет общих интересов';
+    final mod10 = count % 10;
+    final mod100 = count % 100;
+    if (mod10 == 1 && mod100 != 11) {
+      return 'У вас $count общий интерес';
+    }
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+      return 'У вас $count общих интереса';
+    }
+    return 'У вас $count общих интересов';
+  }
 
   ({String text, Color color}) _presenceState() {
     final lastActive = _user?.lastLocationUpdate ?? _user?.updatedAt;
@@ -101,8 +144,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     _eventService = widget.eventService ?? EventService();
     _liveUser = widget.user;
     _refreshUser();
+    _loadCurrentUser();
     _loadBlockStatus();
     _loadRecentEvents();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    try {
+      final me = await _userService.getCurrentUser();
+      if (!mounted) return;
+      setState(() => _currentUser = me);
+    } catch (e) {
+      LoggerService.warning(
+        '[UserProfileScreen] Не удалось загрузить текущего пользователя: $e',
+      );
+    }
   }
 
   Future<void> _loadBlockStatus() async {
@@ -864,6 +920,44 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
+                        if (_displayMatchPercentage != null) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: <Color>[
+                                  Color(0xFFE8F1FF),
+                                  Color(0xFFE7F7F2),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: const Color(0xFFD8E7FF)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                const Icon(
+                                  Icons.favorite_rounded,
+                                  size: 14,
+                                  color: Color(0xFF5F76FF),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  '${_displayMatchPercentage!}% совпадение',
+                                  style: const TextStyle(
+                                    color: Color(0xFF4B5877),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 10),
                         Text(
                           _user?.bio?.isNotEmpty == true
@@ -909,7 +1003,78 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                
+
+                if ((_user?.interests ?? const <String>[]).isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildSectionBadge(
+                      title: 'Интересы',
+                      icon: Icons.interests_outlined,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _user!.interests.map((interest) {
+                        final sharedKeys = _displayCommonInterests
+                            .map(
+                              (shared) => shared
+                                  .trim()
+                                  .toLowerCase()
+                                  .replaceAll('ё', 'е'),
+                            )
+                            .toSet();
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: sharedKeys.contains(
+                              interest
+                                  .trim()
+                                  .toLowerCase()
+                                  .replaceAll('ё', 'е'),
+                            )
+                                ? const Color(0xFFE8F1FF)
+                                : Colors.white.withValues(alpha: 0.88),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: sharedKeys.contains(
+                                interest
+                                    .trim()
+                                    .toLowerCase()
+                                    .replaceAll('ё', 'е'),
+                              )
+                                  ? const Color(0xFF5F76FF).withValues(alpha: 0.35)
+                                  : const Color(0xFFDCE4FF),
+                            ),
+                          ),
+                          child: Text(
+                            interest,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: sharedKeys.contains(
+                                interest
+                                    .trim()
+                                    .toLowerCase()
+                                    .replaceAll('ё', 'е'),
+                              )
+                                  ? const Color(0xFF243252)
+                                  : const Color(0xFF4B5877),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+
                 // Общие интересы
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -949,7 +1114,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
                               Text(
-                                'У вас ${widget.commonInterests.length} общих интереса',
+                                _commonInterestsTitle(
+                                  _displayCommonInterests.length,
+                                ),
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
@@ -958,7 +1125,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                widget.commonInterests.join(', '),
+                                _displayCommonInterests.isEmpty
+                                    ? 'Добавьте интересы в профиле, чтобы видеть совпадения'
+                                    : _displayCommonInterests.join(', '),
                                 style: const TextStyle(
                                   fontSize: 13.5,
                                   color: Color(0xFF66739B),

@@ -1,0 +1,38 @@
+AndexEvents — установка на домашний сервер (простая)
+
+НУЖНО НА СЕРВЕРЕ:
+  - Linux
+  - Docker + Docker Compose
+  - Git
+
+ШАГИ:
+
+1) Скачать проект:
+   git clone https://github.com/AnathanWang/AndexEvents-diploma.git
+   cd AndexEvents-diploma
+   git checkout refactor/screens-pass-1
+
+2) Положить файл от сына:
+   secrets/firebase-service-account.json
+
+3) Настройки (4 поля):
+   cp deploy/env.template .env
+   nano .env
+   — пароли Postgres и MinIO
+   — FIREBASE_PROJECT_ID
+   — PUBLIC_URL=http://85.93.42.123:8081
+
+4) Запуск одной командой:
+   chmod +x scripts/setup-home-server.sh
+   ./scripts/setup-home-server.sh
+
+5) На роутере проброс порта:
+   внешний 85.93.42.123:8081  →  IP_этого_сервера:80
+   (не на 8081, а именно на 80!)
+
+ПРОВЕРКА с телефона (мобильный интернет, Wi‑Fi выкл.):
+   открыть в браузере:
+   http://85.93.42.123:8081/api/events?limit=1
+   должен быть JSON.
+
+Если что-то сломалось — написать сыну текст ошибки из терминала.

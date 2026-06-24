@@ -15,6 +15,7 @@ class EventBloc extends Bloc<EventEvent, EventState> {
       : _eventService = eventService ?? EventService(),
         super(const EventInitial()) {
     on<EventsLoadRequested>(_onEventsLoadRequested);
+    on<EventsMergeListRequested>(_onEventsMergeListRequested);
     on<EventDetailLoadRequested>(_onEventDetailLoadRequested);
     on<EventCreateRequested>(_onEventCreateRequested);
     on<EventPhotoUploadRequested>(_onEventPhotoUploadRequested);
@@ -75,6 +76,28 @@ class EventBloc extends Bloc<EventEvent, EventState> {
       merged[item.id] = item;
     }
     return merged.values.toList();
+  }
+
+  void _onEventsMergeListRequested(
+    EventsMergeListRequested event,
+    Emitter<EventState> emit,
+  ) {
+    if (event.events.isEmpty) return;
+
+    if (state is EventsLoaded) {
+      final currentState = state as EventsLoaded;
+      emit(EventsLoaded(
+        events: _mergeEventsById(currentState.events, event.events),
+        hasMore: currentState.hasMore,
+        currentPage: currentState.currentPage,
+        viewportLatitude: currentState.viewportLatitude,
+        viewportLongitude: currentState.viewportLongitude,
+        viewportRadiusMeters: currentState.viewportRadiusMeters,
+      ));
+      return;
+    }
+
+    emit(EventsLoaded(events: List<EventModel>.from(event.events)));
   }
 
   Future<void> _onEventsLoadRequested(

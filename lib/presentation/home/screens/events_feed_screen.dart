@@ -50,6 +50,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen>
     'Уфа',
     'Краснодар',
     'Пермь',
+    'Киров',
   ];
   Map<String, dynamic> _currentFilters = {
     'category': 'all',
@@ -240,7 +241,27 @@ class _EventsFeedScreenState extends State<EventsFeedScreen>
       );
     }
 
+    out = _pinOwnEventsFirst(out);
+
     _filteredEvents = out;
+  }
+
+  List<EventModel> _pinOwnEventsFirst(List<EventModel> events) {
+    final userId = _recommendationProfile.user?.id;
+    if (userId == null || userId.isEmpty) return events;
+
+    final own = <EventModel>[];
+    final rest = <EventModel>[];
+    for (final event in events) {
+      if (event.createdById == userId) {
+        own.add(event);
+      } else {
+        rest.add(event);
+      }
+    }
+
+    if (own.isEmpty) return events;
+    return <EventModel>[...own, ...rest];
   }
 
   List<String> _buildCityOptions() {
@@ -340,7 +361,12 @@ class _EventsFeedScreenState extends State<EventsFeedScreen>
         .where((event) => event.actualEndDateTime.toLocal().isAfter(now))
         .toList()
       ..sort((a, b) => b.participantsCount.compareTo(a.participantsCount));
-    return upcoming;
+    return _pinOwnEventsFirst(upcoming);
+  }
+
+  void _syncEventsFromBloc(List<EventModel> events) {
+    _allEvents = events;
+    _filterEvents(_allEvents, _searchController.text);
   }
 
   (double?, double?) _recommendationOrigin() {
@@ -386,7 +412,12 @@ class _EventsFeedScreenState extends State<EventsFeedScreen>
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<EventBloc, EventState>(
+    return BlocConsumer<EventBloc, EventState>(
+      listenWhen: (previous, current) => current is EventsLoaded,
+      listener: (context, state) {
+        if (state is! EventsLoaded) return;
+        setState(() => _syncEventsFromBloc(state.events));
+      },
       buildWhen: (previous, current) =>
           current is EventsLoading ||
           current is EventsLoaded ||
@@ -409,8 +440,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen>
 
         if (state is EventsLoaded) {
           if (!identical(_allEvents, state.events)) {
-            _allEvents = state.events;
-            _filterEvents(_allEvents, _searchController.text);
+            _syncEventsFromBloc(state.events);
           }
 
           return RefreshIndicator(

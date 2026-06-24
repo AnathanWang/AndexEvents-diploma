@@ -255,19 +255,55 @@ class MatchRecommendationUtils {
     List<String> left,
     List<String> right,
   ) {
-    final a = _interestSet(left);
-    final b = _interestSet(right);
-    if (a.isEmpty || b.isEmpty) {
-      return 0;
+    return commonInterestLabels(left: left, right: right).length;
+  }
+
+  /// Shared interest labels for UI (preserves original spelling).
+  static List<String> commonInterestLabels({
+    required List<String> left,
+    required List<String> right,
+    int limit = 20,
+  }) {
+    final leftKeys = _interestSet(left);
+    if (leftKeys.isEmpty) {
+      return const <String>[];
     }
-    return a.intersection(b).length;
+
+    final labelByKey = <String, String>{};
+    for (final raw in <String>[...left, ...right]) {
+      final label = raw.trim();
+      if (label.isEmpty) continue;
+      labelByKey.putIfAbsent(_normalizeInterest(label), () => label);
+    }
+
+    final result = <String>[];
+    for (final raw in right) {
+      final label = raw.trim();
+      if (label.isEmpty) continue;
+      final key = _normalizeInterest(label);
+      if (!leftKeys.contains(key)) continue;
+      final display = labelByKey[key] ?? label;
+      if (result.any((item) => _normalizeInterest(item) == key)) {
+        continue;
+      }
+      result.add(display);
+    }
+
+    result.sort(
+      (a, b) => _normalizeInterest(a).compareTo(_normalizeInterest(b)),
+    );
+    return result.take(limit).toList();
   }
 
   static Set<String> _interestSet(List<String> interests) {
     return interests
-        .map((e) => e.trim().toLowerCase())
+        .map(_normalizeInterest)
         .where((e) => e.isNotEmpty)
         .toSet();
+  }
+
+  static String _normalizeInterest(String value) {
+    return value.trim().toLowerCase().replaceAll('ё', 'е');
   }
 
   static double _haversineKm(

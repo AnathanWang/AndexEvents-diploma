@@ -7,6 +7,8 @@
         <domain includeSubdomains="true">10.0.2.2</domain>
         <!-- Mac Docker on LAN (dev APK) -->
         <domain includeSubdomains="false">192.168.1.147</domain>
+        <!-- Mac on phone hotspot (diploma demo) -->
+        <domain includeSubdomains="false">10.85.79.160</domain>
     </domain-config>
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>

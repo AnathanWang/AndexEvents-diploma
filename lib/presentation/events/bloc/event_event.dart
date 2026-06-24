@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../data/models/event_model.dart';
+
 /// События для EventBloc
 abstract class EventEvent extends Equatable {
   const EventEvent();
@@ -50,6 +52,16 @@ class EventsLoadRequested extends EventEvent {
     silent,
     skipCache,
   ];
+}
+
+/// Добавить/обновить события в уже загруженном списке (например, сразу после создания).
+class EventsMergeListRequested extends EventEvent {
+  final List<EventModel> events;
+
+  const EventsMergeListRequested(this.events);
+
+  @override
+  List<Object?> get props => [events];
 }
 
 /// Загрузить детали события
