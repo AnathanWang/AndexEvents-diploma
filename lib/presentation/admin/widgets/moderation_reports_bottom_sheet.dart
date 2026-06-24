@@ -103,7 +103,7 @@ class ModerationReportsBottomSheet {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      report.reason.displayName,
+                                      reportReasonDisplayName(report.reason),
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.textPrimary,

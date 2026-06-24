@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import '../../data/models/user_model.dart';
+import '../../core/utils/match_recommendation_utils.dart';
 
 class MatchPreview {
   final String id;
@@ -35,11 +38,13 @@ class MatchPreview {
   factory MatchPreview.fromUserModel(
     UserModel user, {
     List<String> currentUserInterests = const <String>[],
+    UserModel? currentUser,
   }) {
-    // Расчет процента совпадения на основе пересечения интересов
-    final matchPercentage = _calculateMatchPercentage(
-      currentUserInterests,
-      user.interests,
+    // Stable score-based matching (interests + distance + profile completeness).
+    final matchPercentage = _scoreToPercent(
+      candidate: user,
+      currentUser: currentUser,
+      fallbackInterests: currentUserInterests,
     );
 
     // Получение общих интересов
@@ -69,36 +74,38 @@ class MatchPreview {
     );
   }
 
-  /// Расчет процента совпадения по интересам
-  ///
-  /// Используем Jaccard similarity: |A ∩ B| / |A ∪ B|.
-  /// Чтобы UI не выглядел «пустым», базовое значение = 50.
-  static int _calculateMatchPercentage(
-    List<String> currentUserInterests,
-    List<String> otherUserInterests,
-  ) {
-    final a = currentUserInterests
-        .map((e) => e.trim().toLowerCase())
-        .where((e) => e.isNotEmpty)
-        .toSet();
-    final b = otherUserInterests
-        .map((e) => e.trim().toLowerCase())
-        .where((e) => e.isNotEmpty)
-        .toSet();
-
-    if (a.isEmpty && b.isEmpty) {
-      return 50;
+  static int _scoreToPercent({
+    required UserModel candidate,
+    required UserModel? currentUser,
+    required List<String> fallbackInterests,
+  }) {
+    // If we don't have full currentUser model, keep legacy interest-only behavior.
+    if (currentUser == null) {
+      final a = fallbackInterests
+          .map((e) => e.trim().toLowerCase())
+          .where((e) => e.isNotEmpty)
+          .toSet();
+      final b = candidate.interests
+          .map((e) => e.trim().toLowerCase())
+          .where((e) => e.isNotEmpty)
+          .toSet();
+      if (a.isEmpty && b.isEmpty) return 50;
+      final union = a.union(b).length;
+      if (union == 0) return 50;
+      final similarity = a.intersection(b).length / union;
+      return (50 + similarity * 50).round().clamp(0, 100);
     }
 
-    final intersectionSize = a.intersection(b).length;
-    final unionSize = a.union(b).length;
-    if (unionSize == 0) {
-      return 50;
-    }
+    final score = MatchRecommendationUtils.scoreUser(
+      candidate: candidate,
+      currentUser: currentUser,
+    );
 
-    final similarity = intersectionSize / unionSize;
-    final percent = (50 + similarity * 50).round();
-    return percent.clamp(0, 100);
+    // Convert score to 0..100 in a stable way (logistic-ish without extra deps).
+    // Tuned so typical scores map to a wide visible range.
+    final centered = score - 120;
+    final percent = 100 / (1 + (math.exp(-centered / 120)));
+    return percent.round().clamp(0, 100);
   }
 
   /// Получить общие интересы (пересечение), максимум 3

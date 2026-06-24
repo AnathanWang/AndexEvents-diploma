@@ -6,13 +6,11 @@ import 'package:andexevents/data/services/report_service.dart';
 import 'package:andexevents/presentation/widgets/common/custom_notification.dart';
 
 class ReportDialog extends StatefulWidget {
-  final String reporterId; // The ID of the user submitting the report
   final String? targetUserId;
   final String? targetEventId;
 
   const ReportDialog({
     super.key,
-    required this.reporterId,
     this.targetUserId,
     this.targetEventId,
   });
@@ -22,7 +20,7 @@ class ReportDialog extends StatefulWidget {
 }
 
 class _ReportDialogState extends State<ReportDialog> {
-  ReportReason? _selectedReason;
+  String? _selectedReasonBackend;
   final TextEditingController _detailsController = TextEditingController();
   bool _isLoading = false;
 
@@ -33,7 +31,7 @@ class _ReportDialogState extends State<ReportDialog> {
   }
 
   Future<void> _submitReport() async {
-    if (_selectedReason == null) {
+    if (_selectedReasonBackend == null) {
       CustomNotification.show(
         context,
         'Пожалуйста, выберите причину',
@@ -48,10 +46,9 @@ class _ReportDialogState extends State<ReportDialog> {
 
     try {
       await ReportService().submitReport(
-        reporterId: widget.reporterId,
         targetUserId: widget.targetUserId,
         targetEventId: widget.targetEventId,
-        reason: _selectedReason!,
+        reason: _selectedReasonBackend!,
         details: _detailsController.text.trim(),
       );
 
@@ -80,6 +77,11 @@ class _ReportDialogState extends State<ReportDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isUserReport =
+        widget.targetUserId != null && widget.targetUserId!.trim().isNotEmpty;
+    final userReasons = UserReportReason.values;
+    final eventReasons = EventReportReason.values;
+
     return AlertDialog(
       title: const Text('Пожаловаться'),
       content: SingleChildScrollView(
@@ -94,14 +96,20 @@ class _ReportDialogState extends State<ReportDialog> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              ...ReportReason.values.map((reason) {
-                return RadioListTile<ReportReason>(
-                  title: Text(reason.displayName),
-                  value: reason,
-                  groupValue: _selectedReason,
-                  onChanged: (ReportReason? value) {
+              ...(isUserReport ? userReasons : eventReasons).map((reason) {
+                final displayName = isUserReport
+                    ? (reason as UserReportReason).displayName
+                    : (reason as EventReportReason).displayName;
+                final backendValue = isUserReport
+                    ? (reason as UserReportReason).toBackendValue
+                    : (reason as EventReportReason).toBackendValue;
+                return RadioListTile<String>(
+                  title: Text(displayName),
+                  value: backendValue,
+                  groupValue: _selectedReasonBackend,
+                  onChanged: (String? value) {
                     setState(() {
-                      _selectedReason = value;
+                      _selectedReasonBackend = value;
                     });
                   },
                   contentPadding: EdgeInsets.zero,

@@ -10,97 +10,42 @@ import '../../../../data/models/event_model.dart';
 import '../../../events/bloc/event_bloc.dart';
 import '../../../events/screens/real_event_detail_screen.dart';
 
-/// Bottom slot for the nearby-events hub with soft show/hide transitions.
+/// Bottom slot for the nearby-events hub (expand / collapse only).
 class MapExploreEventsHubSlot extends StatelessWidget {
   const MapExploreEventsHubSlot({
     super.key,
     required this.expanded,
-    required this.gestureHidden,
     required this.hubHeight,
     required this.hub,
     required this.collapsedButton,
   });
 
-  static const Duration _hideDuration = Duration(milliseconds: 260);
-  static const Duration _showDuration = Duration(milliseconds: 380);
+  static const Duration _crossFadeDuration = Duration(milliseconds: 280);
 
   final bool expanded;
-  final bool gestureHidden;
   final double hubHeight;
   final Widget hub;
   final Widget collapsedButton;
 
   @override
   Widget build(BuildContext context) {
-    const collapsedHeight = 42.0;
-
-    return AnimatedSize(
-      duration: _showDuration,
-      curve: Curves.easeInOutCubic,
-      alignment: Alignment.bottomCenter,
-      child: SizedBox(
-        height: expanded ? hubHeight : collapsedHeight,
+    return AnimatedCrossFade(
+      duration: _crossFadeDuration,
+      sizeCurve: Curves.easeInOutCubic,
+      firstCurve: Curves.easeOutCubic,
+      secondCurve: Curves.easeInCubic,
+      crossFadeState:
+          expanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+      firstChild: SizedBox(
+        key: const ValueKey('map_hub_expanded'),
+        height: hubHeight,
         width: double.infinity,
-        child: Stack(
-          alignment: Alignment.bottomCenter,
-          clipBehavior: Clip.none,
-          children: [
-            _AnimatedHubLayer(
-              visible: expanded && !gestureHidden,
-              hideDuration: _hideDuration,
-              showDuration: _showDuration,
-              hiddenOffset: gestureHidden ? 0.22 : 0.1,
-              child: hub,
-            ),
-            _AnimatedHubLayer(
-              visible: !expanded,
-              hideDuration: _hideDuration,
-              showDuration: _showDuration,
-              hiddenOffset: 0.14,
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: collapsedButton,
-              ),
-            ),
-          ],
-        ),
+        child: hub,
       ),
-    );
-  }
-}
-
-class _AnimatedHubLayer extends StatelessWidget {
-  const _AnimatedHubLayer({
-    required this.visible,
-    required this.hideDuration,
-    required this.showDuration,
-    required this.hiddenOffset,
-    required this.child,
-  });
-
-  final bool visible;
-  final Duration hideDuration;
-  final Duration showDuration;
-  final double hiddenOffset;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final duration = visible ? showDuration : hideDuration;
-    final curve = visible ? Curves.easeOutCubic : Curves.easeInCubic;
-
-    return IgnorePointer(
-      ignoring: !visible,
-      child: AnimatedOpacity(
-        opacity: visible ? 1 : 0,
-        duration: duration,
-        curve: visible ? Curves.easeOut : Curves.easeIn,
-        child: AnimatedSlide(
-          offset: visible ? Offset.zero : Offset(0, hiddenOffset),
-          duration: duration,
-          curve: curve,
-          child: child,
-        ),
+      secondChild: Align(
+        key: const ValueKey('map_hub_collapsed'),
+        alignment: Alignment.bottomLeft,
+        child: collapsedButton,
       ),
     );
   }
@@ -226,10 +171,23 @@ class MapNearbyEventsHub extends StatelessWidget {
                               : activeIndex.clamp(0, events.length - 1);
                           return Padding(
                             padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-                            child: MapNearbyEventCard(
-                              event: events[current],
-                              onDetailClosed: onEventDetailClosed,
-                            ),
+                              child: _HubSwipeWrapper(
+                                enabled: events.length > 1,
+                                onPrev: () {
+                                  final next =
+                                      (current - 1).clamp(0, events.length - 1);
+                                  activeIndexListenable.value = next;
+                                },
+                                onNext: () {
+                                  final next =
+                                      (current + 1).clamp(0, events.length - 1);
+                                  activeIndexListenable.value = next;
+                                },
+                                child: MapNearbyEventCard(
+                                  event: events[current],
+                                  onDetailClosed: onEventDetailClosed,
+                                ),
+                              ),
                           );
                         },
                       ),
@@ -258,6 +216,41 @@ class MapNearbyEventsHub extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _HubSwipeWrapper extends StatelessWidget {
+  const _HubSwipeWrapper({
+    required this.child,
+    required this.enabled,
+    required this.onPrev,
+    required this.onNext,
+  });
+
+  final Widget child;
+  final bool enabled;
+  final VoidCallback onPrev;
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragEnd: (details) {
+        final v = details.primaryVelocity ?? 0;
+        if (v.abs() < 240) return;
+        if (v > 0) {
+          HapticFeedback.selectionClick();
+          onPrev();
+        } else {
+          HapticFeedback.selectionClick();
+          onNext();
+        }
+      },
+      child: child,
     );
   }
 }

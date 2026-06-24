@@ -72,6 +72,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   late final EventService _eventService;
   final UserService _userService = UserService();
   UserModel? _liveUser;
+  bool _isBlockedByMe = false;
 
   bool _eventsLoading = false;
   String? _eventsError;
@@ -99,7 +100,22 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     _eventService = widget.eventService ?? EventService();
     _liveUser = widget.user;
     _refreshUser();
+    _loadBlockStatus();
     _loadRecentEvents();
+  }
+
+  Future<void> _loadBlockStatus() async {
+    final targetId = _user?.id;
+    if (targetId == null || targetId.isEmpty) return;
+    try {
+      final ids = await _userService.getMyBlockedUserIds();
+      if (!mounted) return;
+      setState(() {
+        _isBlockedByMe = ids.contains(targetId);
+      });
+    } catch (e) {
+      LoggerService.warning('[UserProfileScreen] block status load failed: $e');
+    }
   }
 
   Future<void> _refreshUser() async {
@@ -635,13 +651,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     }
                   },
                   itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                    const PopupMenuItem<String>(
+                    PopupMenuItem<String>(
                       value: 'block',
                       child: Row(
                         children: <Widget>[
                           Icon(Icons.block, color: Colors.orange),
                           SizedBox(width: 12),
-                          Text('Заблокировать'),
+                          Text(_isBlockedByMe ? 'Разблокировать' : 'Заблокировать'),
                         ],
                       ),
                     ),
@@ -1135,9 +1151,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Заблокировать пользователя?'),
+          title: Text(_isBlockedByMe ? 'Разблокировать пользователя?' : 'Заблокировать пользователя?'),
           content: Text(
-            'Вы больше не будете видеть ${widget.userName} в рекомендациях и не сможете общаться.',
+            _isBlockedByMe
+                ? 'Вы снова сможете видеть ${widget.userName} в рекомендациях.'
+                : 'Вы больше не будете видеть ${widget.userName} в рекомендациях и не сможете общаться.',
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -1162,26 +1180,38 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 }
 
                 try {
-                  await _userService.blockUser(targetId);
+                  if (_isBlockedByMe) {
+                    await _userService.unblockUser(targetId);
+                  } else {
+                    await _userService.blockUser(targetId);
+                  }
                   if (!context.mounted) return;
                   CustomNotification.show(
                     context,
-                    '${widget.userName} заблокирован',
+                    _isBlockedByMe
+                        ? '${widget.userName} разблокирован'
+                        : '${widget.userName} заблокирован',
                     duration: const Duration(seconds: 2),
                   );
+                  if (!context.mounted) return;
+                  setState(() {
+                    _isBlockedByMe = !_isBlockedByMe;
+                  });
                   if (!context.mounted) return;
                   Navigator.of(context).pop(true);
                 } catch (e) {
                   if (!context.mounted) return;
                   CustomNotification.show(
                     context,
-                    'Не удалось заблокировать: $e',
+                    _isBlockedByMe
+                        ? 'Не удалось разблокировать: $e'
+                        : 'Не удалось заблокировать: $e',
                     isError: true,
                   );
                 }
               },
               child: const Text(
-                'Заблокировать',
+                'Подтвердить',
                 style: TextStyle(color: Colors.orange),
               ),
             ),
@@ -1202,7 +1232,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       context: context,
       builder: (BuildContext context) {
         return ReportDialog(
-          reporterId: currentUserId,
           targetUserId: _user?.id,
         );
       },

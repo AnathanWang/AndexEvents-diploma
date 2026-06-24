@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/report_model.dart';
 import '../widgets/admin_card.dart';
 import '../widgets/admin_pill.dart';
 import 'event_moderation_item.dart';
@@ -70,7 +71,7 @@ class EventModerationEventCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             lastReport != null
-                ? 'Последняя жалоба: ${lastReport.reason.displayName}'
+                ? 'Последняя жалоба: ${reportReasonDisplayName(lastReport.reason)}'
                 : 'Жалоб на событие нет',
             style: TextStyle(
               color: AppColors.dark.withValues(alpha: 0.72),

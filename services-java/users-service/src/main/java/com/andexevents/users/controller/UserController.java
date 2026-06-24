@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -410,6 +411,24 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.okMessage("Location updated successfully"));
     }
 
+    @PutMapping("/me/presence")
+    public ResponseEntity<ApiResponse<Void>> touchPresence(HttpServletRequest request) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Unauthorized: User ID not found"));
+        }
+
+        String sanctionError = validateSelfMutationAccess(auth.userId());
+        if (sanctionError != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(sanctionError));
+        }
+
+        userService.touchPresence(auth.userId());
+        return ResponseEntity.ok(ApiResponse.okMessage("Presence updated"));
+    }
+
     @PostMapping("/me/photos")
     public ResponseEntity<ApiResponse<UserDto>> addPhoto(HttpServletRequest request, @RequestBody AddPhotoRequest body) {
         AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
@@ -480,6 +499,18 @@ public class UserController {
 
         userService.unblockUser(auth.userId(), body.targetUserId());
         return ResponseEntity.ok(ApiResponse.okMessage("User unblocked"));
+    }
+
+    @GetMapping("/me/blocks")
+    public ResponseEntity<ApiResponse<Object>> listMyBlocks(HttpServletRequest request) {
+        AuthContext auth = (AuthContext) request.getAttribute(AuthFilter.ATTR);
+        if (auth == null || auth.userId() == null || auth.userId().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Unauthorized: User ID not found"));
+        }
+
+        List<String> ids = userService.listBlockedUserIds(auth.userId());
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("blocked", ids)));
     }
 
     public record CreateUserRequest(String displayName, String photoUrl) {

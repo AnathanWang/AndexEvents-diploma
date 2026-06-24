@@ -325,6 +325,33 @@ class UserService {
     }
   }
 
+  /// Пинг «в приложении сейчас» без смены координат.
+  Future<void> touchPresence() async {
+    try {
+      final String? token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .put(
+            Uri.parse('${AppConfig.baseUrl}/users/me/presence'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(AppConfig.receiveTimeout);
+
+      if (response.statusCode != 200) {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Ошибка обновления presence');
+      }
+    } catch (e) {
+      throw Exception('Не удалось обновить presence: $e');
+    }
+  }
+
   /// Получить текущий профиль пользователя
   Future<UserModel> getCurrentUser() async {
     try {
@@ -973,6 +1000,88 @@ class UserService {
       throw Exception('Не удалось подключиться к API: ${e.message}');
     } catch (e) {
       LoggerService.error('[UserService] Error blocking user', e);
+      rethrow;
+    }
+  }
+
+  Future<void> unblockUser(String targetUserId) async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .delete(
+            Uri.parse('${AppConfig.baseUrl}/users/me/blocks'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: json.encode({'targetUserId': targetUserId}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        LoggerService.info('[UserService] User unblocked: $targetUserId');
+        return;
+      }
+
+      if (response.statusCode == 400) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        throw Exception(data['message'] ?? 'Некорректный запрос');
+      }
+
+      if (response.statusCode == 401) {
+        throw Exception('Истекла сессия авторизации');
+      }
+
+      throw Exception('Ошибка разблокировки пользователя: ${response.statusCode}');
+    } on TimeoutException {
+      throw Exception('Таймаут при разблокировке пользователя');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error unblocking user', e);
+      rethrow;
+    }
+  }
+
+  Future<List<String>> getMyBlockedUserIds() async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Не удалось получить токен авторизации');
+      }
+
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.baseUrl}/users/me/blocks'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка загрузки блокировок: ${response.statusCode}');
+      }
+
+      final decoded = json.decode(response.body) as Map<String, dynamic>;
+      final data = decoded['data'];
+      final blocked = data is Map<String, dynamic> ? data['blocked'] : null;
+      final list = (blocked as List<dynamic>? ?? const <dynamic>[])
+          .map((e) => e.toString())
+          .where((e) => e.trim().isNotEmpty)
+          .toList();
+      return list;
+    } on TimeoutException {
+      throw Exception('Таймаут при загрузке блокировок');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } catch (e) {
+      LoggerService.error('[UserService] Error loading blocks', e);
       rethrow;
     }
   }

@@ -3,10 +3,12 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 
 import '../../core/services/logger_service.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/location_utils.dart';
 import '../../core/utils/map_viewport_utils.dart';
 import '../../data/models/event_model.dart';
 import '../../data/models/map_user_preview.dart';
@@ -69,6 +71,31 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
   void initState() {
     super.initState();
     _initMarkerIcons();
+    unawaited(_prefetchUserLocation());
+  }
+
+  Future<void> _prefetchUserLocation() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return;
+      }
+
+      final position = await LocationUtils.resolvePosition(
+        freshTimeout: const Duration(seconds: 5),
+      );
+      if (!mounted || position == null) return;
+
+      _userLocation = Point(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+      widget.onUserLocationUpdated?.call(_userLocation!);
+      _applyInitialCamera();
+    } catch (e) {
+      LoggerService.warning('[YandexMapWidget] prefetch location failed: $e');
+    }
   }
 
   @override
@@ -112,7 +139,7 @@ class _YandexMapWidgetState extends State<YandexMapWidget> {
 
     _mapController?.moveCamera(
       CameraUpdate.newCameraPosition(
-        CameraPosition(target: target, zoom: 13),
+        CameraPosition(target: target, zoom: 13.5),
       ),
     );
   }

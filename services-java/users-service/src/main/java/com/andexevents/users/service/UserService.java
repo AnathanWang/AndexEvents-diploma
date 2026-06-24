@@ -125,6 +125,14 @@ public class UserService {
         userRepository.updateLocation(userId, latitude, longitude);
     }
 
+    public void touchPresence(String userId) {
+        userRepository.touchPresence(userId);
+    }
+
+    public List<String> listBlockedUserIds(String userId) {
+        return userRepository.listBlockedUserIds(userId);
+    }
+
     public List<UserDto> getMatches(String userId, Double latitude, Double longitude, double radiusKm, int limit) {
         UserDto current = userRepository.findById(userId).orElse(null);
         if (current == null) return List.of();

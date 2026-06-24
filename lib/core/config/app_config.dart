@@ -13,7 +13,10 @@ class AppConfig {
     }
 
     if (kReleaseMode) {
-      return 'http://andex.1rmx.ru:40080/api';
+      // Временно: release APK против Docker на Mac в локальной сети.
+      // Пересборка: ./scripts/build-home-server-apk.sh
+      // Домашний сервер: API_BASE_URL=http://andex.1rmx.ru:40080/api ./scripts/build-home-server-apk.sh
+      return 'http://192.168.1.147/api';
     }
 
     if (kIsWeb) {

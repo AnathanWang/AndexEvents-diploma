@@ -195,7 +195,7 @@ public class EventService {
         boolean isOrganizer = event.createdById() != null && event.createdById().equals(actorUserId);
 
         if (!isSelf && !isOrganizer) {
-            throw new ForbiddenException("Forbidden");
+            throw new ForbiddenException("Чек-ин может поставить только организатор события или сам участник");
         }
 
         if (isSelf) {

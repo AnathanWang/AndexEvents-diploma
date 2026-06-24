@@ -207,6 +207,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               (u) => MatchPreview.fromUserModel(
                 u,
                 currentUserInterests: currentUser.interests,
+                currentUser: currentUser,
               ),
             ),
           );

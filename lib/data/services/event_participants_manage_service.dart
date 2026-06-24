@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../core/auth/id_token_provider.dart';
 import '../../core/config/app_config.dart';
+import '../../core/services/logger_service.dart';
 import '../models/managed_participant_model.dart';
 import '../models/user_preview_model.dart';
 import '../models/waitlist_entry_model.dart';
@@ -68,7 +69,11 @@ class EventParticipantsManageService {
       body: jsonEncode({'checkedIn': checkedIn}),
     );
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw Exception(_extractMessage(resp.body));
+      LoggerService.warning(
+        '[EventParticipantsManageService] setSelfCheckIn failed: '
+        'status=${resp.statusCode} uri=$uri body=${resp.body}',
+      );
+      throw Exception('${_extractMessage(resp.body)} (${resp.statusCode})');
     }
   }
 

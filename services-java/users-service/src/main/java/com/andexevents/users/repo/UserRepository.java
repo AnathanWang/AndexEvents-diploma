@@ -164,6 +164,15 @@ public class UserRepository {
         );
     }
 
+    /** Marks user as active in the app without changing coordinates. */
+    public void touchPresence(String userId) {
+        jdbcTemplate.update(
+                "UPDATE users.\"User\" SET \"lastLocationUpdate\" = NOW(), \"updatedAt\" = NOW() "
+                        + "WHERE id = ? AND \"lastLatitude\" IS NOT NULL AND \"lastLongitude\" IS NOT NULL",
+                userId
+        );
+    }
+
     public GlobalMatchContext findGlobalMatchContext(String userId) {
         String sql = """
                 SELECT
@@ -325,6 +334,7 @@ public class UserRepository {
                   AND u."isLocationVisible" = true
                   AND u."lastLatitude" IS NOT NULL
                   AND u."lastLongitude" IS NOT NULL
+                  AND u."lastLocationUpdate" > NOW() - INTERVAL '3 minutes'
                   AND u."lastLatitude" BETWEEN ? AND ?
                   AND u."lastLongitude" BETWEEN ? AND ?
                   AND NOT EXISTS (
@@ -506,6 +516,14 @@ public class UserRepository {
                 "DELETE FROM users.\"UserBlock\" WHERE \"blockerId\" = ? AND \"targetUserId\" = ?",
                 blockerId,
                 targetUserId
+        );
+    }
+
+    public List<String> listBlockedUserIds(String blockerId) {
+        return jdbcTemplate.query(
+                "SELECT \"targetUserId\" FROM users.\"UserBlock\" WHERE \"blockerId\" = ? ORDER BY \"createdAt\" DESC",
+                (rs, rn) -> rs.getString("targetUserId"),
+                blockerId
         );
     }
 

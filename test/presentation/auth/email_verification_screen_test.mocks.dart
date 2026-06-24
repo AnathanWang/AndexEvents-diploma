@@ -55,6 +55,74 @@ class MockAuthService extends _i1.Mock implements _i3.AuthService {
           as bool);
 
   @override
+  _i4.Future<_i2.User?> waitForAuthRestoration() =>
+      (super.noSuchMethod(
+            Invocation.method(#waitForAuthRestoration, []),
+            returnValue: _i4.Future<_i2.User?>.value(),
+          )
+          as _i4.Future<_i2.User?>);
+
+  @override
+  _i4.Future<void> cacheLastAuthSession({
+    required String? uid,
+    String? email,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#cacheLastAuthSession, [], {
+              #uid: uid,
+              #email: email,
+            }),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<String?> getLastAuthUid() =>
+      (super.noSuchMethod(
+            Invocation.method(#getLastAuthUid, []),
+            returnValue: _i4.Future<String?>.value(),
+          )
+          as _i4.Future<String?>);
+
+  @override
+  _i4.Future<String?> getLastAuthEmail() =>
+      (super.noSuchMethod(
+            Invocation.method(#getLastAuthEmail, []),
+            returnValue: _i4.Future<String?>.value(),
+          )
+          as _i4.Future<String?>);
+
+  @override
+  _i4.Future<void> clearLastAuthSession() =>
+      (super.noSuchMethod(
+            Invocation.method(#clearLastAuthSession, []),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<void> logAuthStartup(
+    String? message,
+    Map<String, dynamic>? data,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#logAuthStartup, [message, data]),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<List<String>> getAuthStartupLog() =>
+      (super.noSuchMethod(
+            Invocation.method(#getAuthStartupLog, []),
+            returnValue: _i4.Future<List<String>>.value(<String>[]),
+          )
+          as _i4.Future<List<String>>);
+
+  @override
   _i4.Future<_i2.UserCredential> signUpWithEmail({
     required String? email,
     required String? password,
@@ -164,6 +232,15 @@ class MockAuthService extends _i1.Mock implements _i3.AuthService {
           as _i4.Future<void>);
 
   @override
+  _i4.Future<void> ensureUserInBackend() =>
+      (super.noSuchMethod(
+            Invocation.method(#ensureUserInBackend, []),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
   _i4.Future<Map<String, dynamic>> getCurrentUserProfile() =>
       (super.noSuchMethod(
             Invocation.method(#getCurrentUserProfile, []),
@@ -172,4 +249,21 @@ class MockAuthService extends _i1.Mock implements _i3.AuthService {
             ),
           )
           as _i4.Future<Map<String, dynamic>>);
+
+  @override
+  _i4.Future<void> cacheOnboardingStatus(bool? isCompleted) =>
+      (super.noSuchMethod(
+            Invocation.method(#cacheOnboardingStatus, [isCompleted]),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<bool?> getCachedOnboardingStatus() =>
+      (super.noSuchMethod(
+            Invocation.method(#getCachedOnboardingStatus, []),
+            returnValue: _i4.Future<bool?>.value(),
+          )
+          as _i4.Future<bool?>);
 }

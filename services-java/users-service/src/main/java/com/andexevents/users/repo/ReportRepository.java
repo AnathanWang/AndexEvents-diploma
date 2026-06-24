@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Map;
 
 @Repository
 public class ReportRepository {
@@ -50,6 +51,31 @@ public class ReportRepository {
                 SELECT * FROM users."Report" ORDER BY "createdAt" DESC
                 """,
                 mapper()
+        );
+    }
+
+    public List<Map<String, Object>> findAllEnriched() {
+        return jdbcTemplate.queryForList(
+                """
+                SELECT
+                  r.*,
+                  ru.id          AS reporter_user_id,
+                  ru."displayName" AS reporter_display_name,
+                  ru.email       AS reporter_email,
+                  ru."photoUrl"  AS reporter_photo_url,
+                  tu.id          AS target_user_id2,
+                  tu."displayName" AS target_display_name,
+                  tu.email       AS target_email,
+                  tu."photoUrl"  AS target_photo_url,
+                  e.id           AS target_event_id2,
+                  e.title        AS target_event_title,
+                  e."imageUrl"   AS target_event_image_url
+                FROM users."Report" r
+                LEFT JOIN users."User" ru ON ru.id = r."reporterId"
+                LEFT JOIN users."User" tu ON tu.id = r."targetUserId"
+                LEFT JOIN events."Event" e ON e.id = r."targetEventId"
+                ORDER BY r."createdAt" DESC
+                """
         );
     }
 

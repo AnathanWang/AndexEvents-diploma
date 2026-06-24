@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../../core/services/logger_service.dart';
+import '../../../core/utils/location_utils.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/user_service.dart';
-import '../../home/home_shell.dart';
 import '../../widgets/common/custom_notification.dart';
+import '../../home/home_shell.dart';
 import '../widgets/auth_glass_card.dart';
 import '../widgets/auth_glass_scaffold.dart';
 
@@ -46,7 +47,7 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
 
       if (permission == LocationPermission.whileInUse ||
           permission == LocationPermission.always) {
-        final Position position = await Geolocator.getCurrentPosition();
+        final Position? position = await LocationUtils.resolvePosition();
 
         setState(() {
           _permissionStatus = permission;
@@ -54,7 +55,14 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
           _isLoading = false;
         });
 
-        await _completeOnboarding();
+        if (position != null) {
+          await _completeOnboarding();
+        } else if (mounted) {
+          CustomNotification.error(
+            context,
+            'Не удалось определить местоположение. Попробуйте ещё раз.',
+          );
+        }
       } else {
         setState(() {
           _permissionStatus = permission;
@@ -84,16 +92,12 @@ class _SetupLocationScreenState extends State<SetupLocationScreen> {
       if (_currentPosition == null) {
         try {
           LoggerService.debug('DEBUG: Получаем текущую позицию...');
-          final Position position = await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.high,
-              timeLimit: Duration(seconds: 10),
-            ),
-          );
-          _currentPosition = position;
-          LoggerService.debug(
-            'DEBUG: Позиция получена: ${position.latitude}, ${position.longitude}',
-          );
+          _currentPosition = await LocationUtils.resolvePosition();
+          if (_currentPosition != null) {
+            LoggerService.debug(
+              'DEBUG: Позиция получена: ${_currentPosition!.latitude}, ${_currentPosition!.longitude}',
+            );
+          }
         } catch (e) {
           LoggerService.debug('DEBUG: Не удалось получить позицию: $e');
         }

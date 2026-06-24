@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -40,7 +41,7 @@ class _MapExploreScreenState extends State<MapExploreScreen>
   static const int _maxMapUsers = 25;
   static const int _hubEventLimit = 20;
   static const int _hubFetchLimit = 30;
-  static const int _userHubRadiusMeters = 12000;
+  static const int _hubRadiusMeters = 5000;
   static const Duration _viewportDebounce = Duration(milliseconds: 600);
   static const Point _defaultMapCenter = Point(
     latitude: 58.603591,
@@ -63,11 +64,11 @@ class _MapExploreScreenState extends State<MapExploreScreen>
       ValueNotifier<List<EventModel>>(const []);
   final ValueNotifier<List<MapUserPreview>> _mapMarkerUsersNotifier =
       ValueNotifier<List<MapUserPreview>>(const []);
-  final ValueNotifier<bool> _mapGesturingNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<List<EventModel>> _hubEventsNotifier =
+      ValueNotifier<List<EventModel>>(const []);
   List<EventModel> _allEvents = [];
   List<MapUserPreview> _allMapUsers = [];
   List<EventModel> _hubSourceEvents = [];
-  List<EventModel> _filteredEvents = [];
   Map<String, dynamic> _mapFilters = const {
     'category': 'all',
     'date': 'week',
@@ -82,14 +83,11 @@ class _MapExploreScreenState extends State<MapExploreScreen>
   Point? _lastLoadCenter;
   int? _lastLoadRadiusMeters;
   Timer? _viewportApiDebounce;
-  Timer? _gestureEndDebounce;
   bool _isViewportRequestInFlight = false;
   bool _isMapUsersRequestInFlight = false;
   bool _isHubRequestInFlight = false;
   bool _initialViewportLoaded = false;
   bool _initialDataLoadScheduled = false;
-  Offset? _panStart;
-  static const double _panSlop = 12;
 
   @override
   void initState() {
@@ -112,12 +110,11 @@ class _MapExploreScreenState extends State<MapExploreScreen>
   @override
   void dispose() {
     _viewportApiDebounce?.cancel();
-    _gestureEndDebounce?.cancel();
     _searchController.dispose();
     _activeEventIndexNotifier.dispose();
     _mapMarkerEventsNotifier.dispose();
     _mapMarkerUsersNotifier.dispose();
-    _mapGesturingNotifier.dispose();
+    _hubEventsNotifier.dispose();
     super.dispose();
   }
 
@@ -155,10 +152,12 @@ class _MapExploreScreenState extends State<MapExploreScreen>
     _allEvents = next;
     _updateMapMarkerEvents();
     _updateMapMarkerUsers();
-    setState(() {
-      _isInitialLoading = false;
-      _errorMessage = null;
-    });
+    if (_isInitialLoading || _errorMessage != null) {
+      setState(() {
+        _isInitialLoading = false;
+        _errorMessage = null;
+      });
+    }
   }
 
   Point get _mapFocusCenter =>
@@ -212,7 +211,10 @@ class _MapExploreScreenState extends State<MapExploreScreen>
     }
 
     final center = _mapFocusCenter;
-    final radiusMeters = _estimatedViewportRadiusMeters();
+    final radiusMeters = math.max(
+      _estimatedViewportRadiusMeters(),
+      _hubRadiusMeters,
+    );
     final withDistance = <({MapUserPreview user, double distance})>[];
     for (final user in _allMapUsers) {
       final distance = Geolocator.distanceBetween(
@@ -256,28 +258,25 @@ class _MapExploreScreenState extends State<MapExploreScreen>
       out = out.take(_hubEventLimit).toList();
     }
 
-    if (_sameEventIds(_filteredEvents, out)) {
+    if (_sameEventIds(_hubEventsNotifier.value, out)) {
       return;
     }
-    _filteredEvents = out;
+    _hubEventsNotifier.value = out;
     _activeEventIndexNotifier.value = 0;
-    if (mounted) {
-      setState(() {});
-    }
   }
 
   Future<void> _loadHubEventsFromUserLocation() async {
-    final userCenter = _currentUserLocation;
-    if (userCenter == null || _isHubRequestInFlight) {
+    if (_isHubRequestInFlight) {
       return;
     }
 
     _isHubRequestInFlight = true;
     try {
+      final hubCenter = _currentUserLocation ?? _mapFocusCenter;
       final events = await _eventService.getEvents(
-        latitude: userCenter.latitude,
-        longitude: userCenter.longitude,
-        maxDistance: _userHubRadiusMeters,
+        latitude: hubCenter.latitude,
+        longitude: hubCenter.longitude,
+        maxDistance: _hubRadiusMeters,
         limit: _hubFetchLimit,
         writeCache: false,
       );
@@ -298,9 +297,7 @@ class _MapExploreScreenState extends State<MapExploreScreen>
     if (_initialDataLoadScheduled || _mapController == null) return;
     _initialDataLoadScheduled = true;
     _scheduleViewportApiLoad(mergeWithExisting: true, immediate: true);
-    if (_currentUserLocation != null) {
-      unawaited(_loadHubEventsFromUserLocation());
-    }
+    unawaited(_loadHubEventsFromUserLocation());
   }
 
   void _scheduleInitialDataLoadAfterMapReady() {
@@ -327,18 +324,17 @@ class _MapExploreScreenState extends State<MapExploreScreen>
     required double longitude,
     required double radiusKm,
   }) async {
-    if (!shouldShowMapUserMarkers(_cameraZoom)) {
-      return;
-    }
-
     if (_isMapUsersRequestInFlight) return;
 
     _isMapUsersRequestInFlight = true;
     try {
+      final fetchRadiusKm = radiusKm < mapUsersFetchMinRadiusKm
+          ? mapUsersFetchMinRadiusKm
+          : radiusKm;
       final users = await _userService.getMapUsers(
         latitude: latitude,
         longitude: longitude,
-        radiusKm: radiusKm,
+        radiusKm: fetchRadiusKm,
         limit: 40,
       );
       if (!mounted) return;
@@ -424,37 +420,6 @@ class _MapExploreScreenState extends State<MapExploreScreen>
     });
   }
 
-  void _beginMapGesture() {
-    if (_mapGesturingNotifier.value) return;
-    _mapGesturingNotifier.value = true;
-    _gestureEndDebounce?.cancel();
-  }
-
-  void _endMapGesture() {
-    _gestureEndDebounce?.cancel();
-    _gestureEndDebounce = Timer(const Duration(milliseconds: 280), () {
-      if (!mounted) return;
-      if (!_mapGesturingNotifier.value) return;
-      _mapGesturingNotifier.value = false;
-    });
-  }
-
-  void _handlePointerDown(PointerDownEvent event) {
-    _panStart = event.position;
-  }
-
-  void _handlePointerMove(PointerMoveEvent event) {
-    final start = _panStart;
-    if (start == null) return;
-    if ((event.position - start).distance >= _panSlop) {
-      _beginMapGesture();
-    }
-  }
-
-  void _handlePointerUp(PointerEvent event) {
-    _panStart = null;
-  }
-
   void _onCameraPositionChanged(
     CameraPosition cameraPosition,
     CameraUpdateReason reason,
@@ -470,27 +435,23 @@ class _MapExploreScreenState extends State<MapExploreScreen>
       _updateMapMarkerUsers();
     }
 
-    if (reason == CameraUpdateReason.gestures && !finished) {
-      _beginMapGesture();
+    if (!finished) {
       return;
     }
 
-    if (finished && reason == CameraUpdateReason.gestures) {
-      _endMapGesture();
-      _updateMapMarkerEvents();
-      if (!usersVisibilityChanged) {
-        _updateMapMarkerUsers();
-      }
-      _scheduleViewportApiLoad(mergeWithExisting: true);
-    } else if (finished) {
-      _updateMapMarkerEvents();
-      if (!usersVisibilityChanged) {
-        _updateMapMarkerUsers();
-      }
-      if (!_initialViewportLoaded ||
-          (usersVisibilityChanged && shouldShowMapUserMarkers(_cameraZoom))) {
-        _scheduleViewportApiLoad(mergeWithExisting: true, immediate: true);
-      }
+    _updateMapMarkerEvents();
+    if (!usersVisibilityChanged) {
+      _updateMapMarkerUsers();
+    }
+    _scheduleViewportApiLoad(mergeWithExisting: true);
+    if (_allMapUsers.isEmpty && shouldShowMapUserMarkers(_cameraZoom)) {
+      unawaited(
+        _loadMapUsersForViewport(
+          latitude: _mapFocusCenter.latitude,
+          longitude: _mapFocusCenter.longitude,
+          radiusKm: mapUsersFetchMinRadiusKm,
+        ),
+      );
     }
   }
 
@@ -586,14 +547,8 @@ class _MapExploreScreenState extends State<MapExploreScreen>
       child: Stack(
         children: [
           Positioned.fill(
-            child: Listener(
-              behavior: HitTestBehavior.translucent,
-              onPointerDown: _handlePointerDown,
-              onPointerMove: _handlePointerMove,
-              onPointerUp: _handlePointerUp,
-              onPointerCancel: _handlePointerUp,
-              child: RepaintBoundary(
-                child: ListenableBuilder(
+            child: RepaintBoundary(
+              child: ListenableBuilder(
                   listenable: Listenable.merge(
                     <Listenable>[
                       _mapMarkerEventsNotifier,
@@ -615,12 +570,20 @@ class _MapExploreScreenState extends State<MapExploreScreen>
                         _currentUserLocation = location;
                         if (!hadLocation) {
                           unawaited(_loadHubEventsFromUserLocation());
-                          if (!_initialViewportLoaded) {
-                            _scheduleViewportApiLoad(
-                              mergeWithExisting: true,
-                              immediate: true,
-                            );
-                          }
+                        }
+                        if (!_initialViewportLoaded) {
+                          _scheduleViewportApiLoad(
+                            mergeWithExisting: true,
+                            immediate: true,
+                          );
+                        } else if (_allMapUsers.isEmpty) {
+                          unawaited(
+                            _loadMapUsersForViewport(
+                              latitude: location.latitude,
+                              longitude: location.longitude,
+                              radiusKm: mapUsersFetchMinRadiusKm,
+                            ),
+                          );
                         }
                       },
                       onCameraPositionChanged: _onCameraPositionChanged,
@@ -650,7 +613,6 @@ class _MapExploreScreenState extends State<MapExploreScreen>
                 ),
               ),
             ),
-          ),
 
           MapExploreSearchBar(
             controller: _searchController,
@@ -688,20 +650,19 @@ class _MapExploreScreenState extends State<MapExploreScreen>
             },
           ),
 
-          ValueListenableBuilder<bool>(
-            valueListenable: _mapGesturingNotifier,
-            builder: (context, mapGesturing, _) {
-              return Positioned(
-                left: eventsHubHorizontalInset,
-                right: eventsHubHorizontalInset,
-                bottom: eventsHubBottom,
-                child: RepaintBoundary(
-                  child: MapExploreEventsHubSlot(
+          Positioned(
+            left: eventsHubHorizontalInset,
+            right: eventsHubHorizontalInset,
+            bottom: eventsHubBottom,
+            child: RepaintBoundary(
+              child: ValueListenableBuilder<List<EventModel>>(
+                valueListenable: _hubEventsNotifier,
+                builder: (context, hubEvents, _) {
+                  return MapExploreEventsHubSlot(
                     expanded: !_isEventsHubHidden,
-                    gestureHidden: mapGesturing,
                     hubHeight: eventsHubHeight,
                     hub: MapNearbyEventsHub(
-                      events: _filteredEvents,
+                      events: hubEvents,
                       searchQuery: _searchController.text,
                       hubHeight: eventsHubHeight,
                       activeIndexListenable: _activeEventIndexNotifier,
@@ -724,10 +685,10 @@ class _MapExploreScreenState extends State<MapExploreScreen>
                         });
                       },
                     ),
-                  ),
-                ),
-              );
-            },
+                  );
+                },
+              ),
+            ),
           ),
 
           if (_isInitialLoading)

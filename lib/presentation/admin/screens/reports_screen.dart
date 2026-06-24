@@ -18,7 +18,7 @@ class ReportsScreen extends StatefulWidget {
 
 class _ReportsScreenState extends State<ReportsScreen> {
   final ReportService _reportService = ReportService();
-  List<ReportModel> _reports = [];
+  List<EnrichedReportModel> _reports = [];
   bool _isLoading = true;
   String? _loadError;
   final Set<String> _actionInProgress = <String>{};
@@ -36,7 +36,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       _loadError = null;
     });
     try {
-      final reports = await _reportService.getReports();
+      final reports = await _reportService.getReportsEnriched();
       if (mounted) {
         setState(() {
           _reports = reports;
@@ -53,19 +53,20 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
   }
 
-  List<ReportModel> get _filteredReports {
+  List<EnrichedReportModel> get _filteredReports {
     if (_filterStatus == 'ALL') return _reports;
     return _reports
-        .where((r) => r.status.toUpperCase() == _filterStatus)
+        .where((r) => r.report.status.toUpperCase() == _filterStatus)
         .toList();
   }
 
-  Future<void> _resolveReport(ReportModel report, String resolution) async {
-    if (_actionInProgress.contains(report.id)) return;
-    setState(() => _actionInProgress.add(report.id));
+  Future<void> _resolveReport(EnrichedReportModel report, String resolution) async {
+    final id = report.report.id;
+    if (_actionInProgress.contains(id)) return;
+    setState(() => _actionInProgress.add(id));
 
     try {
-      await _reportService.resolveReport(report.id, resolution);
+      await _reportService.resolveReport(id, resolution);
       await _loadReports();
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -77,7 +78,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
       );
     } finally {
-      if (mounted) setState(() => _actionInProgress.remove(report.id));
+      if (mounted) setState(() => _actionInProgress.remove(id));
     }
   }
 
@@ -204,7 +205,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _buildReportCard(ReportModel report) {
+  Widget _buildReportCard(EnrichedReportModel item) {
+    final report = item.report;
     final statusColor = report.status.toUpperCase() == 'PENDING'
         ? Colors.orange
         : Colors.green;
@@ -238,7 +240,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ),
             title: Text(
-              report.reason.displayName,
+              reportReasonDisplayName(report.reason),
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 14,
@@ -246,7 +248,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ),
             subtitle: Text(
-              'От: ${report.reporterId.substring(0, 8)} • ${DateFormat('dd.MM.yyyy').format(report.createdAt)}',
+              'От: ${item.reporter?.displayName ?? report.reporterId.substring(0, 8)} • ${DateFormat('dd.MM.yyyy').format(report.createdAt)}',
               style: const TextStyle(fontSize: 12, color: _secondaryTextColor),
             ),
             childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -256,14 +258,20 @@ class _ReportsScreenState extends State<ReportsScreen> {
               if (report.targetUserId != null)
                 _buildInfoRow(
                   'Цель (Юзер)',
-                  report.targetUserId!,
+                  item.targetUser?.displayName ?? report.targetUserId!,
                   Icons.person_outline_rounded,
                 ),
               if (report.targetEventId != null)
                 _buildInfoRow(
                   'Цель (Событие)',
-                  report.targetEventId!,
+                  item.targetEvent?.title ?? report.targetEventId!,
                   Icons.event_note_rounded,
+                ),
+              if (item.reporter != null)
+                _buildInfoRow(
+                  'Репортёр',
+                  '${item.reporter!.displayName ?? item.reporter!.id}${item.reporter!.email != null ? ' • ${item.reporter!.email}' : ''}',
+                  Icons.person,
                 ),
               if (report.details != null && report.details!.isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -311,7 +319,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           Expanded(
                             child: OutlinedButton(
                               onPressed: () =>
-                                  _resolveReport(report, 'REJECTED'),
+                                  _resolveReport(item, 'DISMISSED'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: const Color(0xFF5E6D86),
                                 padding:
@@ -329,7 +337,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           Expanded(
                             child: ElevatedButton(
                               onPressed: () =>
-                                  _resolveReport(report, 'RESOLVED'),
+                                  _resolveReport(item, 'RESOLVED'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,

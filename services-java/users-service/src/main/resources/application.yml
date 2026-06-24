@@ -54,6 +54,10 @@ app:
         pattern: /api/users/me
       - method: PUT
         pattern: /api/users/me/location
+      - method: PUT
+        pattern: /api/users/me/presence
+      - method: GET
+        pattern: /api/users/me/blocks
       - method: GET
         pattern: /api/users/matches
       - method: GET
@@ -70,6 +74,8 @@ app:
         pattern: /api/users/reports
       - method: GET
         pattern: /api/users/reports/events
+      - method: GET
+        pattern: /api/users/reports/enriched
       - method: POST
         pattern: /api/users/reports
       - method: PUT

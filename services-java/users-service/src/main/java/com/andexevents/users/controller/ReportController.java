@@ -96,6 +96,23 @@ public class ReportController {
         return ResponseEntity.ok(ApiResponse.ok(reports));
     }
 
+    @GetMapping("/enriched")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getReportsEnriched(HttpServletRequest request) {
+        UserDto requester = resolveRequester(request);
+        if (requester == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Unauthorized: User ID not found"));
+        }
+
+        if (!isAdmin(requester)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Forbidden: admin access required"));
+        }
+
+        var rows = reportService.getAllReportsEnriched();
+        return ResponseEntity.ok(ApiResponse.ok(rows));
+    }
+
     /**
      * GET /api/users/reports/events — get only event reports (admin/moderator)
      */

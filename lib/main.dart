@@ -122,6 +122,12 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  if (FirebaseAuth.instance.currentUser != null) {
+    LoggerService.info(
+      '[AuthStartup] Firebase user on launch: uid=${FirebaseAuth.instance.currentUser!.uid}',
+    );
+  }
+
   // Setup background messaging handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   await _configurePushNotifications();

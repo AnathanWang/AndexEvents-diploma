@@ -14,6 +14,7 @@ import '../../core/services/logger_service.dart';
 /// Сервис для работы с Firebase Authentication
 class AuthService {
   static const String _onboardingStatusKeyPrefix = 'onboarding_completed_';
+  static const String _sessionUidKey = 'auth_session_uid';
 
   final FirebaseAuth _auth;
   final GoogleSignIn _googleSignIn;
@@ -37,6 +38,47 @@ class AuthService {
 
   /// Stream для отслеживания изменений состояния авторизации
   Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  /// Маркер локальной сессии (отдельно от Firebase persistence).
+  Future<void> markSessionActive(String uid) async {
+    if (uid.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_sessionUidKey, uid);
+  }
+
+  Future<bool> hadPreviousSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final uid = prefs.getString(_sessionUidKey);
+    return uid != null && uid.isNotEmpty;
+  }
+
+  Future<void> clearSessionMarker() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sessionUidKey);
+  }
+
+  /// Дождаться чтения локальной сессии Firebase.
+  Future<void> awaitInitialAuthState() async {
+    if (_auth.currentUser != null) return;
+
+    try {
+      await _auth.authStateChanges().first.timeout(const Duration(seconds: 8));
+    } on TimeoutException {
+      LoggerService.warning('[AuthService] awaitInitialAuthState timeout');
+    }
+
+    if (_auth.currentUser == null && await hadPreviousSession()) {
+      LoggerService.warning(
+        '[AuthService] Firebase session missing, clearing stale session marker',
+      );
+      await clearSessionMarker();
+    }
+  }
+
+  Future<void> _persistAuthState(User user) async {
+    await user.getIdToken(false);
+    await markSessionActive(user.uid);
+  }
 
   /// Регистрация через Email и пароль
   Future<UserCredential> signUpWithEmail({
@@ -69,6 +111,8 @@ class AuthService {
         photoUrl: user.photoURL,
       );
 
+      await _persistAuthState(user);
+
       return credential;
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthException(e));
@@ -90,6 +134,7 @@ class AuthService {
 
       final user = credential.user;
       if (user != null) {
+        await _persistAuthState(user);
         try {
           await _createUserInBackend(
             displayName: user.displayName ?? _displayNameFromEmail(user.email),
@@ -134,6 +179,8 @@ class AuthService {
         throw Exception('Ошибка Google Sign-In: пользователь не найден');
       }
 
+      await _persistAuthState(user);
+
       try {
         await _createUserInBackend(
           displayName: user.displayName ?? googleUser.displayName ?? 'User',
@@ -167,6 +214,7 @@ class AuthService {
 
   /// Выход из системы
   Future<void> signOut() async {
+    await clearSessionMarker();
     await Future.wait([
       _auth.signOut(),
       _googleSignIn.signOut(),

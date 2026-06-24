@@ -103,7 +103,6 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
     showDialog<void>(
       context: context,
       builder: (_) => ReportDialog(
-        reporterId: reporterId,
         targetEventId: event.id,
       ),
     );
@@ -212,7 +211,8 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
       return;
     }
 
-    if (event.userParticipationStatus != 'GOING') {
+    final participation = (event.userParticipationStatus ?? '').trim();
+    if (participation.toUpperCase() != 'GOING') {
       CustomNotification.show(
         context,
         'Сначала подтвердите участие',
@@ -291,7 +291,9 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
           current is EventParticipationUpdating,
       listener: (context, state) {
         if (state is EventDetailLoaded) {
-          _isGoingNotifier.value = state.event.isParticipating;
+          _isGoingNotifier.value =
+              (state.event.userParticipationStatus ?? '').trim().toUpperCase() ==
+                  'GOING';
           _isFavoriteNotifier.value =
               state.event.userParticipationStatus == 'INTERESTED';
           _isCheckedInNotifier.value = state.event.isCheckedIn;
@@ -540,7 +542,8 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
         onRate: () => _showRatingDialog(event),
         showCheckInButton: !_isCreator(event) &&
             !_isEventFinished(event) &&
-            event.userParticipationStatus == 'GOING',
+            _canShowCheckInButton(event) &&
+            (event.userParticipationStatus ?? '').trim().toUpperCase() == 'GOING',
         isCheckedIn: _isCheckedInNotifier,
         isCheckInLoading: _isCheckInLoadingNotifier,
         onToggleCheckIn: () => _toggleCheckIn(event),
@@ -603,6 +606,14 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
 
   bool _isEventFinished(EventModel event) {
     return !event.actualEndDateTime.toUtc().isAfter(DateTime.now().toUtc());
+  }
+
+  bool _canShowCheckInButton(EventModel event) {
+    // Rule: show check-in only once the event starts.
+    final startsAt = event.dateTime.toUtc();
+    final now = DateTime.now().toUtc();
+    if (now.isBefore(startsAt)) return false;
+    return true;
   }
 
   bool _isCreator(EventModel event) {

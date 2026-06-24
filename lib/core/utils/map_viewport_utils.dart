@@ -5,8 +5,11 @@ import 'package:yandex_mapkit/yandex_mapkit.dart';
 
 import '../../data/models/event_model.dart';
 
-/// User markers appear only when zoomed in enough to avoid cluttering the city view.
-const double mapUserMarkersMinZoom = 14.0;
+/// User markers appear when city blocks are visible (same as event cluster minZoom).
+const double mapUserMarkersMinZoom = 13.0;
+
+/// Minimum API radius when loading map users (ensures Kirov demo seeds are reachable).
+const double mapUsersFetchMinRadiusKm = 20.0;
 
 bool shouldShowMapUserMarkers(double zoom) => zoom >= mapUserMarkersMinZoom;
 

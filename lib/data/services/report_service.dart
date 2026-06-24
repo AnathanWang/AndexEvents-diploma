@@ -48,10 +48,9 @@ class ReportService {
   }
 
   Future<void> submitReport({
-    required String reporterId,
     String? targetUserId,
     String? targetEventId,
-    required ReportReason reason,
+    required String reason,
     String? details,
   }) async {
     try {
@@ -60,10 +59,7 @@ class ReportService {
         throw Exception('Пользователь не авторизован');
       }
 
-      final body = <String, dynamic>{
-        'reporterId': reporterId,
-        'reason': reason.toBackendValue,
-      };
+      final body = <String, dynamic>{'reason': reason};
       if (targetUserId != null) body['targetUserId'] = targetUserId;
       if (targetEventId != null) body['targetEventId'] = targetEventId;
       if (details != null && details.isNotEmpty) body['details'] = details;
@@ -121,6 +117,55 @@ class ReportService {
         final List<dynamic> reportsJson = data['data'] ?? [];
         return reportsJson
             .map((json) => ReportModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw ReportAccessDeniedException(
+          _extractErrorMessage(response.body) ??
+              'Недостаточно прав для просмотра жалоб. Войдите под модератором.',
+        );
+      }
+
+      throw Exception('Ошибка загрузки жалоб: ${response.statusCode}');
+    } on TimeoutException {
+      throw Exception('Таймаут при загрузке жалоб');
+    } on SocketException catch (e) {
+      throw Exception('Не удалось подключиться к API: ${e.message}');
+    } on ReportAccessDeniedException catch (e) {
+      LoggerService.warning(
+        '[ReportService] Доступ к жалобам отклонен: ${e.message}',
+      );
+      rethrow;
+    } catch (e) {
+      LoggerService.error('[ReportService] Ошибка загрузки жалоб', e);
+      rethrow;
+    }
+  }
+
+  Future<List<EnrichedReportModel>> getReportsEnriched() async {
+    try {
+      final token = await _getIdToken();
+      if (token == null) {
+        throw Exception('Пользователь не авторизован');
+      }
+
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.baseUrl}/users/reports/enriched'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(AppConfig.receiveTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> reportsJson = data['data'] ?? [];
+        return reportsJson
+            .whereType<Map<String, dynamic>>()
+            .map(EnrichedReportModel.fromJson)
             .toList();
       }
 
