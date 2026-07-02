@@ -272,7 +272,6 @@ class _MatchLikesSheetState extends State<MatchLikesSheet>
                 MaterialPageRoute<void>(
                   builder: (context) => UserProfileScreen.fromUser(
                     user: match.userModel,
-                    matchPercentage: match.matchPercentage,
                     commonInterests: match.commonInterests,
                     canViewSensitiveInfo: _canViewSensitiveInfo,
                   ),

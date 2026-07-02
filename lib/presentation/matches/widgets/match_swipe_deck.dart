@@ -18,6 +18,7 @@ class MatchSwipeDeck extends StatefulWidget {
     required this.onDeckEmpty,
     this.topPadding,
     this.bottomReserve,
+    this.showCommonInterests = false,
   });
 
   final List<MatchPreview> matches;
@@ -27,6 +28,7 @@ class MatchSwipeDeck extends StatefulWidget {
 
   final double? topPadding;
   final double? bottomReserve;
+  final bool showCommonInterests;
 
   @override
   State<MatchSwipeDeck> createState() => _MatchSwipeDeckState();
@@ -218,6 +220,7 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck>
                       match: widget.matches[1],
                       top: top,
                       bottom: bottomInset + bottomNavReserve + 22,
+                      showCommonInterests: widget.showCommonInterests,
                     ),
                   ),
                 ),
@@ -242,6 +245,7 @@ class _MatchSwipeDeckState extends State<MatchSwipeDeck>
                         match: current,
                         top: top,
                         bottom: bottomInset + bottomNavReserve + 22,
+                        showCommonInterests: widget.showCommonInterests,
                       ),
                     ),
                   ),
@@ -280,11 +284,13 @@ class _MatchCard extends StatelessWidget {
     required this.match,
     required this.top,
     required this.bottom,
+    this.showCommonInterests = false,
   });
 
   final MatchPreview match;
   final double top;
   final double bottom;
+  final bool showCommonInterests;
 
   @override
   Widget build(BuildContext context) {
@@ -389,41 +395,6 @@ class _MatchCard extends StatelessWidget {
                               ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: <Color>[
-                                AppColors.primary.withValues(alpha: 0.10),
-                                AppColors.accent.withValues(alpha: 0.16),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.favorite_rounded,
-                                color: AppColors.dark.withValues(alpha: 0.55),
-                                size: 14,
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                '${match.matchPercentage}% совпадение',
-                                style: TextStyle(
-                                  color: AppColors.dark.withValues(alpha: 0.62),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                         if (match.bio != null && match.bio!.isNotEmpty) ...[
                           const SizedBox(height: 10),
                           Text(
@@ -437,7 +408,7 @@ class _MatchCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
-                        if (match.commonInterests.isNotEmpty) ...[
+                        if (showCommonInterests && match.commonInterests.isNotEmpty) ...[
                           const SizedBox(height: 10),
                           Wrap(
                             spacing: 6,

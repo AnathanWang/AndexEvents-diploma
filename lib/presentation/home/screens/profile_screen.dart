@@ -460,7 +460,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                       MaterialPageRoute<void>(
                         builder: (context) => UserProfileScreen.fromUser(
                           user: match.userModel,
-                          matchPercentage: match.matchPercentage,
                           commonInterests: match.commonInterests,
                           canViewSensitiveInfo: canViewSensitiveInfo,
                         ),

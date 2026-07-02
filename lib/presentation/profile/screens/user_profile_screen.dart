@@ -26,15 +26,15 @@ class UserProfileScreen extends StatefulWidget {
     this.eventService,
     super.key,
   })  : user = null,
-        matchPercentage = null,
         commonInterests = const <String>[],
-        canViewSensitiveInfo = false;
+        canViewSensitiveInfo = false,
+        showCommonInterestsBlock = false;
 
   UserProfileScreen.fromUser({
     required this.user,
-    this.matchPercentage,
     this.commonInterests = const <String>[],
     this.canViewSensitiveInfo = false,
+    this.showCommonInterestsBlock = true,
     this.eventService,
     super.key,
   })  : assert(user != null),
@@ -50,9 +50,9 @@ class UserProfileScreen extends StatefulWidget {
   final String userName;
   final String userInitials;
   final UserModel? user;
-  final int? matchPercentage;
   final List<String> commonInterests;
   final bool canViewSensitiveInfo;
+  final bool showCommonInterestsBlock;
   final EventService? eventService;
 
   static String _initialsFrom(String name) {
@@ -97,19 +97,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       return widget.commonInterests;
     }
     return const <String>[];
-  }
-
-  int? get _displayMatchPercentage {
-    if (widget.matchPercentage != null) {
-      return widget.matchPercentage;
-    }
-    final mine = _currentUser;
-    final theirs = _user;
-    if (mine == null || theirs == null) return null;
-    return MatchRecommendationUtils.displayCompatibilityPercent(
-      candidate: theirs,
-      currentUser: mine,
-    );
   }
 
   String _commonInterestsTitle(int count) {
@@ -920,44 +907,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                        if (_displayMatchPercentage != null) ...[
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: <Color>[
-                                  Color(0xFFE8F1FF),
-                                  Color(0xFFE7F7F2),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(color: const Color(0xFFD8E7FF)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                const Icon(
-                                  Icons.favorite_rounded,
-                                  size: 14,
-                                  color: Color(0xFF5F76FF),
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  '${_displayMatchPercentage!}% совпадение',
-                                  style: const TextStyle(
-                                    color: Color(0xFF4B5877),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
                         const SizedBox(height: 10),
                         Text(
                           _user?.bio?.isNotEmpty == true
@@ -1019,14 +968,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: _user!.interests.map((interest) {
-                        final sharedKeys = _displayCommonInterests
-                            .map(
-                              (shared) => shared
-                                  .trim()
-                                  .toLowerCase()
-                                  .replaceAll('ё', 'е'),
-                            )
-                            .toSet();
+                        final sharedKeys = widget.showCommonInterestsBlock
+                            ? _displayCommonInterests
+                                .map(
+                                  (shared) => shared
+                                      .trim()
+                                      .toLowerCase()
+                                      .replaceAll('ё', 'е'),
+                                )
+                                .toSet()
+                            : <String>{};
                         return Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
@@ -1075,71 +1026,73 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   const SizedBox(height: 20),
                 ],
 
-                // Общие интересы
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: <Color>[Color(0xFFE8F1FF), Color(0xFFE7F7F2)],
+                if (widget.showCommonInterestsBlock) ...[
+                  // Общие интересы
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: <Color>[Color(0xFFE8F1FF), Color(0xFFE7F7F2)],
+                        ),
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: const Color(0xFFD8E7FF),
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(
-                        color: const Color(0xFFD8E7FF),
-                      ),
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: <Color>[
-                                Color(0xFF5F76FF),
-                                Color(0xFF62A9FF),
+                      child: Row(
+                        children: <Widget>[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: <Color>[
+                                  Color(0xFF5F76FF),
+                                  Color(0xFF62A9FF),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(
+                              Icons.favorite,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  _commonInterestsTitle(
+                                    _displayCommonInterests.length,
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF243252),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _displayCommonInterests.isEmpty
+                                      ? 'Добавьте интересы в профиле, чтобы видеть совпадения'
+                                      : _displayCommonInterests.join(', '),
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    color: Color(0xFF66739B),
+                                  ),
+                                ),
                               ],
                             ),
-                            borderRadius: BorderRadius.circular(14),
                           ),
-                          child: const Icon(
-                            Icons.favorite,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                _commonInterestsTitle(
-                                  _displayCommonInterests.length,
-                                ),
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF243252),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _displayCommonInterests.isEmpty
-                                    ? 'Добавьте интересы в профиле, чтобы видеть совпадения'
-                                    : _displayCommonInterests.join(', '),
-                                style: const TextStyle(
-                                  fontSize: 13.5,
-                                  color: Color(0xFF66739B),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                ],
                 if (_user?.showVisitedEvents ?? true) ...[
                   const SizedBox(height: 24),
                   // Недавние события

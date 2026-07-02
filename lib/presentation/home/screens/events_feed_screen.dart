@@ -361,7 +361,7 @@ class _EventsFeedScreenState extends State<EventsFeedScreen>
         .where((event) => event.actualEndDateTime.toLocal().isAfter(now))
         .toList()
       ..sort((a, b) => b.participantsCount.compareTo(a.participantsCount));
-    return _pinOwnEventsFirst(upcoming);
+    return _pinOwnEventsFirst(upcoming).take(10).toList();
   }
 
   void _syncEventsFromBloc(List<EventModel> events) {

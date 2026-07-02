@@ -484,6 +484,7 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
                   categoryColor: categoryColor,
                   showReviewsButton: _isEventFinished(event),
                   showManageButton: _isCreator(event),
+                  showMatchesButton: _canOpenEventMatches(event),
                   onOpenReviews: () => _showReviewsBottomSheet(event),
                   onOpenMatches: () {
                     Navigator.push(
@@ -639,6 +640,14 @@ class _RealEventDetailScreenState extends State<RealEventDetailScreen> {
     final creatorId = event.createdById?.trim();
     if (creatorId == null || creatorId.isEmpty) return false;
     return _currentUserId != null && _currentUserId == creatorId;
+  }
+
+  bool _isGoingParticipant(EventModel event) {
+    return (event.userParticipationStatus ?? '').trim().toUpperCase() == 'GOING';
+  }
+
+  bool _canOpenEventMatches(EventModel event) {
+    return !_isEventFinished(event) && _isGoingParticipant(event);
   }
 
   void _showReviewsBottomSheet(EventModel event) {

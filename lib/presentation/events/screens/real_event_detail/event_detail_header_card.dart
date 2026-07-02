@@ -13,6 +13,7 @@ class EventDetailHeaderCard extends StatelessWidget {
     required this.categoryColor,
     required this.showReviewsButton,
     required this.showManageButton,
+    required this.showMatchesButton,
     required this.onOpenReviews,
     required this.onOpenMatches,
     required this.onOpenManage,
@@ -23,6 +24,7 @@ class EventDetailHeaderCard extends StatelessWidget {
   final Color categoryColor;
   final bool showReviewsButton;
   final bool showManageButton;
+  final bool showMatchesButton;
   final VoidCallback onOpenReviews;
   final VoidCallback onOpenMatches;
   final VoidCallback onOpenManage;
@@ -105,29 +107,31 @@ class EventDetailHeaderCard extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                _PillButton(
-                  label: 'Метчи',
-                  fg: Colors.white,
-                  bg: AppColors.primary.withValues(alpha: 0.92),
-                  border: Colors.transparent,
-                  onTap: onOpenMatches,
-                  fontWeight: FontWeight.w800,
-                ),
-                if (showManageButton) ...[
-                  const SizedBox(width: 8),
-                  _PillButton(
-                    label: 'Управление',
-                    fg: Colors.white,
-                    bg: AppColors.primary.withValues(alpha: 0.92),
-                    border: Colors.transparent,
-                    onTap: onOpenManage,
-                    fontWeight: FontWeight.w800,
-                  ),
+            if (showMatchesButton || showManageButton)
+              Row(
+                children: [
+                  if (showMatchesButton)
+                    _PillButton(
+                      label: 'Мэтчи',
+                      fg: Colors.white,
+                      bg: AppColors.primary.withValues(alpha: 0.92),
+                      border: Colors.transparent,
+                      onTap: onOpenMatches,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  if (showManageButton) ...[
+                    if (showMatchesButton) const SizedBox(width: 8),
+                    _PillButton(
+                      label: 'Управление',
+                      fg: Colors.white,
+                      bg: AppColors.primary.withValues(alpha: 0.92),
+                      border: Colors.transparent,
+                      onTap: onOpenManage,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ],
                 ],
-              ],
-            ),
+              ),
           ],
         ),
       ),

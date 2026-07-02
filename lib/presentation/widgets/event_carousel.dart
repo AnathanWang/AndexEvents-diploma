@@ -74,41 +74,66 @@ class _EventCarouselState extends State<EventCarousel> {
           ),
         ),
         const SizedBox(height: 12),
-        // Dots indicator
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            widget.events.length,
-            (index) => SizedBox(
-              width: 32,
-              height: 32,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  _pageController.animateToPage(
-                    index,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                  );
-                },
-                child: Center(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: _currentPage == index ? 20 : 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: _currentPage == index
-                          ? AppColors.primary.withValues(alpha: 0.86)
-                          : AppColors.primary.withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
+        _buildPageIndicator(),
+      ],
+    );
+  }
+
+  Widget _buildPageIndicator() {
+    final count = widget.events.length;
+    if (count <= 1) {
+      return const SizedBox.shrink();
+    }
+
+    if (count > 12) {
+      return Text(
+        '${_currentPage + 1} / $count',
+        style: TextStyle(
+          color: AppColors.primary.withValues(alpha: 0.72),
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 16,
+      child: Center(
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          shrinkWrap: true,
+          physics: count > 8
+              ? const BouncingScrollPhysics()
+              : const NeverScrollableScrollPhysics(),
+          itemCount: count,
+          separatorBuilder: (_, __) => const SizedBox(width: 6),
+          itemBuilder: (context, index) {
+            final isActive = _currentPage == index;
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                _pageController.animateToPage(
+                  index,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                width: isActive ? 18 : 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? AppColors.primary.withValues(alpha: 0.86)
+                      : AppColors.primary.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(999),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
-      ],
+      ),
     );
   }
 

@@ -31,6 +31,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
     with TickerProviderStateMixin, MatchRefreshListener<EventMatchScreen> {
   bool _isLoading = true;
   bool _isEventFinished = false;
+  bool _isCurrentUserGoing = false;
   EventModel? _event;
   UserModel? _currentUser;
   List<MatchPreview> _matches = [];
@@ -52,7 +53,11 @@ class _EventMatchScreenState extends State<EventMatchScreen>
   }
 
   Future<void> _silentRefreshMatches() async {
-    if (_currentUser == null || !_isProfileComplete || _isEventFinished || _isLoading) {
+    if (_currentUser == null ||
+        !_isProfileComplete ||
+        _isEventFinished ||
+        !_isCurrentUserGoing ||
+        _isLoading) {
       return;
     }
     if (_matches.isNotEmpty) return;
@@ -68,10 +73,12 @@ class _EventMatchScreenState extends State<EventMatchScreen>
     bool replaceDeck = true,
   }) async {
     try {
-      if (_currentUser == null) {
-        LoggerService.warning(
-          '🟡 [EventMatchScreen] _currentUser is null, cannot load matches',
-        );
+      if (_currentUser == null || !_isCurrentUserGoing) {
+        if (_currentUser == null) {
+          LoggerService.warning(
+            '🟡 [EventMatchScreen] _currentUser is null, cannot load matches',
+          );
+        }
         return;
       }
 
@@ -227,7 +234,6 @@ class _EventMatchScreenState extends State<EventMatchScreen>
       MaterialPageRoute<void>(
         builder: (context) => UserProfileScreen.fromUser(
           user: userToOpen,
-          matchPercentage: match.matchPercentage,
           commonInterests: match.commonInterests,
           canViewSensitiveInfo: false,
         ),
@@ -245,6 +251,8 @@ class _EventMatchScreenState extends State<EventMatchScreen>
       final user = await _userService.getCurrentUser();
       final event = await _eventService.getEventById(widget.eventId);
       final isFinished = !_isEventStillActive(event.actualEndDateTime);
+      final isGoing =
+          (event.userParticipationStatus ?? '').trim().toUpperCase() == 'GOING';
 
       LoggerService.info(
         '🟢 [EventMatchScreen] User loaded: name=${user.displayName}, onboardingCompleted=${user.isOnboardingCompleted}',
@@ -254,6 +262,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
         setState(() {
           _currentUser = user;
           _isEventFinished = isFinished;
+          _isCurrentUserGoing = isGoing;
           _event = event;
           _isLoading = false;
         });
@@ -261,6 +270,13 @@ class _EventMatchScreenState extends State<EventMatchScreen>
         if (isFinished) {
           LoggerService.warning(
             '🟡 [EventMatchScreen] Event is finished, matches are disabled',
+          );
+          return;
+        }
+
+        if (!isGoing) {
+          LoggerService.warning(
+            '🟡 [EventMatchScreen] User is not a GOING participant, matches are disabled',
           );
           return;
         }
@@ -537,6 +553,8 @@ class _EventMatchScreenState extends State<EventMatchScreen>
       );
     } else if (_isEventFinished) {
       content = _buildEventFinishedScreen();
+    } else if (!_isCurrentUserGoing) {
+      content = _buildNotParticipantScreen();
     } else if (!_isProfileComplete) {
       content = _buildProfileIncompleteScreen();
     } else if (_matches.isEmpty) {
@@ -565,7 +583,7 @@ class _EventMatchScreenState extends State<EventMatchScreen>
           color: AppColors.dark.withValues(alpha: 0.88),
         ),
         actions: <Widget>[
-          if (_currentUser != null)
+          if (_currentUser != null && _isCurrentUserGoing)
             IconButton(
               tooltip: 'Мои лайки',
               onPressed: () => MatchLikesSheet.show(
@@ -710,6 +728,35 @@ class _EventMatchScreenState extends State<EventMatchScreen>
             onPressed: _openEditProfile,
             icon: const Icon(Icons.edit, size: 20),
             label: const Text('Заполнить профиль'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF5F76FF),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 0,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNotParticipantScreen() {
+    return _buildEmptyStateShell(
+      icon: Icons.event_available_outlined,
+      iconGradient: const <Color>[Color(0xFF5F76FF), Color(0xFF62A9FF)],
+      title: 'Мэтчи доступны участникам',
+      subtitle:
+          'Нажмите «Пойду» на странице события, чтобы знакомиться с другими участниками.',
+      actions: <Widget>[
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.arrow_back_rounded, size: 20),
+            label: const Text('К событию'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF5F76FF),
               foregroundColor: Colors.white,

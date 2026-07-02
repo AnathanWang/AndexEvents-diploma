@@ -137,7 +137,7 @@ class HomeFloatingNavBar extends StatelessWidget {
                             SizedBox(width: centerGap),
                             _NavItem(
                               icon: CupertinoIcons.heart,
-                              label: 'Матчи',
+                              label: 'Мэтчи',
                               index: 2,
                               selectedIndex: index,
                               itemWidth: navItemWidth,

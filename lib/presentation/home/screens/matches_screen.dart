@@ -182,7 +182,6 @@ class _MatchesScreenState extends State<MatchesScreen>
       CupertinoPageRoute<void>(
         builder: (context) => UserProfileScreen.fromUser(
           user: userToOpen,
-          matchPercentage: match.matchPercentage,
           commonInterests: match.commonInterests,
           canViewSensitiveInfo: false,
         ),

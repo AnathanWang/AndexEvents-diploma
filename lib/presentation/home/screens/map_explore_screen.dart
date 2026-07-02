@@ -545,11 +545,6 @@ class _MapExploreScreenState extends State<MapExploreScreen>
         left: currentUser.interests,
         right: user.interests,
       );
-      final matchPercentage =
-          MatchRecommendationUtils.displayCompatibilityPercent(
-            candidate: user,
-            currentUser: currentUser,
-          );
 
       if (!mounted) return;
       await Navigator.push<void>(
@@ -557,7 +552,6 @@ class _MapExploreScreenState extends State<MapExploreScreen>
         CupertinoPageRoute<void>(
           builder: (context) => UserProfileScreen.fromUser(
             user: user,
-            matchPercentage: matchPercentage,
             commonInterests: commonInterests,
             canViewSensitiveInfo: false,
           ),
